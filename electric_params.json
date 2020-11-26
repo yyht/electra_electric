@@ -7,7 +7,7 @@
     "electric_objective": true,
     "two_tower_generator": true,
     "model_scope":"electra",
-    "tpu_name":"albert2",
+    "tpu_name":"albert3",
     "use_tpu":true,
     "num_tpu_cores":8
 }

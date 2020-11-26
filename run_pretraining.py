@@ -358,6 +358,9 @@ def model_fn_builder(config):
     model = PretrainingModel(config, features,
                              mode == tf.estimator.ModeKeys.TRAIN)
     utils.log("Model is built!")
+    tvars = tf.trainable_variables()
+    for tvar in tvars:
+      print(tvar, "========tvar========")
     if mode == tf.estimator.ModeKeys.TRAIN:
       train_op = optimization.create_optimizer(
           model.total_loss, config.learning_rate, config.num_train_steps,

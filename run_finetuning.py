@@ -23,7 +23,9 @@ import argparse
 import collections
 import json
 
-import tensorflow.compat.v1 as tf
+# import tensorflow.compat.v1 as tf
+import tensorflow as tf
+
 
 import configure_finetuning
 from finetune import preprocessing

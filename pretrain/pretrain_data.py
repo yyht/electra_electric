@@ -93,7 +93,7 @@ def _decode_record(record, name_to_features):
       t = tf.cast(t, tf.int32)
     example[name] = t
   input_mask = tf.cast(tf.not_equal(example['input_ori_ids'], 
-                                    0, tf.int32))
+                                    0), tf.int32)
   example['input_mask'] = input_mask
   example['input_ids'] = example['input_ori_ids']
 

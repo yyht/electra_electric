@@ -89,12 +89,10 @@ def _decode_record(record, name_to_features):
     if t.dtype == tf.int64:
       t = tf.cast(t, tf.int32)
     example[name] = t
-  if 'input_mask' not in example:
-    input_mask = tf.cast(tf.not_equal(example['input_ori_ids'], 
-                                      0, tf.int32))
-    example['input_mask'] = tf.identity(input_mask)
-  if 'input_ids' not in example:
-    example['input_ids'] = tf.identity(example['input_ori_ids'])
+  input_mask = tf.cast(tf.not_equal(example['input_ori_ids'], 
+                                    0, tf.int32))
+  example['input_mask'] = input_mask
+  example['input_ids'] = example['input_ori_ids']
 
   return example
 

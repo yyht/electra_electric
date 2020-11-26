@@ -20,12 +20,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
+import random
 
 class PretrainingConfig(object):
   """Defines pre-training hyperparameters."""
 
-  def __init__(self, model_name, data_dir, **kwargs):
+  def __init__(self, model_name, data_dir, data_file_list, **kwargs):
     self.model_name = model_name
     self.debug = False  # debug mode for quickly running things
     self.do_train = True  # pre-train ELECTRA
@@ -54,7 +54,7 @@ class PretrainingConfig(object):
                                  # change to 0 or None to keep all checkpoints
 
     # model settings
-    self.model_size = "small"  # one of "small", "base", or "large"
+    self.model_size = "base"  # one of "small", "base", or "large"
     # override the default transformer hparams for the provided model size; see
     # modeling.BertConfig for the possible hparams and util.training_utils for
     # the defaults
@@ -92,8 +92,18 @@ class PretrainingConfig(object):
     self.gcp_project = None  # project name for the Cloud TPU-enabled project
 
     # default locations of data files
-    self.pretrain_tfrecords = os.path.join(
-        data_dir, "pretrain_tfrecords/pretrain_data.tfrecord*")
+    self.pretrain_file = os.path.join(data_dir, data_file_list)
+    self.pretrain_tfrecords = []
+    with tf.gfile.GFile(self.pretrain_file, "r") as reader:
+        for index, line in enumerate(reader):
+            content = line.strip()
+            train_file_path = os.path.join(data_dir, content)
+            self.pretrain_tfrecords.append(train_file_path)
+    random.shuffle(self.pretrain_tfrecords)
+    tf.logging.info("** total pretrain tfrecords:%s **"%(str(len(self.pretrain_tfrecords))))
+    # print(train_file)
+    # self.pretrain_tfrecords = os.path.join(
+    #     data_dir, "pretrain_tfrecords/pretrain_data.tfrecord*")
     self.vocab_file = os.path.join(data_dir, "vocab.txt")
     self.model_dir = os.path.join(data_dir, "models", model_name)
     results_dir = os.path.join(self.model_dir, "results")

@@ -220,14 +220,23 @@ class BertModel(object):
             dropout_prob=bert_config.hidden_dropout_prob)
     else:
       self.embedding_output = input_reprs
+
+    with tf.variable_scope(
+          (scope if untied_embeddings else "electra") + "/embeddings",
+          reuse=tf.AUTO_REUSE):
+      if self.embedding_output.shape[-1] != bert_config.hidden_size:
+          self.embedding_output = tf.layers.dense(
+              self.embedding_output, bert_config.hidden_size,
+              name="embeddings_project")
+
     if not update_embeddings:
       self.embedding_output = tf.stop_gradient(self.embedding_output)
 
     with tf.variable_scope(scope, default_name="electra"):
-      if self.embedding_output.shape[-1] != bert_config.hidden_size:
-        self.embedding_output = tf.layers.dense(
-            self.embedding_output, bert_config.hidden_size,
-            name="embeddings_project")
+      # if self.embedding_output.shape[-1] != bert_config.hidden_size:
+      #   self.embedding_output = tf.layers.dense(
+      #       self.embedding_output, bert_config.hidden_size,
+      #       name="embeddings_project")
 
       with tf.variable_scope("encoder"):
         # This converts a 2D mask of shape [batch_size, seq_length] to a 3D

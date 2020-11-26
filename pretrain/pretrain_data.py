@@ -42,8 +42,8 @@ def get_input_fn(config, is_training,
     batch_size = params["batch_size"]
 
     name_to_features = {
-        "input_ids": tf.io.FixedLenFeature([config.max_seq_length], tf.int64),
-        "input_mask": tf.io.FixedLenFeature([config.max_seq_length], tf.int64),
+        "input_ori_ids": tf.io.FixedLenFeature([config.max_seq_length], tf.int64),
+        # "input_mask": tf.io.FixedLenFeature([config.max_seq_length], tf.int64),
         "segment_ids": tf.io.FixedLenFeature([config.max_seq_length], tf.int64),
     }
 
@@ -89,6 +89,12 @@ def _decode_record(record, name_to_features):
     if t.dtype == tf.int64:
       t = tf.cast(t, tf.int32)
     example[name] = t
+  if 'input_mask' not in example:
+    input_mask = tf.cast(tf.not_equal(example['input_ori_ids'], 
+                                      0, tf.int32))
+    example['input_mask'] = tf.identity(input_mask)
+  if 'input_ids' not in example:
+    example['input_ids'] = tf.identity(example['input_ori_ids'])
 
   return example
 

@@ -54,6 +54,7 @@ class PretrainingConfig(object):
     self.keep_checkpoint_max = 5 # maximum number of recent checkpoint files to keep;
                                  # change to 0 or None to keep all checkpoints
 
+    self.model_scope = 'electra'
     # model settings
     self.model_size = "base"  # one of "small", "base", or "large"
     # override the default transformer hparams for the provided model size; see

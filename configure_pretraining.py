@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import os
 import random
+import tensorflow as tf
 
 class PretrainingConfig(object):
   """Defines pre-training hyperparameters."""

@@ -75,6 +75,7 @@ def get_input_fn(config, is_training,
             batch_size=batch_size,
             num_parallel_batches=num_cpu_threads,
             drop_remainder=True))
+    d = d.apply(tf.data.experimental.ignore_errors())
     return d
 
   return input_fn

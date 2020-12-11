@@ -11,6 +11,6 @@
     "tpu_name":"albert3",
     "use_tpu":true,
     "num_tpu_cores":8,
-    "num_train_steps":700000,
+    "num_train_steps":800000,
     "learning_rate":5e-4
 }

@@ -8,7 +8,7 @@
     "electric_objective": true,
     "two_tower_generator": true,
     "model_scope":"electra",
-    "tpu_name":"albert3",
+    "tpu_name":"albert2",
     "use_tpu":true,
     "num_tpu_cores":8,
     "num_train_steps":800000,

@@ -99,8 +99,9 @@ class PretrainingConfig(object):
     with tf.gfile.GFile(self.pretrain_file, "r") as reader:
         for index, line in enumerate(reader):
             content = line.strip()
-            train_file_path = os.path.join(data_dir, content)
-            self.pretrain_tfrecords.append(train_file_path)
+            if 'tfrecord' in content:
+                train_file_path = os.path.join(data_dir, content)
+                self.pretrain_tfrecords.append(train_file_path)
     random.shuffle(self.pretrain_tfrecords)
     tf.logging.info("** total pretrain tfrecords:%s **"%(str(len(self.pretrain_tfrecords))))
     

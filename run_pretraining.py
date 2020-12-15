@@ -63,7 +63,7 @@ class PretrainingModel(object):
     if config.uniform_generator:
       # simple generator sampling fakes uniformly at random
       mlm_output = self._get_masked_lm_output(masked_inputs, None)
-    elif ((config.electra_objective or config.electric_objective)
+    elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
       generator_config = get_generator_config(config, self._bert_config)
       if config.two_tower_generator:
@@ -108,6 +108,27 @@ class PretrainingModel(object):
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
           cloze_output)
       self.total_loss += config.disc_weight * disc_output.loss
+    elif config.electra_nce_objective:
+      disc_fake = build_transformer(
+          config, fake_data.inputs, is_training, self._bert_config,
+          reuse=not config.untied_generator, embedding_size=embedding_size)
+
+      disc_real = build_transformer(
+          config, unmasked_inputs.inputs, is_training, self._bert_config,
+          reuse=not config.untied_generator, embedding_size=embedding_size)
+
+      disc_real_energy = self._get_nce_disc_energy(unmasked_inputs.inputs, 
+                                              disc_real)
+
+      disc_fake_energy = self._get_nce_disc_energy(fake_data.inputs, 
+                                              disc_fake)
+
+      nce_disc_output = self._get_nce_disc_output( 
+                                mlm_output.pseudo_logprob,
+                                fake_data.pseudo_logprob,
+                                disc_real_energy,
+                                disc_fake_energy)
+      self.total_loss += config.disc_weight * nce_disc_output.loss
 
     # Evaluation
     eval_fn_inputs = {
@@ -176,12 +197,59 @@ class PretrainingModel(object):
       else:
         relevant_reprs = pretrain_helpers.gather_positions(
             model.get_sequence_output(), inputs.masked_lm_positions)
+        # logtis: [batch_size, num_masked, vocab]
         logits = get_token_logits(
             relevant_reprs, model.get_embedding_table(), self._bert_config)
       return get_softmax_output(
           logits, inputs.masked_lm_ids, inputs.masked_lm_weights,
           self._bert_config.vocab_size)
 
+  def _get_nce_disc_energy(self, inputs
+                              discriminator):
+    with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):
+      hidden = tf.layers.dense(
+          discriminator.get_sequence_output(),
+          units=self._bert_config.hidden_size,
+          activation=modeling.get_activation(self._bert_config.hidden_act),
+          kernel_initializer=modeling.create_initializer(
+              self._bert_config.initializer_range))
+      weights = tf.cast(inputs.input_mask, tf.float32)
+      weights = tf.expand_dims(weights, axis=-1)
+      energy = tf.reduce_sum(hidden*weights, axis=-1) / (1e-10+tf.reduce_sum(weights, axis=1))
+      # enrergy:[batch_size, hidden_size]
+      energy = tf.squeeze(tf.layers.dense(hidden, units=1), -1)
+      return energy
+
+  def _get_nce_disc_output(self, 
+                                  noise_true_logprobs,
+                                  noise_fake_logprobs,
+                                  discriminator_real_energy,
+                                  discriminator_fake_energy):
+
+      d_out_real = -discriminator_real_energy-tf.stop_gradient(noise_true_logprobs)
+      d_out_fake = -discriminator_fake_energy-noise_fake_logprobs
+
+      d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=d_out_real, labels=tf.ones_like(d_out_real)
+        ))
+      d_loss_fake = (tf.nn.sigmoid_cross_entropy_with_logits(
+          logits=d_out_fake, labels=tf.zeros_like(d_out_fake)
+      ))
+
+      per_example_loss = d_loss_real + d_loss_fake
+      d_loss = tf.reduce_mean(per_example_loss)
+
+      d_real_probs = tf.expand_dims(tf.nn.sigmoid(d_out_real), axis=-1)
+      d_fake_probs = tf.expand_dims(tf.nn.sigmoid(d_out_fake), axis=-1)
+
+      probs = tf.concat([d_real_probs, 1-d_fake_probs], axis=-1)
+      preds = tf.argmax(probs, axis=-1)
+
+      return DiscOutput(
+          loss=d_loss, per_example_loss=per_example_loss, probs=probs,
+          preds=preds,
+      )
+ 
   def _get_discriminator_output(
       self, inputs, discriminator, labels, cloze_output=None):
     """Discriminator binary classifier."""
@@ -221,12 +289,23 @@ class PretrainingModel(object):
 
   def _get_fake_data(self, inputs, mlm_logits):
     """Sample from the generator to create corrupted input."""
+    masked_lm_weights = inputs.masked_lm_weights
     inputs = pretrain_helpers.unmask(inputs)
     disallow = tf.one_hot(
         inputs.masked_lm_ids, depth=self._bert_config.vocab_size,
         dtype=tf.float32) if self._config.disallow_correct else None
     sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
         mlm_logits / self._config.temperature, disallow=disallow))
+
+    # sampled_tokens: [batch_size, n_pos, n_vocab]
+    # mlm_logits: [batch_size, n_pos, n_vocab]
+    sampled_tokens_fp32 = tf.cast(sampled_tokens, dtype=tf.float32)
+    print(sampled_tokens_fp32, "===sampled_tokens_fp32===")
+    # [batch_size, n_pos]
+    pseudo_logprob = tf.reduce_sum(mlm_logits*sampled_tokens_fp32, axis=-1)
+    pseudo_logprob *= tf.cast(masked_lm_ids, dtype=tf.float32)
+    pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)
+    pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_ids, dtype=tf.float32), axis=-1))
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
         inputs.input_ids, sampled_tokids, inputs.masked_lm_positions)
@@ -238,9 +317,10 @@ class PretrainingModel(object):
     updated_inputs = pretrain_data.get_updated_inputs(
         inputs, input_ids=updated_input_ids)
     FakedData = collections.namedtuple("FakedData", [
-        "inputs", "is_fake_tokens", "sampled_tokens"])
+        "inputs", "is_fake_tokens", "sampled_tokens", "pseudo_logprob"])
     return FakedData(inputs=updated_inputs, is_fake_tokens=labels,
-                     sampled_tokens=sampled_tokens)
+                     sampled_tokens=sampled_tokens,
+                     pseudo_logprob=pseudo_logprob)
 
   def _get_cloze_outputs(self, inputs, model):
     """Cloze model softmax layer."""
@@ -277,14 +357,18 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   log_probs = tf.nn.log_softmax(logits)
   label_log_probs = -tf.reduce_sum(log_probs * oh_labels, axis=-1)
   numerator = tf.reduce_sum(weights * label_log_probs)
+  # [batch_size, num_masked]
+  pseudo_logprob = -numerator
   denominator = tf.reduce_sum(weights) + 1e-6
   loss = numerator / denominator
   SoftmaxOutput = collections.namedtuple(
       "SoftmaxOutput", ["logits", "probs", "loss", "per_example_loss", "preds",
-                        "weights"])
+                        "weights", "pseudo_logprob"])
   return SoftmaxOutput(
       logits=logits, probs=probs, per_example_loss=label_log_probs,
-      loss=loss, preds=preds, weights=weights)
+      loss=loss, preds=preds, weights=weights,
+      pseudo_logprob=pseudo_logprob
+      )
 
 
 class TwoTowerClozeTransformer(object):

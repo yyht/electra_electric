@@ -1,0 +1,17 @@
+{
+    "max_seq_length": 512,
+    "vocab_size": 21128,
+    "model_size": "base",
+    "train_batch_size":224,
+    "embedding_size":768,
+    "do_train": true,
+    "electric_objective": false,
+    "two_tower_generator": false,
+    "electra_nce_objective":true,
+    "model_scope":"electra",
+    "tpu_name":"albert2",
+    "use_tpu":true,
+    "num_tpu_cores":8,
+    "num_train_steps":1000000,
+    "learning_rate":5e-4
+}

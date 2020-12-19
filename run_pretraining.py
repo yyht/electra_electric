@@ -204,7 +204,7 @@ class PretrainingModel(object):
           logits, inputs.masked_lm_ids, inputs.masked_lm_weights,
           self._bert_config.vocab_size)
 
-  def _get_nce_disc_energy(self, inputs
+  def _get_nce_disc_energy(self, inputs,
                               discriminator):
     with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):
       hidden = tf.layers.dense(

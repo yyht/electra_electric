@@ -102,6 +102,7 @@ class PretrainingConfig(object):
             content = line.strip()
             if 'tfrecord' in content:
                 train_file_path = os.path.join(data_dir, content)
+                print(train_file_path, "====train_file_path====")
                 self.pretrain_tfrecords.append(train_file_path)
     random.shuffle(self.pretrain_tfrecords)
     tf.logging.info("** total pretrain tfrecords:%s **"%(str(len(self.pretrain_tfrecords))))

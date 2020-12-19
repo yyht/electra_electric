@@ -250,6 +250,9 @@ class PretrainingModel(object):
       probs = tf.concat([d_real_probs, 1-d_fake_probs], axis=-1)
       preds = tf.argmax(probs, axis=-1)
 
+      DiscOutput = collections.namedtuple(
+          "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
+                         "labels"])
       return DiscOutput(
           loss=d_loss, per_example_loss=per_example_loss, probs=probs,
           preds=preds,

@@ -227,7 +227,7 @@ class PretrainingModel(object):
                                   discriminator_fake_energy):
 
       d_out_real = -discriminator_real_energy-tf.stop_gradient(noise_true_logprobs)
-      d_out_fake = -discriminator_fake_energy-noise_fake_logprobs
+      d_out_fake = -discriminator_fake_energy-tf.stop_gradient(noise_fake_logprobs)
 
       d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
             logits=d_out_real, labels=tf.ones_like(d_out_real)
@@ -303,9 +303,9 @@ class PretrainingModel(object):
     print(sampled_tokens_fp32, "===sampled_tokens_fp32===")
     # [batch_size, n_pos]
     pseudo_logprob = tf.reduce_sum(mlm_logits*sampled_tokens_fp32, axis=-1)
-    pseudo_logprob *= tf.cast(masked_lm_ids, dtype=tf.float32)
+    pseudo_logprob *= tf.cast(masked_lm_weights, dtype=tf.float32)
     pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)
-    pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_ids, dtype=tf.float32), axis=-1))
+    pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
         inputs.input_ids, sampled_tokids, inputs.masked_lm_positions)
@@ -358,9 +358,9 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   label_log_probs = -tf.reduce_sum(log_probs * oh_labels, axis=-1)
   numerator = tf.reduce_sum(weights * label_log_probs)
   # [batch_size, num_masked]
-  pseudo_logprob = -numerator
   denominator = tf.reduce_sum(weights) + 1e-6
   loss = numerator / denominator
+  pseudo_logprob = -loss
   SoftmaxOutput = collections.namedtuple(
       "SoftmaxOutput", ["logits", "probs", "loss", "per_example_loss", "preds",
                         "weights", "pseudo_logprob"])

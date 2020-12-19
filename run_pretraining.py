@@ -104,7 +104,7 @@ class PretrainingModel(object):
     if config.electra_objective or config.electric_objective:
       discriminator = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
-          reuse=not config.untied_generator, embedding_size=embedding_size)
+          reuse=tf.AUTO_REUSE, embedding_size=embedding_size)
       disc_output = self._get_discriminator_output(
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
           cloze_output)
@@ -112,7 +112,7 @@ class PretrainingModel(object):
     elif config.electra_nce_objective:
       disc_fake = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
-          reuse=not config.untied_generator, embedding_size=embedding_size)
+          reuse=tf.AUTO_REUSE, embedding_size=embedding_size)
       print(disc_fake, "===disc_fake using for conditional fake data energy function===")
 
       disc_real = build_transformer(

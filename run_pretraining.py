@@ -86,6 +86,7 @@ class PretrainingModel(object):
             untied_embeddings=config.untied_generator_embeddings,
             scope="generator")
         mlm_output = self._get_masked_lm_output(masked_inputs, generator)
+        print(mlm_output, "===mlm_output using tied embedding mlm generator===")
     else:
       # full-sized masked language model generator if using BERT objective or if
       # the generator and discriminator have tied weights
@@ -112,16 +113,20 @@ class PretrainingModel(object):
       disc_fake = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
           reuse=not config.untied_generator, embedding_size=embedding_size)
+      print(disc_fake, "===disc_fake using for conditional fake data energy function===")
 
       disc_real = build_transformer(
           config, unmasked_inputs.inputs, is_training, self._bert_config,
           reuse=not config.untied_generator, embedding_size=embedding_size)
+      print(disc_real, "===disc_real using for conditional real data energy function===")
 
       disc_real_energy = self._get_nce_disc_energy(unmasked_inputs.inputs, 
                                               disc_real)
+      print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
 
       disc_fake_energy = self._get_nce_disc_energy(fake_data.inputs, 
                                               disc_fake)
+      print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
 
       nce_disc_output = self._get_nce_disc_output( 
                                 mlm_output.pseudo_logprob,

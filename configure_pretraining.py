@@ -36,6 +36,7 @@ class PretrainingConfig(object):
     # train ELECTRA or Electric? if both are false, trains a masked LM like BERT
     self.electra_objective = True
     self.electric_objective = False
+    self.electra_nce_objective = False
     self.gen_weight = 1.0  # masked language modeling / generator loss
     self.disc_weight = 50.0  # discriminator loss
     self.mask_prob = 0.15  # percent of input tokens to mask out / replace

@@ -116,11 +116,11 @@ class PretrainingModel(object):
       print(disc_fake, "===disc_fake using for conditional fake data energy function===")
 
       disc_real = build_transformer(
-          config, unmasked_inputs.inputs, is_training, self._bert_config,
+          config, unmasked_inputs, is_training, self._bert_config,
           reuse=not config.untied_generator, embedding_size=embedding_size)
       print(disc_real, "===disc_real using for conditional real data energy function===")
 
-      disc_real_energy = self._get_nce_disc_energy(unmasked_inputs.inputs, 
+      disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
                                               disc_real)
       print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
 
@@ -226,10 +226,10 @@ class PretrainingModel(object):
       return energy
 
   def _get_nce_disc_output(self, 
-                                  noise_true_logprobs,
-                                  noise_fake_logprobs,
-                                  discriminator_real_energy,
-                                  discriminator_fake_energy):
+                          noise_true_logprobs,
+                          noise_fake_logprobs,
+                          discriminator_real_energy,
+                          discriminator_fake_energy):
 
       d_out_real = -discriminator_real_energy-tf.stop_gradient(noise_true_logprobs)
       d_out_fake = -discriminator_fake_energy-tf.stop_gradient(noise_fake_logprobs)

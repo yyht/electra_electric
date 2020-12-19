@@ -222,7 +222,7 @@ class PretrainingModel(object):
       weights = tf.expand_dims(weights, axis=-1)
       energy = tf.reduce_sum(hidden*weights, axis=-1) / (1e-10+tf.reduce_sum(weights, axis=1))
       # enrergy:[batch_size, hidden_size]
-      energy = tf.squeeze(tf.layers.dense(hidden, units=1), -1)
+      energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
       return energy
 
   def _get_nce_disc_output(self, 

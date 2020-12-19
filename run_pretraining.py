@@ -247,15 +247,20 @@ class PretrainingModel(object):
       d_real_probs = tf.expand_dims(tf.nn.sigmoid(d_out_real), axis=-1)
       d_fake_probs = tf.expand_dims(tf.nn.sigmoid(d_out_fake), axis=-1)
 
-      probs = tf.concat([d_real_probs, 1-d_fake_probs], axis=-1)
+      d_real_labels = tf.expand_dims(tf.ones_like(d_out_real), axis=-1)
+      d_fake_labels = tf.expand_dims(tf.ones_like(d_out_fake), axis=-1)
+
+      probs = tf.concat([1-d_fake_probs, d_real_probs], axis=-1)
       preds = tf.argmax(probs, axis=-1)
+
+      labels = tf.concat([d_fake_labels, d_real_labels], axis=-1)
 
       DiscOutput = collections.namedtuple(
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
                          "labels"])
       return DiscOutput(
           loss=d_loss, per_example_loss=per_example_loss, probs=probs,
-          preds=preds,
+          preds=preds, labels=labels
       )
  
   def _get_discriminator_output(

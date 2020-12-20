@@ -169,8 +169,12 @@ class PretrainingModel(object):
     print(eval_fn_keys, "===eval_fn_keys===")
     print(eval_fn_values, "===eval_fn_values===")
 
-    def monitor_fn(*args):
-      d = {k: arg for k, arg in zip(eval_fn_keys, args)}
+    def monitor_fn(eval_fn_inputs, keys):
+      # d = {k: arg for k, arg in zip(eval_fn_keys, args)}
+      d = {}
+      for key in eval_fn_inputs:
+        if key in keys:
+          d[key] = eval_fn_inputs[key]
       monitor_dict = dict()
       masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
@@ -202,9 +206,9 @@ class PretrainingModel(object):
       monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['d_loss_real'])
       monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['d_loss_fake'])
       return monitor_dict
-      
-    self.monitor_dict = (monitor_fn, eval_fn_values)
-    print("==monitor dict construction==")
+
+    self.monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
+    print("==monitor dict construction==", self.monitor_dict)
 
     def metric_fn(*args):
       """Computes the loss and accuracy of the model."""

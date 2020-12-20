@@ -33,7 +33,7 @@ from model import optimization
 from pretrain import pretrain_data
 from pretrain import pretrain_helpers
 from util import training_utils
-from util import utils
+from util import utils, log_utils
 
 
 class PretrainingModel(object):
@@ -54,6 +54,8 @@ class PretrainingModel(object):
     unmasked_inputs = pretrain_data.features_to_inputs(features)
     masked_inputs = pretrain_helpers.mask(
         config, unmasked_inputs, config.mask_prob)
+
+    self.monitor_dict = {}
 
     # Generator
     embedding_size = (
@@ -153,8 +155,51 @@ class PretrainingModel(object):
           "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
                                       output_type=tf.int32)
       })
+    elif config.electra_nce_objective:
+      eval_fn_inputs.update({
+          "disc_loss": nce_disc_output.per_example_loss,
+          "disc_labels": nce_disc_output.labels,
+          "disc_probs": nce_disc_output.probs,
+          "disc_preds": nce_disc_output.preds,
+          "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
+                                      output_type=tf.int32)
+      })
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
+
+    def monitor_fn(**args):
+      d = {k: arg for k, arg in zip(eval_fn_keys, args)}
+      masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
+      masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
+      masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1)
+      mlm_acc = tf.cast(tf.equal(masked_lm_pred_ids, masked_lm_ids), dtype=tf.float32)
+      mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      mlm_loss = tf.reshape(d["mlm_loss"], [-1])
+      mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      self.monitor_dict['mlm_loss'] = mlm_loss
+      self.monitor_dict['mlm_acc'] = mlm_acc
+
+      sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
+      sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
+      sampeld_mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      self.monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
+
+      sent_nce_pred_acc = tf.equal(d["preds"], d['labels'], dtype=tf.float32)
+      sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
+
+      self.monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc
+      self.monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['d_loss_real'])
+      self.monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['d_loss_fake'])
+
+    monitor_fn(eval_fn_values)
 
     def metric_fn(*args):
       """Computes the loss and accuracy of the model."""
@@ -244,23 +289,24 @@ class PretrainingModel(object):
       per_example_loss = d_loss_real + d_loss_fake
       d_loss = tf.reduce_mean(per_example_loss)
 
-      d_real_probs = tf.expand_dims(tf.nn.sigmoid(d_out_real), axis=-1)
-      d_fake_probs = tf.expand_dims(tf.nn.sigmoid(d_out_fake), axis=-1)
+      d_real_probs = tf.nn.sigmoid(d_out_real)
+      d_fake_probs = tf.nn.sigmoid(d_out_fake)
 
-      d_real_labels = tf.expand_dims(tf.ones_like(d_out_real), axis=-1)
-      d_fake_labels = tf.expand_dims(tf.ones_like(d_out_fake), axis=-1)
+      d_real_labels = tf.ones_like(d_out_real)
+      d_fake_labels = tf.zeros_like(d_out_fake)
 
-      probs = tf.concat([1-d_fake_probs, d_real_probs], axis=-1)
-      preds = tf.argmax(probs, axis=-1)
+      probs = tf.concat([1-d_fake_probs, d_real_probs], axis=0)
+      preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.float32)
 
-      labels = tf.concat([d_fake_labels, d_real_labels], axis=-1)
+      labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
 
       DiscOutput = collections.namedtuple(
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
-                         "labels"])
+                         "labels", "real_loss", 'fake_loss'])
       return DiscOutput(
           loss=d_loss, per_example_loss=per_example_loss, probs=probs,
-          preds=preds, labels=labels
+          preds=preds, labels=labels, real_loss=d_loss_real,
+          fake_loss=d_loss_fake
       )
  
   def _get_discriminator_output(
@@ -466,6 +512,14 @@ def model_fn_builder(config):
           warmup_steps=config.num_warmup_steps,
           lr_decay_power=config.lr_decay_power
       )
+
+      if config.monitoring:
+        if model.monitor_dict
+          host_call = log_utils.construct_scalar_host_call_v1(
+                                    monitor_dict=model.monitor_dict,
+                                    model_dir=config.model_dir,
+                                    prefix="train/")
+
       output_spec = tf.estimator.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=model.total_loss,
@@ -473,7 +527,8 @@ def model_fn_builder(config):
           training_hooks=[training_utils.ETAHook(
               {} if config.use_tpu else dict(loss=model.total_loss),
               config.num_train_steps, config.iterations_per_loop,
-              config.use_tpu)]
+              config.use_tpu)],
+          host_call=host_call if config.monitoring else None
       )
     elif mode == tf.estimator.ModeKeys.EVAL:
       output_spec = tf.estimator.tpu.TPUEstimatorSpec(

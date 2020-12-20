@@ -9,6 +9,7 @@
     "electra_objective":false,
     "two_tower_generator": false,
     "electra_nce_objective":true,
+    "monitoring":true,
     "model_scope":"electra",
     "tpu_name":"albert2",
     "use_tpu":true,

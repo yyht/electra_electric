@@ -200,6 +200,7 @@ class PretrainingModel(object):
       self.monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['d_loss_fake'])
 
     monitor_fn(eval_fn_values)
+    print("==monitor dict construction==")
 
     def metric_fn(*args):
       """Computes the loss and accuracy of the model."""
@@ -514,7 +515,7 @@ def model_fn_builder(config):
       )
 
       if config.monitoring:
-        if model.monitor_dict
+        if model.monitor_dict:
           host_call = log_utils.construct_scalar_host_call_v1(
                                     monitor_dict=model.monitor_dict,
                                     model_dir=config.model_dir,

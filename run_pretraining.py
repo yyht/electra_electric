@@ -171,6 +171,7 @@ class PretrainingModel(object):
 
     def monitor_fn(*args):
       d = {k: arg for k, arg in zip(eval_fn_keys, args)}
+      monitor_dict = dict()
       masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
       masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
@@ -183,8 +184,8 @@ class PretrainingModel(object):
       mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      self.monitor_dict['mlm_loss'] = mlm_loss
-      self.monitor_dict['mlm_acc'] = mlm_acc
+      monitor_dict['mlm_loss'] = mlm_loss
+      monitor_dict['mlm_acc'] = mlm_acc
 
       sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
@@ -192,16 +193,17 @@ class PretrainingModel(object):
       sampeld_mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      self.monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
+      monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
 
       sent_nce_pred_acc = tf.equal(d["preds"], d['labels'], dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
-      self.monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc
-      self.monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['d_loss_real'])
-      self.monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['d_loss_fake'])
-
-    monitor_fn(eval_fn_values)
+      monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc
+      monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['d_loss_real'])
+      monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['d_loss_fake'])
+      return monitor_dict
+      
+    self.monitor_dict = (monitor_fn, eval_fn_values)
     print("==monitor dict construction==")
 
     def metric_fn(*args):

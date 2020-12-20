@@ -533,15 +533,18 @@ def model_fn_builder(config):
                                     monitor_dict=model.monitor_dict,
                                     model_dir=config.model_dir,
                                     prefix="train/")
+        else:
+          host_call = None
+        print("==host_call==", host_call)
 
       output_spec = tf.estimator.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=model.total_loss,
           train_op=train_op,
-          training_hooks=[training_utils.ETAHook(
-              {} if config.use_tpu else dict(loss=model.total_loss),
-              config.num_train_steps, config.iterations_per_loop,
-              config.use_tpu)],
+          # training_hooks=[training_utils.ETAHook(
+          #     {} if config.use_tpu else dict(loss=model.total_loss),
+          #     config.num_train_steps, config.iterations_per_loop,
+          #     config.use_tpu)],
           host_call=host_call if config.monitoring else None
       )
     elif mode == tf.estimator.ModeKeys.EVAL:

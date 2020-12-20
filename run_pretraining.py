@@ -167,7 +167,7 @@ class PretrainingModel(object):
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
 
-    def monitor_fn(**args):
+    def monitor_fn(*args):
       d = {k: arg for k, arg in zip(eval_fn_keys, args)}
       masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])

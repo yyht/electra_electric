@@ -162,7 +162,9 @@ class PretrainingModel(object):
           "disc_probs": nce_disc_output.probs,
           "disc_preds": nce_disc_output.preds,
           "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
-                                      output_type=tf.int32)
+                                      output_type=tf.int32),
+          "disc_real_loss":nce_disc_output.real_loss,
+          "disc_fake_loss":nce_disc_output.fake_loss
       })
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
@@ -179,7 +181,8 @@ class PretrainingModel(object):
       masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
       masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
-      masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1)
+      masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
+                                  output_type=tf.int32)
       mlm_acc = tf.cast(tf.equal(masked_lm_pred_ids, masked_lm_ids), dtype=tf.float32)
       mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
@@ -199,12 +202,12 @@ class PretrainingModel(object):
 
       monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
 
-      sent_nce_pred_acc = tf.equal(d["preds"], d['labels'], dtype=tf.float32)
+      sent_nce_pred_acc = tf.equal(d["disc_preds"], d['disc_labels'], dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
       monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc
-      monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['d_loss_real'])
-      monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['d_loss_fake'])
+      monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
+      monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
       return monitor_dict
 
     self.monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -305,9 +308,10 @@ class PretrainingModel(object):
       d_fake_labels = tf.zeros_like(d_out_fake)
 
       probs = tf.concat([1-d_fake_probs, d_real_probs], axis=0)
-      preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.float32)
+      preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
 
       labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
+      labels = tf.cast(labels, dtype=tf.int32)
 
       DiscOutput = collections.namedtuple(
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",

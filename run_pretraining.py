@@ -209,7 +209,7 @@ class PretrainingModel(object):
       monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc
       monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
       monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
-      monitor_dict['sent_nce_loss'] = d['disc_loss']
+      monitor_dict['sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
       return monitor_dict
 
     self.monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)

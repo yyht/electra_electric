@@ -202,7 +202,8 @@ class PretrainingModel(object):
 
       monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
 
-      sent_nce_pred_acc = tf.equal(d["disc_preds"], d['disc_labels'], dtype=tf.float32)
+      sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+                                dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
       monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc

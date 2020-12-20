@@ -166,6 +166,8 @@ class PretrainingModel(object):
       })
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
+    print(eval_fn_keys, "===eval_fn_keys===")
+    print(eval_fn_values, "===eval_fn_values===")
 
     def monitor_fn(*args):
       d = {k: arg for k, arg in zip(eval_fn_keys, args)}

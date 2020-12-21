@@ -279,8 +279,9 @@ class PretrainingModel(object):
               self._bert_config.initializer_range))
       weights = tf.cast(inputs.input_mask, tf.float32)
       weights = tf.expand_dims(weights, axis=-1)
-      energy = tf.reduce_sum(hidden*weights, axis=-1) / (1e-10+tf.reduce_sum(weights, axis=1))
+      energy = tf.reduce_sum(hidden*weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=1))
       # enrergy:[batch_size, hidden_size]
+      print("==energy output==", energy)
       energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
       return energy
 
@@ -297,7 +298,7 @@ class PretrainingModel(object):
             logits=d_out_real, labels=tf.ones_like(d_out_real)
         ))
       d_loss_fake = (tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=d_out_fake, labels=tf.zeros_like(d_out_fake)
+            logits=d_out_fake, labels=tf.zeros_like(d_out_fake)
       ))
 
       per_example_loss = d_loss_real + d_loss_fake

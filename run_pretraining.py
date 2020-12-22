@@ -164,7 +164,11 @@ class PretrainingModel(object):
           "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
                                       output_type=tf.int32),
           "disc_real_loss":nce_disc_output.real_loss,
-          "disc_fake_loss":nce_disc_output.fake_loss
+          "disc_fake_loss":nce_disc_output.fake_loss,
+          "disc_real_labels":nce_disc_output.real_labels,
+          "disc_real_preds":nce_disc_output.real_preds,
+          "disc_fake_labels":nce_disc_output.fake_labels,
+          "disc_fake_preds":nce_disc_output.fake_preds,
       })
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
@@ -210,6 +214,17 @@ class PretrainingModel(object):
       monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
       monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
       monitor_dict['sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
+
+      sent_nce_real_pred_acc = tf.cast(tf.equal(d["disc_real_preds"], d['disc_real_labels']),
+                                dtype=tf.float32)
+      sent_nce_real_pred_acc = tf.reduce_mean(sent_nce_real_pred_acc)
+      monitor_dict['sent_nce_real_pred_acc'] = sent_nce_real_pred_acc
+
+      sent_nce_fake_pred_acc = tf.cast(tf.equal(d["disc_fake_preds"], d['disc_fake_labels']),
+                                dtype=tf.float32)
+      sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
+      monitor_dict['sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
+
       return monitor_dict
 
     self.monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -286,12 +301,12 @@ class PretrainingModel(object):
       return energy
 
   def _get_nce_disc_output(self, 
-                          noise_true_logprobs,
+                          noise_real_logprobs,
                           noise_fake_logprobs,
                           discriminator_real_energy,
                           discriminator_fake_energy):
 
-      d_out_real = -discriminator_real_energy-tf.stop_gradient(noise_true_logprobs)
+      d_out_real = -discriminator_real_energy-tf.stop_gradient(noise_real_logprobs)
       d_out_fake = -discriminator_fake_energy-tf.stop_gradient(noise_fake_logprobs)
 
       d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
@@ -313,16 +328,26 @@ class PretrainingModel(object):
       probs = tf.concat([1-d_fake_probs, d_real_probs], axis=0)
       preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
 
+      real_preds = tf.cast(tf.greater(d_real_probs, 0.5), dtype=tf.int32)
+      real_labels = tf.cast(d_real_labels, dtype=tf.int32)
+
+      fake_preds = tf.cast(tf.less(d_fake_probs, 0.5), dtype=tf.int32)
+      fake_labels = tf.cast(d_fake_labels, dtype=tf.int32)
+
       labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
       labels = tf.cast(labels, dtype=tf.int32)
 
       DiscOutput = collections.namedtuple(
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
-                         "labels", "real_loss", 'fake_loss'])
+                         "labels", "real_loss", 'fake_loss',
+                         'real_preds', 'real_labels',
+                         'fake_preds', 'fake_labels'])
       return DiscOutput(
           loss=d_loss, per_example_loss=per_example_loss, probs=probs,
           preds=preds, labels=labels, real_loss=d_loss_real,
-          fake_loss=d_loss_fake
+          fake_loss=d_loss_fake,
+          real_preds=real_preds, real_labels=real_labels,
+          fake_preds=fake_preds, fake_labels=fake_labels
       )
  
   def _get_discriminator_output(
@@ -377,7 +402,9 @@ class PretrainingModel(object):
     sampled_tokens_fp32 = tf.cast(sampled_tokens, dtype=tf.float32)
     print(sampled_tokens_fp32, "===sampled_tokens_fp32===")
     # [batch_size, n_pos]
-    pseudo_logprob = tf.reduce_sum(mlm_logits*sampled_tokens_fp32, axis=-1)
+    # mlm_logprobs: [batch_size, n_pos. n_vocab]
+    mlm_logprobs = tf.nn.log_softmax(mlm_logits, axis=-1)
+    pseudo_logprob = tf.reduce_sum(mlm_logprobs*sampled_tokens_fp32, axis=-1)
     pseudo_logprob *= tf.cast(masked_lm_weights, dtype=tf.float32)
     # [batch_size]
     pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)

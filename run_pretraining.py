@@ -204,7 +204,7 @@ class PretrainingModel(object):
       sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
       sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
-      sampeld_mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
       monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc

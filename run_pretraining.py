@@ -185,9 +185,10 @@ class PretrainingModel(object):
       masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
       masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
-      masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
-                                  output_type=tf.int32)
-      mlm_acc = tf.cast(tf.equal(masked_lm_pred_ids, masked_lm_ids), dtype=tf.float32)
+      print(masked_lm_preds, "===masked_lm_preds===")
+      # masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
+      #                             output_type=tf.int32)
+      mlm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
       mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 

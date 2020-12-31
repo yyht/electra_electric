@@ -137,11 +137,11 @@ class PretrainingModel(object):
                                 disc_fake_energy)
 
       elif config.nce == 'gan':
-        disc_real_energy = self._get_gan_disc_output(unmasked_inputs, 
+        disc_real_energy = self._get_gan_output(unmasked_inputs, 
                                               disc_real)
         print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
 
-        disc_fake_energy = self._get_gan_disc_output(fake_data.inputs, 
+        disc_fake_energy = self._get_gan_output(fake_data.inputs, 
                                                 disc_fake)
         print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
         nce_disc_output = self._get_gan_disc_output( 
@@ -319,7 +319,7 @@ class PretrainingModel(object):
       energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
       return energy
 
-  def _get_gan_disc_output(self, inputs,
+  def _get_gan_output(self, inputs,
                               discriminator):
 
     with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):

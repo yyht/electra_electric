@@ -331,7 +331,7 @@ class PretrainingModel(object):
               self._bert_config.initializer_range))
       weights = tf.cast(inputs.input_mask, tf.float32)
       my_weights = tf.expand_dims(weights, axis=-1)
-      energy = tf.reduce_sum(hidden*my_weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=-1))
+      energy = tf.reduce_sum(hidden*my_weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=-1, keepdims=True))
       # enrergy:[batch_size, hidden_size]
       print("==energy output==", energy)
       energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)

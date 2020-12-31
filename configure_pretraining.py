@@ -40,7 +40,7 @@ class PretrainingConfig(object):
     self.gen_weight = 1.0  # masked language modeling / generator loss
     self.disc_weight = 50.0  # discriminator loss
     self.mask_prob = 0.15  # percent of input tokens to mask out / replace
-
+    self.nce = 'gan'
     # optimization
     self.learning_rate = 5e-4
     self.lr_decay_power = 1.0  # linear weight decay by default

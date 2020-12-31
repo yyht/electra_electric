@@ -122,19 +122,34 @@ class PretrainingModel(object):
           reuse=tf.AUTO_REUSE, embedding_size=embedding_size)
       print(disc_real, "===disc_real using for conditional real data energy function===")
 
-      disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
+      if config.nce == 'nce':
+        disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
                                               disc_real)
-      print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
+        print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
 
-      disc_fake_energy = self._get_nce_disc_energy(fake_data.inputs, 
-                                              disc_fake)
-      print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
-
-      nce_disc_output = self._get_nce_disc_output( 
+        disc_fake_energy = self._get_nce_disc_energy(fake_data.inputs, 
+                                                disc_fake)
+        print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
+        nce_disc_output = self._get_nce_disc_output( 
                                 mlm_output.pseudo_logprob,
                                 fake_data.pseudo_logprob,
                                 disc_real_energy,
                                 disc_fake_energy)
+
+      elif config.nce == 'gan':
+        disc_real_energy = self._get_gan_disc_output(unmasked_inputs, 
+                                              disc_real)
+        print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
+
+        disc_fake_energy = self._get_gan_disc_output(fake_data.inputs, 
+                                                disc_fake)
+        print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
+        nce_disc_output = self._get_gan_disc_output( 
+                                mlm_output.pseudo_logprob,
+                                fake_data.pseudo_logprob,
+                                disc_real_energy,
+                                disc_fake_energy)
+      
       self.total_loss += config.disc_weight * nce_disc_output.loss
 
     # Evaluation
@@ -302,6 +317,66 @@ class PretrainingModel(object):
       print("==energy output==", energy)
       energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
       return energy
+
+  def _get_gan_disc_output(self, inputs,
+                              discriminator):
+
+    with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):
+      hidden = tf.layers.dense(
+          discriminator.get_sequence_output(),
+          units=self._bert_config.hidden_size,
+          activation=modeling.get_activation(self._bert_config.hidden_act),
+          kernel_initializer=modeling.create_initializer(
+              self._bert_config.initializer_range))
+      weights = tf.cast(inputs.input_mask, tf.float32)
+      my_weights = tf.expand_dims(my_weights, axis=-1)
+      energy = tf.reduce_sum(hidden*my_weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=-1))
+      # enrergy:[batch_size, hidden_size]
+      print("==energy output==", energy)
+      energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
+      return energy
+
+  def _get_gan_disc_output(self, 
+                          noise_real_logprobs,
+                          noise_fake_logprobs,
+                          discriminator_real_energy,
+                          discriminator_fake_energy):
+      d_out_real = tf.identity(discriminator_real_energy)
+      d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=d_out_real, labels=tf.ones_like(d_out_real)
+        ))
+      d_out_fake = tf.identity(discriminator_fake_energy)
+      d_loss_fake = (tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=d_out_fake, labels=tf.zeros_like(d_out_fake)
+      ))
+
+      per_example_loss = d_loss_real + d_loss_fake
+      d_loss = tf.reduce_mean(per_example_loss)
+
+      probs = tf.concat([1-d_fake_probs, d_real_probs], axis=0)
+      preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
+
+      real_preds = tf.cast(tf.greater(d_real_probs, 0.5), dtype=tf.int32)
+      real_labels = tf.cast(d_real_labels, dtype=tf.int32)
+
+      fake_preds = tf.cast(tf.less(d_fake_probs, 0.5), dtype=tf.int32)
+      fake_labels = tf.cast(d_fake_labels, dtype=tf.int32)
+
+      labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
+      labels = tf.cast(labels, dtype=tf.int32)
+
+      DiscOutput = collections.namedtuple(
+          "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
+                         "labels", "real_loss", 'fake_loss',
+                         'real_preds', 'real_labels',
+                         'fake_preds', 'fake_labels'])
+      return DiscOutput(
+          loss=d_loss, per_example_loss=per_example_loss, probs=probs,
+          preds=preds, labels=labels, real_loss=d_loss_real,
+          fake_loss=d_loss_fake,
+          real_preds=real_preds, real_labels=real_labels,
+          fake_preds=fake_preds, fake_labels=fake_labels
+      )
 
   def _get_nce_disc_output(self, 
                           noise_real_logprobs,

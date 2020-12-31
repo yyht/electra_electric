@@ -354,6 +354,12 @@ class PretrainingModel(object):
       per_example_loss = d_loss_real + d_loss_fake
       d_loss = tf.reduce_mean(per_example_loss)
 
+      d_real_probs = tf.nn.sigmoid(d_out_real)
+      d_fake_probs = tf.nn.sigmoid(d_out_fake)
+
+      d_real_labels = tf.ones_like(d_out_real)
+      d_fake_labels = tf.zeros_like(d_out_fake)
+
       probs = tf.concat([1-d_fake_probs, d_real_probs], axis=0)
       preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
 

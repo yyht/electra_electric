@@ -149,6 +149,7 @@ class PretrainingModel(object):
                                 fake_data.pseudo_logprob,
                                 disc_real_energy,
                                 disc_fake_energy)
+        print("==not using mlm as bias==")
       
       self.total_loss += config.disc_weight * nce_disc_output.loss
 

@@ -179,7 +179,7 @@ def mask(config,
                           0.01,
                           global_step,
                           config.num_train_steps,
-                          end_learning_rate=0.2,
+                          end_learning_rate=0.3,
                           power=1.0,
                           cycle=False)
 

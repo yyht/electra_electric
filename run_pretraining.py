@@ -194,7 +194,69 @@ class PretrainingModel(object):
     print(eval_fn_keys, "===eval_fn_keys===")
     print(eval_fn_values, "===eval_fn_values===")
 
-    def monitor_fn(eval_fn_inputs, keys):
+    def electra_electric_monitor_fn(eval_fn_inputs, keys):
+      d = {}
+      for key in eval_fn_inputs:
+        if key in keys:
+          d[key] = eval_fn_inputs[key]
+      monitor_dict = dict()
+      masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
+      masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
+      print(masked_lm_preds, "===masked_lm_preds===")
+      print(masked_lm_ids, "===masked_lm_ids===")
+      print(masked_lm_weights, "===masked_lm_weights===")
+
+      mlm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
+      mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      mlm_loss = tf.reshape(d["mlm_loss"], [-1])
+      mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      monitor_dict['mlm_loss'] = mlm_loss
+      monitor_dict['mlm_acc'] = mlm_acc
+
+      sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
+      sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
+      sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+                                dtype=tf.float32)
+      sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
+
+      monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
+
+      token_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+                                dtype=tf.float32)
+      token_acc_mask = tf.cast(d["input_mask"], dtype=tf.float32)
+      token_acc *= token_acc_mask
+      token_acc = tf.reduce_sum(token_acc) / (1e-10+tf.reduce_sum(token_acc_mask))
+
+      monitor_dict['token_acc'] = token_acc
+      monitor_dict['token_loss'] = tf.reduce_mean(d['disc_loss'])
+
+      token_precision = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+                                dtype=tf.float32)
+      token_precision_mask = tf.cast(d["disc_preds"] * d["input_mask"], dtype=tf.float32)
+      token_precision *= token_precision_mask
+      token_precision = tf.reduce_sum(token_precision) / (1e-10+tf.reduce_sum(token_precision_mask))
+
+      monitor_dict['token_precision'] = token_precision
+
+      token_recall = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+                                dtype=tf.float32)
+      token_recall_mask = tf.cast(d["disc_labels"] * d["input_mask"], dtype=tf.float32)
+      token_recall *= token_recall_mask
+      token_recall = tf.reduce_sum(token_recall) / (1e-10+tf.reduce_sum(token_recall_mask))
+
+      monitor_dict['token_recall'] = token_recall
+      return monitor_dict
+
+    def electra_nce_monitor_fn(eval_fn_inputs, keys):
       # d = {k: arg for k, arg in zip(eval_fn_keys, args)}
       d = {}
       for key in eval_fn_inputs:
@@ -249,8 +311,12 @@ class PretrainingModel(object):
 
       return monitor_dict
 
-    self.monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
-    print("==monitor dict construction==", self.monitor_dict)
+    if config.electra_objective or config.electric_objective:
+      self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
+      print("==monitor dict construction electra_electric_objective==", self.monitor_dict)
+    elif config.electra_nce_objective:
+      self.monitor_dict = electra_nce_monitor_fn(eval_fn_inputs, eval_fn_keys)
+      print("==monitor dict construction electra_nce_objective==", self.monitor_dict)
 
     def metric_fn(*args):
       """Computes the loss and accuracy of the model."""

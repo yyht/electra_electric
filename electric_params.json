@@ -14,5 +14,5 @@
     "num_tpu_cores":8,
     "num_train_steps":1000000,
     "learning_rate":1e-4,
-    "disc_weight":50.0
+    "disc_weight":10.0
 }

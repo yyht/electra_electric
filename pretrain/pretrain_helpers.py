@@ -134,7 +134,7 @@ def get_candidates_mask(config,
                         disallow_from_mask=None):
   """Returns a mask tensor of positions in the input that can be masked out."""
   vocab = get_vocab(config)
-  ignore_ids = [vocab["[SEP]"], vocab["[CLS]"], vocab["[MASK]"]]
+  ignore_ids = [vocab["[SEP]"], vocab["[CLS]"], vocab["[MASK]"], vocab["[UNK]"]]
   candidates_mask = tf.ones_like(inputs.input_ids, tf.bool)
   for ignore_id in ignore_ids:
     candidates_mask &= tf.not_equal(inputs.input_ids, ignore_id)
@@ -176,10 +176,10 @@ def mask(config,
   
   global_step = tf.train.get_or_create_global_step()
   mask_ratio = tf.train.polynomial_decay(
-                          0.01,
+                          0.10,
                           global_step,
                           config.num_train_steps,
-                          end_learning_rate=0.3,
+                          end_learning_rate=0.30,
                           power=1.0,
                           cycle=False)
 

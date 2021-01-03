@@ -9,15 +9,16 @@
     "electra_objective":false,
     "two_tower_generator": false,
     "electra_nce_objective":true,
-    "untied_generator_embeddings":true,
+    "untied_generator_embeddings":false,
     "monitoring":true,
     "model_scope":"electra",
+    "disallow_correct":true,
     "tpu_name":"albert0",
     "use_tpu":true,
     "num_tpu_cores":8,
     "disc_weight":1.0,
     "num_train_steps":1000000,
     "learning_rate":1e-4,
-    "generator_hidden_size":0.5,
+    "generator_hidden_size":0.25,
     "nce":"nce"
 }

@@ -10,7 +10,9 @@
     "model_scope":"electra",
     "tpu_name":"albert2",
     "use_tpu":true,
+    "monitoring":true,
     "num_tpu_cores":8,
     "num_train_steps":1000000,
-    "learning_rate":5e-4
+    "learning_rate":5e-4,
+    "disc_weight":50.0
 }

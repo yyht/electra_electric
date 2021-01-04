@@ -523,6 +523,7 @@ class PretrainingModel(object):
         log_q = tf.stop_gradient(log_q)
         logits += log_q
         logits += tf.log(self._config.mask_prob / (1 - self._config.mask_prob))
+        print("==apply electric_objective==")
 
       weights = tf.cast(inputs.input_mask, tf.float32)
       labelsf = tf.cast(labels, tf.float32)

@@ -271,9 +271,9 @@ def _single_token_mask(FLAGS, inputs, tgt_len, num_predict, exclude_mask=None):
   candidate_mask = tf.logical_not(exclude_mask)
 
   input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
-  tgt_len = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
 
-  all_indices = tf.range(tgt_len, dtype=tf.int64)
+  all_indices = tf.range(num_tokens, dtype=tf.int64)
   candidate_indices = tf.boolean_mask(all_indices, candidate_mask)
   masked_pos = tf.random.shuffle(candidate_indices)
   if check_tf_version():
@@ -298,6 +298,7 @@ def _online_sample_masks(FLAGS,
   input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
   num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.float32)
 
+  global_step = tf.train.get_or_create_global_step()
   mask_prob = tf.train.polynomial_decay(
                           0.05,
                           global_step,
@@ -341,11 +342,6 @@ def _online_sample_masks(FLAGS,
 
 def discrepancy_correction(FLAGS, inputs, is_target, tgt_len):
   """Construct the masked input."""
-
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
-  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.float32)
-  tgt_len = num_tokens
-
   random_p = tf.random.uniform([tgt_len], maxval=1.0)
   mask_ids = tf.constant(FLAGS.mask_id, dtype=inputs.dtype, shape=[tgt_len])
 

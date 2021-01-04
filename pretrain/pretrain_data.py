@@ -29,6 +29,7 @@ import tensorflow as tf
 import configure_pretraining
 from model import tokenization
 from util import utils
+from pretrain import span_mask_utils
 
 
 def get_input_fn(config, is_training,

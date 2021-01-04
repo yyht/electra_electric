@@ -147,13 +147,13 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
     span_lens = tf.random.categorical(
         logits=logits[None],
         num_samples=num_predict,
-        dtype=tf.int32,
+        dtype=tf.int64,
     )[0] + FLAGS.min_word
   else:
     span_lens = tf.multinomial(
         logits=logits[None],
         num_samples=num_predict,
-        output_dtype=tf.int32,
+        output_dtype=tf.int64,
     )[0] + FLAGS.min_word
 
   # Sample the ratio [0.0, 1.0) of left context lengths
@@ -210,13 +210,13 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
     span_lens = tf.random.categorical(
         logits=logits[None],
         num_samples=num_predict,
-        dtype=tf.int32,
+        dtype=tf.int64,
     )[0] + FLAGS.min_tok
   else:
     span_lens = tf.multinomial(
         logits=logits[None],
         num_samples=num_predict,
-        output_dtype=tf.int32,
+        output_dtype=tf.int64,
     )[0] + FLAGS.min_tok
 
   # Sample the ratio [0.0, 1.0) of left context lengths

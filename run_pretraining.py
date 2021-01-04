@@ -36,6 +36,7 @@ from util import training_utils
 from util import utils, log_utils
 
 
+
 class PretrainingModel(object):
   """Transformer pre-training using the replaced-token-detection task."""
 

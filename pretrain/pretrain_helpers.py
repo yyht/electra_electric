@@ -176,12 +176,12 @@ def mask(config,
   
   global_step = tf.train.get_or_create_global_step()
   mask_ratio = tf.train.polynomial_decay(
-                          0.10,
+                          0.05,
                           global_step,
-                          config.num_train_steps,
-                          end_learning_rate=0.30,
+                          int(config.num_train_steps*0.1),
+                          end_learning_rate=0.20,
                           power=1.0,
-                          cycle=False)
+                          cycle=True)
 
   num_to_predict = tf.maximum(1, tf.minimum(
       N, tf.cast(tf.round(num_tokens * mask_ratio), tf.int32)))

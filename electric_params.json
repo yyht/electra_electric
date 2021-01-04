@@ -6,6 +6,7 @@
     "embedding_size":768,
     "do_train": true,
     "electric_objective": true,
+    "electra_objective":false,
     "two_tower_generator": true,
     "model_scope":"electra",
     "tpu_name":"albert1",
@@ -16,3 +17,4 @@
     "learning_rate":1e-4,
     "disc_weight":10.0
 }
+

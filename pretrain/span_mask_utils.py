@@ -166,7 +166,7 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
 
   beg_indices = (tf.cumsum(left_ctx_len) +
                  tf.cumsum(right_offset, exclusive=True))
-  end_indices = beg_indices + span_lens
+  end_indices = beg_indices + tf.cast(span_lens, dtype=tf.int32)
 
   # Remove out of range `boundary` indices
   max_boundary_index = tf.cast(tf.shape(boundary)[0] - 1, tf.int64)
@@ -231,7 +231,7 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   # Get the actual begin and end indices
   beg_indices = (tf.cumsum(left_ctx_len) +
                  tf.cumsum(right_offset, exclusive=True))
-  end_indices = beg_indices + span_lens
+  end_indices = beg_indices + tf.cast(span_lens, dtype=tf.int32)
 
   # Remove out of range indices
   valid_idx_mask = end_indices < non_pad_len

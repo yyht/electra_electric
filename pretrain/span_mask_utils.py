@@ -107,8 +107,8 @@ def _idx_pair_to_mask(FLAGS, beg_indices, end_indices, inputs, tgt_len, num_pred
       tf.not_equal(inputs, FLAGS.cls_id))
   all_indices = tf.where(
       non_func_mask,
-      tf.range(tgt_len, dtype=tf.int64),
-      tf.constant(-1, shape=[tgt_len], dtype=tf.int64))
+      tf.range(tgt_len, dtype=tf.int32),
+      tf.constant(-1, shape=[tgt_len], dtype=tf.int32))
   candidate_matrix = tf.cast(
       tf.logical_and(
           all_indices[None, :] >= beg_indices[:, None],

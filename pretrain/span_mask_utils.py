@@ -77,12 +77,12 @@ def format_filename(prefix, suffix, seq_len, uncased):
 
 
 def convert_example(example, use_bfloat16=False):
-  """Cast int32 into int32 and float32 to bfloat16 if use_bfloat16."""
+  """Cast int64 into int32 and float32 to bfloat16 if use_bfloat16."""
   for key in list(example.keys()):
     val = example[key]
     if tf.keras.backend.is_sparse(val):
       val = tf.sparse.to_dense(val)
-    if val.dtype == tf.int32:
+    if val.dtype == tf.int64:
       val = tf.cast(val, tf.int32)
     if use_bfloat16 and val.dtype == tf.float32:
       val = tf.cast(val, tf.bfloat16)
@@ -107,8 +107,8 @@ def _idx_pair_to_mask(FLAGS, beg_indices, end_indices, inputs, tgt_len, num_pred
       tf.not_equal(inputs, FLAGS.cls_id))
   all_indices = tf.where(
       non_func_mask,
-      tf.range(tgt_len, dtype=tf.int32),
-      tf.constant(-1, shape=[tgt_len], dtype=tf.int32))
+      tf.range(tgt_len, dtype=tf.int64),
+      tf.constant(-1, shape=[tgt_len], dtype=tf.int64))
   candidate_matrix = tf.cast(
       tf.logical_and(
           all_indices[None, :] >= beg_indices[:, None],
@@ -128,14 +128,14 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
   """Sample whole word spans as prediction targets."""
   # Note: 1.2 is roughly the token-to-word ratio
 
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int32)
-  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int32)
-  num_predict = tf.cast(num_predict, tf.int32)
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
+  num_predict = tf.cast(num_predict, tf.int64)
 
   non_pad_len = num_tokens + 1 - stride
 
   chunk_len_fp = tf.cast(non_pad_len / num_predict / 1.2, dtype=tf.float32)
-  round_to_int = lambda x: tf.cast(tf.round(x), tf.int32)
+  round_to_int = lambda x: tf.cast(tf.round(x), tf.int64)
 
   # Sample span lengths from a zipf distribution
   span_len_seq = np.arange(FLAGS.min_word, FLAGS.max_word + 1)
@@ -169,7 +169,7 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
   end_indices = beg_indices + span_lens
 
   # Remove out of range `boundary` indices
-  max_boundary_index = tf.cast(tf.shape(boundary)[0] - 1, tf.int32)
+  max_boundary_index = tf.cast(tf.shape(boundary)[0] - 1, tf.int64)
   valid_idx_mask = end_indices < max_boundary_index
   beg_indices = tf.boolean_mask(beg_indices, valid_idx_mask)
   end_indices = tf.boolean_mask(end_indices, valid_idx_mask)
@@ -178,8 +178,8 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
   end_indices = tf.gather(boundary, end_indices)
 
   # Shuffle valid `position` indices
-  num_valid = tf.cast(tf.shape(beg_indices)[0], tf.int32)
-  order = tf.random.shuffle(tf.range(num_valid, dtype=tf.int32))
+  num_valid = tf.cast(tf.shape(beg_indices)[0], tf.int64)
+  order = tf.random.shuffle(tf.range(num_valid, dtype=tf.int64))
   beg_indices = tf.gather(beg_indices, order)
   end_indices = tf.gather(end_indices, order)
 
@@ -191,9 +191,9 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   """Sample token spans as prediction targets."""
   # non_pad_len = tgt_len + 1 - stride
 
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int32)
-  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int32)
-  num_predict = tf.cast(num_predict, tf.int32)
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
+  num_predict = tf.cast(num_predict, tf.int64)
 
   non_pad_len = num_tokens + 1 - stride
 
@@ -239,8 +239,8 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   end_indices = tf.boolean_mask(end_indices, valid_idx_mask)
 
   # Shuffle valid indices
-  num_valid = tf.cast(tf.shape(beg_indices)[0], tf.int32)
-  order = tf.random.shuffle(tf.range(num_valid, dtype=tf.int32))
+  num_valid = tf.cast(tf.shape(beg_indices)[0], tf.int64)
+  order = tf.random.shuffle(tf.range(num_valid, dtype=tf.int64))
   beg_indices = tf.gather(beg_indices, order)
   end_indices = tf.gather(end_indices, order)
 
@@ -270,10 +270,10 @@ def _single_token_mask(FLAGS, inputs, tgt_len, num_predict, exclude_mask=None):
     exclude_mask = tf.logical_or(func_mask, exclude_mask)
   candidate_mask = tf.logical_not(exclude_mask)
 
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int32)
-  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int32)
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
 
-  all_indices = tf.range(num_tokens, dtype=tf.int32)
+  all_indices = tf.range(num_tokens, dtype=tf.int64)
   candidate_indices = tf.boolean_mask(all_indices, candidate_mask)
   masked_pos = tf.random.shuffle(candidate_indices)
   if check_tf_version():
@@ -295,7 +295,7 @@ def _online_sample_masks(FLAGS,
   """Sample target positions to predict."""
 
   # Set the number of tokens to mask out per example
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int32)
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
   num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.float32)
 
   global_step = tf.train.get_or_create_global_step()
@@ -365,7 +365,7 @@ def create_target_mapping(
   """Create target mapping and retrieve the corresponding kwargs."""
   if num_predict is not None:
     # Get masked indices
-    indices = tf.range(seq_len, dtype=tf.int32)
+    indices = tf.range(seq_len, dtype=tf.int64)
     indices = tf.boolean_mask(indices, is_target)
 
     # Handle the case that actual_num_predict < num_predict
@@ -399,13 +399,13 @@ def _decode_record(FLAGS, record, num_predict,
   max_seq_length = seq_len
   record_spec = {
         "input_ori_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int32),
+            tf.FixedLenFeature([max_seq_length], tf.int64),
         "segment_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int32)
+            tf.FixedLenFeature([max_seq_length], tf.int64)
   }
   if FLAGS.sample_strategy in ["whole_word", "word_span"]:
     tf.logging.info("Add `boundary` spec for %s", FLAGS.sample_strategy)
-    record_spec["boundary"] = tf.VarLenFeature(tf.int32)
+    record_spec["boundary"] = tf.VarLenFeature(tf.int64)
 
   example = tf.parse_single_example(record, record_spec)
   inputs = example.pop("input_ori_ids")
@@ -433,11 +433,11 @@ def _decode_record(FLAGS, record, num_predict,
   is_pad = tf.equal(masked_input, FLAGS.pad_id)
 
   origin_input_mask = tf.equal(inputs, FLAGS.pad_id)
-  masked_input *= (1 - tf.cast(origin_input_mask, dtype=tf.int32))
+  masked_input *= (1 - tf.cast(origin_input_mask, dtype=tf.int64))
 
   example["masked_input"] = masked_input
   example["origin_input"] = inputs
-  example["is_target"] = tf.cast(is_target, dtype=tf.int32) * (1 - tf.cast(origin_input_mask, dtype=tf.int32))
+  example["is_target"] = tf.cast(is_target, dtype=tf.int64) * (1 - tf.cast(origin_input_mask, dtype=tf.int64))
   # example["input_mask"] = tf.cast(tf.logical_or(is_mask, is_pad), tf.float32)
   # example["pad_mask"] = tf.cast(is_pad, tf.float32)
   input_mask = tf.logical_or(tf.logical_or(is_mask, is_pad), origin_input_mask)

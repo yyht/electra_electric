@@ -209,13 +209,13 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   if check_tf_version():
     span_lens = tf.random.categorical(
         logits=logits[None],
-        num_samples=num_predict,
+        num_samples=tf.cast(num_predict, dtype=tf.int32),
         dtype=tf.int64,
     )[0] + FLAGS.min_tok
   else:
     span_lens = tf.multinomial(
         logits=logits[None],
-        num_samples=num_predict,
+        num_samples=tf.cast(num_predict, dtype=tf.int32),
         output_dtype=tf.int64,
     )[0] + FLAGS.min_tok
 

@@ -34,8 +34,7 @@ from pretrain import pretrain_data
 from pretrain import pretrain_helpers
 from util import training_utils
 from util import utils, log_utils
-
-
+from pretrain import span_mask_utils
 
 class PretrainingModel(object):
   """Transformer pre-training using the replaced-token-detection task."""
@@ -52,9 +51,17 @@ class PretrainingModel(object):
       self._bert_config.num_attention_heads = 4
 
     # Mask the input
-    unmasked_inputs = pretrain_data.features_to_inputs(features)
-    masked_inputs = pretrain_helpers.mask(
-        config, unmasked_inputs, config.mask_prob)
+    if self._config.mask_strategy == 'electra':
+      unmasked_inputs = pretrain_data.features_to_inputs(features)
+      masked_inputs = pretrain_helpers.mask(
+          config, unmasked_inputs, config.mask_prob)
+      print("==apply electra random mask strategy==")
+    elif self._config.mask_strategy == 'span_mask':
+      unmasked_inputs = span_mask_utils.features_to_inputs(features)
+      masked_inputs = span_mask_utils.mask(
+          config, unmasked_inputs, config.mask_prob,
+          features=features)
+      print("==apply span_mask random mask strategy==")
 
     self.monitor_dict = {}
 
@@ -789,13 +796,23 @@ def train_or_eval(config):
 
   if config.do_train:
     utils.heading("Running training")
-    estimator.train(input_fn=pretrain_data.get_input_fn(config, True),
-                    max_steps=config.num_train_steps)
+
+    if config.mask_strategy == 'electra':
+      estimator.train(input_fn=pretrain_data.get_input_fn(config, True),
+                      max_steps=config.num_train_steps)
+    elif config.mask_strategy == 'span_mask':
+      estimator.train(input_fn=span_mask_utils.get_input_fn(config, True),
+                      max_steps=config.num_train_steps)
   if config.do_eval:
     utils.heading("Running evaluation")
-    result = estimator.evaluate(
-        input_fn=pretrain_data.get_input_fn(config, False),
-        steps=config.num_eval_steps)
+    if config.mask_strategy == 'electra':
+      result = estimator.evaluate(
+          input_fn=pretrain_data.get_input_fn(config, False),
+          steps=config.num_eval_steps)
+    elif config.mask_strategy == 'span_mask':
+      result = estimator.evaluate(
+          input_fn=span_mask_utils.get_input_fn(config, False),
+          steps=config.num_eval_steps)
     for key in sorted(result.keys()):
       utils.log("  {:} = {:}".format(key, str(result[key])))
     return result
@@ -803,7 +820,10 @@ def train_or_eval(config):
 
 def train_one_step(config):
   """Builds an ELECTRA model an trains it for one step; useful for debugging."""
-  train_input_fn = pretrain_data.get_input_fn(config, True)
+  if config.mask_strategy == 'electra':
+    train_input_fn = pretrain_data.get_input_fn(config, True)
+  elif config.mask_strategy == 'span_mask':
+    train_input_fn = span_mask_utils.get_input_fn(config, True)
   features = tf.data.make_one_shot_iterator(train_input_fn(dict(
       batch_size=config.train_batch_size))).get_next()
   model = PretrainingModel(config, features, True)

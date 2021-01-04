@@ -10,6 +10,7 @@ import collections
 
 import numpy as np
 import tensorflow as tf
+from pretrain import pretrain_data
 
 def check_tf_version():
   version = tf.__version__
@@ -126,7 +127,13 @@ def _idx_pair_to_mask(FLAGS, beg_indices, end_indices, inputs, tgt_len, num_pred
 def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
   """Sample whole word spans as prediction targets."""
   # Note: 1.2 is roughly the token-to-word ratio
-  non_pad_len = tgt_len + 1 - stride
+
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
+  num_predict = tf.cast(num_predict, tf.int64)
+
+  non_pad_len = num_tokens + 1 - stride
+
   chunk_len_fp = tf.cast(non_pad_len / num_predict / 1.2, dtype=tf.float32)
   round_to_int = lambda x: tf.cast(tf.round(x), tf.int64)
 
@@ -182,7 +189,14 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
 
 def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   """Sample token spans as prediction targets."""
-  non_pad_len = tgt_len + 1 - stride
+  # non_pad_len = tgt_len + 1 - stride
+
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
+  num_predict = tf.cast(num_predict, tf.int64)
+
+  non_pad_len = num_tokens + 1 - stride
+
   chunk_len_fp = tf.cast(non_pad_len / num_predict, dtype=tf.float32)
   round_to_int = lambda x: tf.cast(tf.round(x), tf.int64)
 
@@ -256,6 +270,9 @@ def _single_token_mask(FLAGS, inputs, tgt_len, num_predict, exclude_mask=None):
     exclude_mask = tf.logical_or(func_mask, exclude_mask)
   candidate_mask = tf.logical_not(exclude_mask)
 
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  tgt_len = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
+
   all_indices = tf.range(tgt_len, dtype=tf.int64)
   candidate_indices = tf.boolean_mask(all_indices, candidate_mask)
   masked_pos = tf.random.shuffle(candidate_indices)
@@ -280,8 +297,17 @@ def _online_sample_masks(FLAGS,
   # Set the number of tokens to mask out per example
   input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
   num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.float32)
+
+  mask_prob = tf.train.polynomial_decay(
+                          0.05,
+                          global_step,
+                          int(FLAGS.num_train_steps*0.1),
+                          end_learning_rate=0.20,
+                          power=1.0,
+                          cycle=True)
+
   num_predict = tf.maximum(1, tf.minimum(
-      num_predict, tf.cast(tf.round(num_tokens * FLAGS.mask_prob), tf.int32)))
+      num_predict, tf.cast(tf.round(num_tokens * mask_prob), tf.int32)))
   num_predict = tf.cast(num_predict, tf.int32)
 
   tf.logging.info("Online sample with strategy: `%s`.", FLAGS.sample_strategy)
@@ -434,17 +460,13 @@ def _decode_record(FLAGS, record, num_predict,
 
   return example
 
+def get_input_fn(config, is_training,
+                 num_cpu_threads=4):
 
-def input_fn_builder( 
-           input_files,
-           max_seq_length,
-           max_predictions_per_seq,
-           is_training,
-           num_cpu_threads,
-           FLAGS,
-           truncate_seq=False, 
-           use_bfloat16=False,
-           stride=1):
+  input_files = []
+  for input_pattern in config.pretrain_tfrecords.split(","):
+    input_files.extend(tf.io.gfile.glob(input_pattern))
+
   """Creates an `input_fn` closure to be passed to TPUEstimator."""
   def input_fn(params):
     """The actual input function."""
@@ -480,12 +502,12 @@ def input_fn_builder(
     # every sample.
     d = d.apply(
         tf.contrib.data.map_and_batch(
-            lambda record: _decode_record(FLAGS, record, 
-                  max_predictions_per_seq,
-                  max_seq_length, 
-                  use_bfloat16=use_bfloat16, 
-                  truncate_seq=truncate_seq, 
-                  stride=stride),
+            lambda record: _decode_record(config, record, 
+                  config.max_predictions_per_seq,
+                  config.max_seq_length, 
+                  use_bfloat16=config.use_bfloat16, 
+                  truncate_seq=config.truncate_seq, 
+                  stride=config.stride),
             batch_size=batch_size,
             num_parallel_batches=num_cpu_threads,
             drop_remainder=True))
@@ -493,3 +515,42 @@ def input_fn_builder(
     return d
 
   return input_fn
+
+Inputs = collections.namedtuple(
+    "Inputs", ["input_ids", "input_mask", "segment_ids", "masked_lm_positions",
+               "masked_lm_ids", "masked_lm_weights"])
+
+def features_to_inputs(features):
+  return Inputs(
+      input_ids=features["origin_input"],
+      input_mask=features["pad_mask"],
+      segment_ids=features["segment_ids"],
+      masked_lm_positions=(features["masked_lm_positions"]
+                           if "masked_lm_positions" in features else None),
+      masked_lm_ids=(features["masked_lm_ids"]
+                     if "masked_lm_ids" in features else None),
+      masked_lm_weights=(features["masked_lm_weights"]
+                         if "masked_lm_weights" in features else None),
+  )
+
+def mask(config,
+         inputs, mask_prob, proposal_distribution=1.0,
+         disallow_from_mask=None, already_masked=None,
+         features=None):
+  if features is not None:
+    masked_inputs = Inputs(
+      input_ids=features["masked_input"],
+      input_mask=features["pad_mask"],
+      segment_ids=features["segment_ids"],
+      masked_lm_positions=features["masked_lm_positions"],
+      masked_lm_ids=features["masked_lm_ids"],
+      masked_lm_weights=features["masked_lm_weights"]
+    )
+  else:
+    masked_inputs = pretrain_data.mask(config,
+                      inputs, 
+                      mask_prob, 
+                      proposal_distribution,
+                      disallow_from_mask,
+                      already_masked)
+  return masked_inputs

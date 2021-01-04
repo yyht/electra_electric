@@ -31,6 +31,7 @@ class PretrainingConfig(object):
     self.debug = False  # debug mode for quickly running things
     self.do_train = True  # pre-train ELECTRA
     self.do_eval = False  # evaluate generator/discriminator on unlabeled data
+    self.mask_strategy = 'electra'
 
     # loss functions
     # train ELECTRA or Electric? if both are false, trains a masked LM like BERT
@@ -125,6 +126,22 @@ class PretrainingConfig(object):
 
     self.max_predictions_per_seq = int((self.mask_prob + 0.005) *
                                        self.max_seq_length)
+
+     # span-mask-config
+    self.min_tok = 1
+    self.max_tok = 10
+    self.sep_id = 102
+    self.pad_id = 0
+    self.cls_id = 101
+    self.mask_id = 103
+    self.leak_ratio = 0.1
+    self.rand_ratio = 0.1
+    self.vocab_size = 30522
+    self.mask_prob = 0.15
+    self.sample_strategy = 'token_span'
+    self.truncate_seq = False
+    self.stride = 1
+    self.use_bfloat16 = False
 
     # debug-mode settings
     if self.debug:

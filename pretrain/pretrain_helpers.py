@@ -146,7 +146,8 @@ def get_candidates_mask(config,
 
 def mask(config,
          inputs, mask_prob, proposal_distribution=1.0,
-         disallow_from_mask=None, already_masked=None):
+         disallow_from_mask=None, already_masked=None,
+         features=None):
   """Implementation of dynamic masking. The optional arguments aren't needed for
   BERT/ELECTRA and are from early experiments in "strategically" masking out
   tokens instead of uniformly at random.

@@ -128,9 +128,9 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
   """Sample whole word spans as prediction targets."""
   # Note: 1.2 is roughly the token-to-word ratio
 
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
-  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
-  num_predict = tf.cast(num_predict, tf.int64)
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int32)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int32)
+  num_predict = tf.cast(num_predict, tf.int32)
 
   non_pad_len = num_tokens + 1 - stride
 
@@ -146,13 +146,13 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
   if check_tf_version():
     span_lens = tf.random.categorical(
         logits=logits[None],
-        num_samples=tf.cast(num_predict, dtype=tf.int32),
+        num_samples=num_predict,
         dtype=tf.int64,
     )[0] + FLAGS.min_word
   else:
     span_lens = tf.multinomial(
         logits=logits[None],
-        num_samples=tf.cast(num_predict, dtype=tf.int32),
+        num_samples=num_predict,
         output_dtype=tf.int64,
     )[0] + FLAGS.min_word
 
@@ -166,7 +166,7 @@ def _word_span_mask(FLAGS, inputs, tgt_len, num_predict, boundary, stride=1):
 
   beg_indices = (tf.cumsum(left_ctx_len) +
                  tf.cumsum(right_offset, exclusive=True))
-  end_indices = beg_indices + tf.cast(span_lens, dtype=tf.int32)
+  end_indices = beg_indices + span_lens
 
   # Remove out of range `boundary` indices
   max_boundary_index = tf.cast(tf.shape(boundary)[0] - 1, tf.int64)
@@ -191,9 +191,9 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   """Sample token spans as prediction targets."""
   # non_pad_len = tgt_len + 1 - stride
 
-  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
-  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
-  num_predict = tf.cast(num_predict, tf.int64)
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int32)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int32)
+  num_predict = tf.cast(num_predict, tf.int32)
 
   non_pad_len = num_tokens + 1 - stride
 
@@ -209,13 +209,13 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   if check_tf_version():
     span_lens = tf.random.categorical(
         logits=logits[None],
-        num_samples=tf.cast(num_predict, dtype=tf.int32),
+        num_samples=num_predict,
         dtype=tf.int64,
     )[0] + FLAGS.min_tok
   else:
     span_lens = tf.multinomial(
         logits=logits[None],
-        num_samples=tf.cast(num_predict, dtype=tf.int32),
+        num_samples=num_predict,
         output_dtype=tf.int64,
     )[0] + FLAGS.min_tok
 
@@ -231,7 +231,7 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   # Get the actual begin and end indices
   beg_indices = (tf.cumsum(left_ctx_len) +
                  tf.cumsum(right_offset, exclusive=True))
-  end_indices = beg_indices + tf.cast(span_lens, dtype=tf.int32)
+  end_indices = beg_indices + span_lens
 
   # Remove out of range indices
   valid_idx_mask = end_indices < non_pad_len

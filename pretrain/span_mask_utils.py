@@ -341,6 +341,11 @@ def _online_sample_masks(FLAGS,
 
 def discrepancy_correction(FLAGS, inputs, is_target, tgt_len):
   """Construct the masked input."""
+
+  input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
+  num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.float32)
+  tgt_len = num_tokens
+
   random_p = tf.random.uniform([tgt_len], maxval=1.0)
   mask_ids = tf.constant(FLAGS.mask_id, dtype=inputs.dtype, shape=[tgt_len])
 

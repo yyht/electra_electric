@@ -572,7 +572,7 @@ class PretrainingModel(object):
     # [batch_size]
     pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)
     # [batch_size]
-    # pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
+    pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
     print("== _get_fake_data pseudo_logprob ==", pseudo_logprob)
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
@@ -628,8 +628,8 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   numerator = tf.reduce_sum(weights * label_log_probs, axis=-1)
   # [batch_size, num_masked]
   denominator = tf.reduce_sum(weights, axis=-1)
-  # pseudo_logprob = -numerator / (denominator + 1e-6)
-  pseudo_logprob = -numerator
+  pseudo_logprob = -numerator / (denominator + 1e-6)
+  # pseudo_logprob = -numerator
   print("== get_softmax_output ==", pseudo_logprob)
   loss = tf.reduce_sum(numerator) / (tf.reduce_sum(denominator) + 1e-6)
   SoftmaxOutput = collections.namedtuple(

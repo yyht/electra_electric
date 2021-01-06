@@ -300,10 +300,10 @@ def _online_sample_masks(FLAGS,
 
   global_step = tf.train.get_or_create_global_step()
   mask_prob = tf.train.polynomial_decay(
-                          0.05,
+                          FLAGS.initial_ratio,
                           global_step,
                           int(FLAGS.num_train_steps*0.1),
-                          end_learning_rate=0.20,
+                          end_learning_rate=FLAGS.final_ratio,
                           power=1.0,
                           cycle=True)
 

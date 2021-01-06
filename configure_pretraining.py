@@ -47,6 +47,8 @@ class PretrainingConfig(object):
     self.lr_decay_power = 1.0  # linear weight decay by default
     self.weight_decay_rate = 0.01
     self.num_warmup_steps = 10000
+    self.initial_ratio = 0.2
+    self.final_ratio = 0.2
 
     # training settings
     self.iterations_per_loop = 200

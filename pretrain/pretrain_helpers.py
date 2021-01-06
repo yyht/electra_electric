@@ -177,10 +177,10 @@ def mask(config,
   
   global_step = tf.train.get_or_create_global_step()
   mask_ratio = tf.train.polynomial_decay(
-                          0.05,
+                          config.initial_ratio,
                           global_step,
                           int(config.num_train_steps*0.1),
-                          end_learning_rate=0.20,
+                          end_learning_rate=config.final_ratio,
                           power=1.0,
                           cycle=True)
 

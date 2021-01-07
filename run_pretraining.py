@@ -770,7 +770,7 @@ def model_fn_builder(config):
         global_step = tf.train.get_or_create_global_step()
         for params, loss, step_name, lr in zip([all_params, all_loss, 
                                           all_global_step_name,
-                                          all_lr])
+                                          all_lr]):
           with tf.control_dependencies([prev_op]):
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):

@@ -788,7 +788,7 @@ def model_fn_builder(config):
                 use_tpu=config.use_tpu,
                 warmup_steps=config.num_warmup_steps,
                 lr_decay_power=config.lr_decay_power,
-                tvars=model.gen_params,
+                tvars=params,
                 global_step_name=step_name
               )
         with tf.control_dependencies([prev_op]):

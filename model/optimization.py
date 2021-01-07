@@ -102,6 +102,8 @@ def create_optimizer_v1(
 
   if not tvars:
     tvars = tf.trainable_variables()
+  for tvar in tvars:
+    print(tvar, "=======global_step_name========", global_step_name)
   grads = tf.gradients(loss, tvars)
   (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
   train_op = optimizer.apply_gradients(

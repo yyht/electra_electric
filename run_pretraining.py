@@ -783,7 +783,7 @@ def model_fn_builder(config):
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
               prev_op = optimization.create_optimizer_v1(
-                model.gen_loss, lr, config.num_train_steps,
+                loss, lr, config.num_train_steps,
                 weight_decay_rate=config.weight_decay_rate,
                 use_tpu=config.use_tpu,
                 warmup_steps=config.num_warmup_steps,

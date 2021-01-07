@@ -471,6 +471,9 @@ class PretrainingModel(object):
       d_out_real = -discriminator_real_energy-tf.stop_gradient(noise_real_logprobs)
       d_out_fake = -discriminator_fake_energy-tf.stop_gradient(noise_fake_logprobs)
 
+      print(d_out_real, "==d_out_real==")
+      print(d_out_fake, "==d_out_fake==")
+
       d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
             logits=d_out_real, labels=tf.ones_like(d_out_real)
         ))

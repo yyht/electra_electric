@@ -73,6 +73,7 @@ class PretrainingModel(object):
     if config.uniform_generator:
       # simple generator sampling fakes uniformly at random
       mlm_output = self._get_masked_lm_output(masked_inputs, None)
+      self.gen_params = []
     elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
       generator_config = get_generator_config(config, self._bert_config)
@@ -87,6 +88,9 @@ class PretrainingModel(object):
                 cloze_output.logits, masked_inputs.masked_lm_positions),
             masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
             self._bert_config.vocab_size)
+        self.gen_params = []
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
       else:
         # small masked language model generator
         generator = build_transformer(
@@ -96,6 +100,10 @@ class PretrainingModel(object):
             untied_embeddings=config.untied_generator_embeddings,
             scope="generator")
         mlm_output = self._get_masked_lm_output(masked_inputs, generator)
+        self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_predictions')
+        if not config.untied_generator_embeddings:
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope+"/embeddings")
         print(mlm_output, "===mlm_output using tied embedding mlm generator===")
     else:
       # full-sized masked language model generator if using BERT objective or if
@@ -104,11 +112,17 @@ class PretrainingModel(object):
           config, masked_inputs, is_training, self._bert_config,
           embedding_size=embedding_size)
       mlm_output = self._get_masked_lm_output(masked_inputs, generator)
+      self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
+      self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_predictions')
+    
     fake_data = self._get_fake_data(masked_inputs, mlm_output.logits)
     self.mlm_output = mlm_output
     self.total_loss = config.gen_weight * (
         cloze_output.loss if config.two_tower_generator else mlm_output.loss)
-
+    if config.two_tower_generator:
+      self.gen_loss = cloze_output.loss
+    else:
+      self.gen_loss = mlm_output.loss
     # Discriminator
     disc_output = None
     if config.electra_objective or config.electric_objective:
@@ -119,6 +133,9 @@ class PretrainingModel(object):
       disc_output = self._get_discriminator_output(
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
           cloze_output)
+      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
+      self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
+      self.disc_loss = disc_output.loss
       self.total_loss += config.disc_weight * disc_output.loss
     elif config.electra_nce_objective:
       disc_fake = build_transformer(
@@ -132,6 +149,8 @@ class PretrainingModel(object):
           reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
           scope=config.model_scope)
       print(disc_real, "===disc_real using for conditional real data energy function===")
+
+      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
 
       if config.nce == 'nce':
         disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
@@ -147,6 +166,8 @@ class PretrainingModel(object):
                                 disc_real_energy,
                                 disc_fake_energy)
 
+        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
+
       elif config.nce == 'gan':
         disc_real_energy = self._get_gan_output(unmasked_inputs, 
                                               disc_real)
@@ -161,8 +182,10 @@ class PretrainingModel(object):
                                 disc_real_energy,
                                 disc_fake_energy)
         print("==not using mlm as bias==")
+        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
       
       self.total_loss += config.disc_weight * nce_disc_output.loss
+      self.disc_loss = nce_disc_output.loss
 
     # Evaluation
     eval_fn_inputs = {
@@ -575,7 +598,8 @@ class PretrainingModel(object):
     # [batch_size]
     pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)
     # [batch_size]
-    pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
+    if self._config.logprob_avg:
+      pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
     print("== _get_fake_data pseudo_logprob ==", pseudo_logprob)
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
@@ -631,7 +655,9 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   numerator = tf.reduce_sum(weights * label_log_probs, axis=-1)
   # [batch_size, num_masked]
   denominator = tf.reduce_sum(weights, axis=-1)
-  pseudo_logprob = -numerator / (denominator + 1e-6)
+  pseudo_logprob = -numerator
+  if self._config.logprob_avg:
+    pseudo_logprob /= (denominator + 1e-6)
   # pseudo_logprob = -numerator
   print("== get_softmax_output ==", pseudo_logprob)
   loss = tf.reduce_sum(numerator) / (tf.reduce_sum(denominator) + 1e-6)
@@ -717,16 +743,48 @@ def model_fn_builder(config):
                              mode == tf.estimator.ModeKeys.TRAIN)
     utils.log("Model is built!")
     tvars = tf.trainable_variables()
+
     for tvar in tvars:
       print(tvar, "========tvar========")
+    for tvar in model.gen_params:
+      print(tvar, "========gen_params========")
+    for tvar in model.disc_params:
+      print(tvar, "========disc_params========")
+
     if mode == tf.estimator.ModeKeys.TRAIN:
-      train_op = optimization.create_optimizer(
-          model.total_loss, config.learning_rate, config.num_train_steps,
-          weight_decay_rate=config.weight_decay_rate,
-          use_tpu=config.use_tpu,
-          warmup_steps=config.num_warmup_steps,
-          lr_decay_power=config.lr_decay_power
-      )
+      if config.stage == 'one_stage':
+        train_op = optimization.create_optimizer(
+            model.total_loss, config.learning_rate, config.num_train_steps,
+            weight_decay_rate=config.weight_decay_rate,
+            use_tpu=config.use_tpu,
+            warmup_steps=config.num_warmup_steps,
+            lr_decay_power=config.lr_decay_power
+        )
+      elif config.stage == 'two_stage':
+        prev_op = tf.no_op()
+        all_params = [model.gen_params, model.disc_params]
+        all_loss = [model.gen_loss, model.disc_loss]
+        all_global_step_name = ['gen_step', 'disc_step']
+        all_lr = [config.gen_learning_rate, 
+              config.disc_learning_rate]
+        global_step = tf.train.get_or_create_global_step()
+        for params, loss, step_name, lr in zip([all_params, all_loss, 
+                                          all_global_step_name,
+                                          all_lr])
+          with tf.control_dependencies([prev_op]):
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(update_ops):
+              prev_op = optimization.create_optimizer_v1(
+                model.gen_loss, lr, config.num_train_steps,
+                weight_decay_rate=config.weight_decay_rate,
+                use_tpu=config.use_tpu,
+                warmup_steps=config.num_warmup_steps,
+                lr_decay_power=config.lr_decay_power,
+                tvars=model.gen_params,
+                global_step_name=step_name
+              )
+        with tf.control_dependencies([prev_op]):
+          train_op = self.global_step.assign_add(1)
 
       if config.monitoring:
         if model.monitor_dict:

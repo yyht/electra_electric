@@ -42,9 +42,13 @@ class PretrainingConfig(object):
     self.disc_weight = 50.0  # discriminator loss
     self.mask_prob = 0.15  # percent of input tokens to mask out / replace
     self.nce = 'gan'
+    self.logprob_avg = False
+    self.stage = 'one_stage'
+    self.gen_learning_rate = 5e-5
+    self.disc_learning_rate = 1e-3
     # optimization
     self.learning_rate = 5e-4
-    self.lr_decay_power = 1.0  # linear weight decay by default
+    self.lr_decay_power = -1.0  # linear weight decay by default
     self.weight_decay_rate = 0.01
     self.num_warmup_steps = 10000
     self.initial_ratio = 0.2

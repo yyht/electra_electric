@@ -600,6 +600,7 @@ class PretrainingModel(object):
     # [batch_size]
     if self._config.logprob_avg:
       pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
+      print("==apply averaging on fake logprob==")
     print("== _get_fake_data pseudo_logprob ==", pseudo_logprob)
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
@@ -645,7 +646,8 @@ def get_token_logits(input_reprs, embedding_table, bert_config):
   return logits
 
 
-def get_softmax_output(logits, targets, weights, vocab_size):
+def get_softmax_output(logits, targets, weights, vocab_size, 
+                      logprob_avg=False):
   oh_labels = tf.one_hot(targets, depth=vocab_size, dtype=tf.float32)
   preds = tf.argmax(logits, axis=-1, output_type=tf.int32)
   probs = tf.nn.softmax(logits)
@@ -656,8 +658,9 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   # [batch_size, num_masked]
   denominator = tf.reduce_sum(weights, axis=-1)
   pseudo_logprob = -numerator
-  if self._config.logprob_avg:
+  if logprob_avg:
     pseudo_logprob /= (denominator + 1e-6)
+    print("==apply averaging on mlm==")
   # pseudo_logprob = -numerator
   print("== get_softmax_output ==", pseudo_logprob)
   loss = tf.reduce_sum(numerator) / (tf.reduce_sum(denominator) + 1e-6)

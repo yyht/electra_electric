@@ -792,7 +792,7 @@ def model_fn_builder(config):
                 global_step_name=step_name
               )
         with tf.control_dependencies([prev_op]):
-          train_op = self.global_step.assign_add(1)
+          train_op = global_step.assign_add(1)
 
       if config.monitoring:
         if model.monitor_dict:

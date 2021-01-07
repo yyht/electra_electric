@@ -68,6 +68,48 @@ def create_optimizer(
   train_op = tf.group(train_op, [global_step.assign(new_global_step)])
   return train_op
 
+def create_optimizer_v1(
+    loss, learning_rate, num_train_steps, weight_decay_rate=0.0, use_tpu=False,
+    warmup_steps=0, warmup_proportion=0, lr_decay_power=1.0,
+    layerwise_lr_decay_power=-1, n_transformer_layers=None,
+    tvars=None, global_step_name="global_name"):
+  """Creates an optimizer and training op."""
+  # global_step = tf.train.get_or_create_global_step()
+  global_step = tf.Variable(0, name=global_step_name, trainable=False)
+  learning_rate = tf.train.polynomial_decay(
+      learning_rate,
+      global_step,
+      num_train_steps,
+      end_learning_rate=0.0,
+      power=lr_decay_power,
+      cycle=False)
+  warmup_steps = max(num_train_steps * warmup_proportion, warmup_steps)
+  learning_rate *= tf.minimum(
+      1.0, tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32))
+
+  if layerwise_lr_decay_power > 0:
+    learning_rate = _get_layer_lrs(learning_rate, layerwise_lr_decay_power,
+                                   n_transformer_layers)
+  optimizer = AdamWeightDecayOptimizer(
+      learning_rate=learning_rate,
+      weight_decay_rate=weight_decay_rate,
+      beta_1=0.9,
+      beta_2=0.999,
+      epsilon=1e-6,
+      exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
+  if use_tpu:
+    optimizer = tf.tpu.CrossShardOptimizer(optimizer)
+
+  if not tvars:
+    tvars = tf.trainable_variables()
+  grads = tf.gradients(loss, tvars)
+  (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+  train_op = optimizer.apply_gradients(
+      zip(grads, tvars), global_step=global_step)
+  new_global_step = global_step + 1
+  train_op = tf.group(train_op, [global_step.assign(new_global_step)])
+  return train_op
+
 
 class AdamWeightDecayOptimizer(tf.train.Optimizer):
   """A basic Adam optimizer that includes "correct" L2 weight decay."""

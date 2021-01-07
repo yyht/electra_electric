@@ -10,16 +10,19 @@
     "two_tower_generator": false,
     "electra_nce_objective":true,
     "untied_generator_embeddings":false,
+    "temperature":2.0,
     "monitoring":true,
     "model_scope":"electra",
     "disallow_correct":true,
     "tpu_name":"albert2",
     "use_tpu":true,
     "num_tpu_cores":8,
-    "disc_weight":1.0,
+    "disc_weight":50.0,
+    "logprob_avg":false,
     "num_train_steps":1000000,
     "learning_rate":1e-4,
     "generator_hidden_size":0.25,
     "nce":"nce",
-    "mask_strategy":"span_mask"
+    "mask_strategy":"span_mask",
+    "stage":""
 }

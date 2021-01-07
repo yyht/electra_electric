@@ -143,6 +143,8 @@ config.embedding_size = 768
 config.max_predictions_per_seq = 128
 config.vocab_file = "./vocab/vocab_ch.txt"
 config.num_train_steps = 100
+config.initial_ratio = 0.2
+config.final_ratio = 0.2
 
 def test_data_generator(features):
 
@@ -169,12 +171,16 @@ input_fn = train_input_fn(output[0], _decode_record, name_to_features)
 sess = tf.Session()
 
 init_op = tf.group(
-            tf.local_variables_initializer())
+            tf.local_variables_initializer(),
+            tf.global_variables_initializer())
+
 sess.run(init_op)
 
 while True:
     features_lst = sess.run([unmasked_inputs.input_ids,
                             fake_data.inputs.input_ids,
+                            fake_data.inputs.input_mask,
+                            fake_data.inputs.segment_ids,
                             masked_inputs.input_ids,
                             masked_inputs.masked_lm_positions,
                             masked_inputs.masked_lm_ids,

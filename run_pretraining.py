@@ -88,6 +88,7 @@ class PretrainingModel(object):
                 cloze_output.logits, masked_inputs.masked_lm_positions),
             masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
             self._bert_config.vocab_size)
+        print("==two_tower_generator==")
         self.gen_params = []
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
@@ -100,9 +101,12 @@ class PretrainingModel(object):
             untied_embeddings=config.untied_generator_embeddings,
             scope="generator")
         mlm_output = self._get_masked_lm_output(masked_inputs, generator)
+        print("==mlm share embeddings==")
         self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_predictions')
+        print("==untied_generator_embeddings==", config.untied_generator_embeddings)
         if not config.untied_generator_embeddings:
+          print("==add shared embeddings==")
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope+"/embeddings")
         print(mlm_output, "===mlm_output using tied embedding mlm generator===")
     else:
@@ -111,6 +115,7 @@ class PretrainingModel(object):
       generator = build_transformer(
           config, masked_inputs, is_training, self._bert_config,
           embedding_size=embedding_size)
+      print("==share all params==")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator)
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_predictions')

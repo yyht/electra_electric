@@ -46,7 +46,7 @@ class PretrainingConfig(object):
     self.stage = 'one_stage'
     self.gen_learning_rate = 5e-5
     self.disc_learning_rate = 1e-3
-    self.spectral_regularization = True
+    self.spectral_regularization = False
     # optimization
     self.learning_rate = 5e-4
     self.lr_decay_power = -1.0  # linear weight decay by default

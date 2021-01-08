@@ -178,7 +178,7 @@ class BertModel(object):
       bert_config.hidden_dropout_prob = 0.0
       bert_config.attention_probs_dropout_prob = 0.0
 
-    if bert_config.spectral_regularization:
+    if spectral_regularization:
       print("==spectral_regularization==")
       custom_getter = spectural_utils.spectral_normalization_custom_getter()
     else:

@@ -45,6 +45,7 @@ class PretrainingModel(object):
     # Set up model config
     self._config = config
     self._bert_config = training_utils.get_bert_config(config)
+    self.is_training = is_training
     if config.debug:
       self._bert_config.num_hidden_layers = 3
       self._bert_config.hidden_size = 144
@@ -412,7 +413,7 @@ class PretrainingModel(object):
                               discriminator):
     if self._config.spectral_regularization:
       print("==spectral_regularization==")
-      custom_getter = spectural_utils.spectral_normalization_custom_getter()
+      custom_getter = spectural_utils.spectral_normalization_custom_getter(training=self.is_training)
     else:
       custom_getter = None
       print("==no spectral_regularization==")

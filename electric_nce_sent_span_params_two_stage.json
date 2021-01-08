@@ -10,7 +10,7 @@
     "two_tower_generator": true,
     "electra_nce_objective":true,
     "untied_generator_embeddings":false,
-    "temperature":5.0,
+    "temperature":1.0,
     "monitoring":true,
     "model_scope":"electra",
     "disallow_correct":false,

@@ -35,6 +35,7 @@ from pretrain import pretrain_helpers
 from util import training_utils
 from util import utils, log_utils
 from pretrain import span_mask_utils
+from model import spectural_utils
 
 class PretrainingModel(object):
   """Transformer pre-training using the replaced-token-detection task."""
@@ -409,7 +410,14 @@ class PretrainingModel(object):
 
   def _get_nce_disc_energy(self, inputs,
                               discriminator):
-    with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):
+    if self._config.spectral_regularization:
+      print("==spectral_regularization==")
+      custom_getter = spectural_utils.spectral_normalization_custom_getter()
+    else:
+      custom_getter = None
+      print("==no spectral_regularization==")
+    with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE,
+          custom_getter=custom_getter):
       hidden = tf.layers.dense(
           discriminator.get_sequence_output(),
           units=self._bert_config.hidden_size,
@@ -423,7 +431,7 @@ class PretrainingModel(object):
       energy = tf.reduce_sum(hidden*weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=1))
       # enrergy:[batch_size, hidden_size]
       print("==energy output==", energy)
-      energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
+      energy = tf.squeeze(tf.layers.dense(energy, units=1, use_bias=False), -1)
       return energy
 
   def _get_gan_output(self, inputs,

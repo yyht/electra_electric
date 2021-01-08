@@ -180,7 +180,7 @@ class BertModel(object):
 
     if spectral_regularization:
       print("==spectral_regularization==")
-      custom_getter = spectural_utils.spectral_normalization_custom_getter()
+      custom_getter = spectural_utils.spectral_normalization_custom_getter(training=is_training)
     else:
       custom_getter = None
       print("==none spectral_regularization==")

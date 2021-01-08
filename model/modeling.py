@@ -33,6 +33,8 @@ import six
 import tensorflow as tf
 
 from tensorflow.contrib import layers as contrib_layers
+from model import spectural_utils
+
 
 
 class BertConfig(object):
@@ -150,7 +152,8 @@ class BertModel(object):
                update_embeddings=True,
                untied_embeddings=False,
                ltr=False,
-               rtl=False):
+               rtl=False,
+               spectral_regularization=False):
     """Constructor for BertModel.
 
     Args:
@@ -174,6 +177,13 @@ class BertModel(object):
     if not is_training:
       bert_config.hidden_dropout_prob = 0.0
       bert_config.attention_probs_dropout_prob = 0.0
+
+    if bert_config.spectral_regularization:
+      print("==spectral_regularization==")
+      custom_getter = spectural_utils.spectral_normalization_custom_getter()
+    else:
+      custom_getter = None
+      print("==none spectral_regularization==")
 
     input_shape = get_shape_list(token_type_ids, expected_rank=2)
     batch_size = input_shape[0]
@@ -229,7 +239,7 @@ class BertModel(object):
             self.embedding_output, bert_config.hidden_size,
             name="embeddings_project")
 
-      with tf.variable_scope("encoder"):
+      with tf.variable_scope("encoder", custom_getter=custom_getter):
         # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
         # mask of shape [batch_size, seq_length, seq_length] which is used
         # for the attention scores.

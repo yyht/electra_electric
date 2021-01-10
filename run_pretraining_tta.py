@@ -181,7 +181,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       lm_acc /= (1e-10+tf.reduce_sum(tf.cast(lm_weights, dtype=tf.float32)))
 
       lm_loss = tf.reshape(d["lm_loss"], [-1])
-      lm_loss = tf.reduce_sum(mlm_loss*tf.cast(lm_weights, dtype=tf.float32))
+      lm_loss = tf.reduce_sum(lm_loss*tf.cast(lm_weights, dtype=tf.float32))
       lm_loss /= (1e-10+tf.reduce_sum(tf.cast(lm_weights, dtype=tf.float32)))
 
       monitor_dict['lm_loss'] = mlm_loss

@@ -319,7 +319,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
 
     numerator = tf.reduce_sum(loss_mask * per_example_loss)
     denominator = tf.reduce_sum(loss_mask) + 1e-5
-    loss = numerator / denominator
+    loss = numerator / (denominator+1e-10)
 
     print(log_probs, '==log_probs==')
     print(label_ids, '==label_ids==')
@@ -473,7 +473,7 @@ def _decode_record(record, name_to_features):
   excelude_unk_target_mask = tf.cast(tf.equal(example['target_ids'], 
                             100), tf.int32) # [unk]
   excelud_target_mask = excelude_unk_target_mask + excelude_cls_target_mask + excelude_sep_target_mask
-  example['target_mask'] = input_mask - excelud_target_mask
+  example['target_mask'] = input_mask * (1 - excelud_target_mask)
 
   return example
 

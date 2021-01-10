@@ -24,6 +24,7 @@ tf.disable_v2_behavior()
 import os
 from model import modeling_tta
 from model import optimization
+from util import utils, log_utils
 
 flags = tf.flags
 

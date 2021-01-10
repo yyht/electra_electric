@@ -1,7 +1,7 @@
 nohup python run_pretraining_tta.py \
 	--bert_config_file ./config/bert_config.json \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-	--output_dir gs://yyht_source/pretrain/bert_base_tta \
+	--output_dir gs://yyht_source/pretrain/models/bert_base_tta \
 	--input_data_dir gs://yyht_source/pretrain \
 	--max_seq_length 512 \
 	--do_train True \

@@ -316,8 +316,18 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     
     label_mask = tf.reshape(label_mask, [input_shape[0]*input_shape[1]])
     loss_mask = tf.dtypes.cast(label_mask, tf.float32)
-    per_example_loss = tf.math.multiply(per_example_loss, loss_mask)
-    loss = tf.reduce_mean(per_example_loss)
+
+    numerator = tf.reduce_sum(loss_mask * per_example_loss)
+    denominator = tf.reduce_sum(loss_mask) + 1e-5
+    loss = numerator / denominator
+
+    print(log_probs, '==log_probs==')
+    print(label_ids, '==label_ids==')
+    print(loss_mask, '==loss_mask==')
+    print(loss, '==loss==')
+
+    # per_example_loss = tf.math.multiply(per_example_loss, loss_mask)
+    # loss = tf.reduce_mean(per_example_loss)
 
   return (loss, per_example_loss, log_probs)
 

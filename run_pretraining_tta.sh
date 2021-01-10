@@ -15,4 +15,5 @@ nohup python run_pretraining_tta.py \
 	--tpu_name albert3 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
-	--max_predictions_per_seq 78
+	--max_predictions_per_seq 78 \
+	-monitoring True

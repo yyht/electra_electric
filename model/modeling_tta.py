@@ -121,6 +121,7 @@ class BertModel(object):
                is_training,
                input_ids,
                input_mask=None,
+               token_type_ids=None,
                use_one_hot_embeddings=False,
                scope=None):
     """Constructor for BertModel.
@@ -169,6 +170,8 @@ class BertModel(object):
         self.embedding_output = embedding_postprocessor(
             input_tensor=self.embedding_output,
             use_position_embeddings=True,
+            token_type_ids=token_type_ids,
+            token_type_vocab_size=bert_config.type_vocab_size,
             position_embedding_name="position_embeddings",
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
@@ -187,6 +190,8 @@ class BertModel(object):
         self.position_embeddings = embedding_postprocessor(
             input_tensor=self.position_embeddings,
             use_position_embeddings=True,
+            token_type_ids=token_type_ids,
+            token_type_vocab_size=bert_config.type_vocab_size,
             position_embedding_name="position_embeddings",
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
@@ -416,15 +421,26 @@ def embedding_lookup(input_ids,
 
 
 def embedding_postprocessor(input_tensor,
+                            use_token_type=False,
+                            token_type_ids=None,
+                            token_type_vocab_size=16,
+                            token_type_embedding_name="token_type_embeddings",
                             use_position_embeddings=True,
                             position_embedding_name="position_embeddings",
                             initializer_range=0.02,
                             max_position_embeddings=512,
                             dropout_prob=0.1):
   """Performs various post-processing on a word embedding tensor.
+
   Args:
     input_tensor: float Tensor of shape [batch_size, seq_length,
       embedding_size].
+    use_token_type: bool. Whether to add embeddings for `token_type_ids`.
+    token_type_ids: (optional) int32 Tensor of shape [batch_size, seq_length].
+      Must be specified if `use_token_type` is True.
+    token_type_vocab_size: int. The vocabulary size of `token_type_ids`.
+    token_type_embedding_name: string. The name of the embedding table variable
+      for token type ids.
     use_position_embeddings: bool. Whether to add position embeddings for the
       position of each token in the sequence.
     position_embedding_name: string. The name of the embedding table variable
@@ -434,8 +450,10 @@ def embedding_postprocessor(input_tensor,
       used with this model. This can be longer than the sequence length of
       input_tensor, but cannot be shorter.
     dropout_prob: float. Dropout probability applied to the final output tensor.
+
   Returns:
     float tensor with same shape as `input_tensor`.
+
   Raises:
     ValueError: One of the tensor shapes or input values is invalid.
   """
@@ -445,6 +463,23 @@ def embedding_postprocessor(input_tensor,
   width = input_shape[2]
 
   output = input_tensor
+
+  if use_token_type:
+    if token_type_ids is None:
+      raise ValueError("`token_type_ids` must be specified if"
+                       "`use_token_type` is True.")
+    token_type_table = tf.get_variable(
+        name=token_type_embedding_name,
+        shape=[token_type_vocab_size, width],
+        initializer=create_initializer(initializer_range))
+    # This vocab will be small so we always do one-hot here, since it is always
+    # faster for a small vocabulary.
+    flat_token_type_ids = tf.reshape(token_type_ids, [-1])
+    one_hot_ids = tf.one_hot(flat_token_type_ids, depth=token_type_vocab_size)
+    token_type_embeddings = tf.matmul(one_hot_ids, token_type_table)
+    token_type_embeddings = tf.reshape(token_type_embeddings,
+                                       [batch_size, seq_length, width])
+    output += token_type_embeddings
 
   if use_position_embeddings:
     assert_op = tf.assert_less_equal(seq_length, max_position_embeddings)
@@ -477,7 +512,7 @@ def embedding_postprocessor(input_tensor,
                                        position_broadcast_shape)
       output += position_embeddings
 
-  output = layer_norm_and_dropout(output, dropout_prob, name="LayerNorm")
+  output = layer_norm_and_dropout(output, dropout_prob)
   return output
 
 def create_attention_mask_from_input_mask(from_tensor, to_mask):

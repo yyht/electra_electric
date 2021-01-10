@@ -152,6 +152,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     monitor_dict = {}
 
     tvars = tf.trainable_variables()
+    for tvar in tvars:
+      print(tvar, "=====tvar=====")
 
     eval_fn_inputs = {
         "lm_preds": lm_preds,

@@ -324,6 +324,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     print(log_probs, '==log_probs==')
     print(label_ids, '==label_ids==')
     print(loss_mask, '==loss_mask==')
+    print(per_example_loss, '==per_example_loss==')
     print(loss, '==loss==')
 
     # per_example_loss = tf.math.multiply(per_example_loss, loss_mask)

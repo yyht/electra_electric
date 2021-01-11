@@ -143,8 +143,11 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         use_one_hot_embeddings=use_one_hot_embeddings)
 
     (lm_loss, lm_example_loss, lm_log_probs) = get_lm_output(
-         bert_config, model.get_sequence_output(), model.get_embedding_table(),
-         target_ids, target_mask)
+         bert_config, 
+         model.get_sequence_output(), 
+         model.get_embedding_table(),
+         target_ids, 
+         target_mask)
 
     lm_preds = tf.argmax(lm_log_probs, axis=-1, output_type=tf.int32)
 

@@ -40,7 +40,8 @@ class BertConfig(object):
                hidden_dropout_prob=0.1,
                attention_probs_dropout_prob=0.1,
                max_position_embeddings=512,
-               initializer_range=0.02):
+               initializer_range=0.02,
+               if_pretraining=True):
     """Constructs BertConfig.
     Args:
       vocab_size: Vocabulary size of `inputs_ids` in `BertModel`.
@@ -72,6 +73,7 @@ class BertConfig(object):
     self.attention_probs_dropout_prob = attention_probs_dropout_prob
     self.max_position_embeddings = max_position_embeddings
     self.initializer_range = initializer_range
+    self.if_pretraining = if_pretraining
 
   @classmethod
   def from_dict(cls, json_object):
@@ -207,7 +209,9 @@ class BertModel(object):
         # for the attention scores.
         attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
-        attention_mask = attention_mask - tf.linalg.band_part(attention_mask, 0, 0) ## for self-blind
+        if config.if_pretraining:
+          print("==remove self-attention mask==")
+          attention_mask = attention_mask - tf.linalg.band_part(attention_mask, 0, 0) ## for self-blind
         
         # Run the stacked transformer.
         # `sequence_output` shape = [batch_size, seq_length, hidden_size].

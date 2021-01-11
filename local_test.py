@@ -48,6 +48,17 @@ def _decode_record(record, name_to_features):
                                     0), tf.int32)
   example['input_mask'] = input_mask
   example['input_ids'] = example['input_ori_ids']
+  example['target_ids'] = example['input_ori_ids']
+
+  excelude_cls_target_mask = tf.cast(tf.equal(example['target_ids'], 
+                            101), tf.int32) # [cls]
+  excelude_sep_target_mask = tf.cast(tf.equal(example['target_ids'], 
+                            102), tf.int32) # [sep]
+  excelude_unk_target_mask = tf.cast(tf.equal(example['target_ids'], 
+                            100), tf.int32) # [unk]
+  excelud_target_mask = excelude_unk_target_mask + excelude_cls_target_mask + excelude_sep_target_mask
+  example['target_mask'] = input_mask * (1 - excelud_target_mask)
+
 
   return example
 
@@ -162,12 +173,12 @@ def test_data_generator(features):
   mlm_output = _get_masked_lm_output(masked_inputs, None)
   fake_data = _get_fake_data(masked_inputs, mlm_output.logits)
 
-  return unmasked_inputs, fake_data, masked_inputs
+  return features, unmasked_inputs, fake_data, masked_inputs
 
 output = ['/Users/xuhaotian/Downloads/chinese_sub_task_0.tfrecord']
 input_fn = train_input_fn(output[0], _decode_record, name_to_features)
 
-[unmasked_inputs, fake_data, masked_inputs] = test_data_generator(input_fn)
+[features, unmasked_inputs, fake_data, masked_inputs] = test_data_generator(input_fn)
 sess = tf.Session()
 
 init_op = tf.group(
@@ -178,6 +189,8 @@ sess.run(init_op)
 
 while True:
     features_lst = sess.run([unmasked_inputs.input_ids,
+                            features['target_ids'],
+                            features['target_mask'],
                             fake_data.inputs.input_ids,
                             fake_data.inputs.input_mask,
                             fake_data.inputs.segment_ids,

@@ -185,6 +185,8 @@ class BertModel(object):
             initializer_range=config.initializer_range,
             word_embedding_name="word_embeddings",
             use_one_hot_embeddings=use_one_hot_embeddings)
+
+        self.position_embeddings *= 0.0
         
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.

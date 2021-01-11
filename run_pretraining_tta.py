@@ -314,8 +314,8 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     # padding predictions.
     per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
     
-    label_mask = tf.reshape(label_mask, [input_shape[0]*input_shape[1]])
-    loss_mask = tf.dtypes.cast(label_mask, tf.float32)
+    label_mask = tf.reshape(label_mask, [-1])
+    loss_mask = tf.cast(label_mask, tf.float32)
 
     numerator = tf.reduce_sum(loss_mask * per_example_loss)
     denominator = tf.reduce_sum(loss_mask) + 1e-5

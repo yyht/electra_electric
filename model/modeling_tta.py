@@ -187,7 +187,6 @@ class BertModel(object):
             embedding_size=config.hidden_size,
             initializer_range=config.initializer_range,
             word_embedding_name="word_embeddings",
-            token_type_embedding_name="token_type_embeddings",
             use_one_hot_embeddings=use_one_hot_embeddings)
 
         self.dummy_embeddings = 0.0 * tf.stop_gradient(self.dummy_embeddings)
@@ -201,6 +200,7 @@ class BertModel(object):
             token_type_ids=token_type_ids,
             token_type_vocab_size=config.type_vocab_size,
             position_embedding_name="position_embeddings",
+            token_type_embedding_name="token_type_embeddings",
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
             dropout_prob=config.hidden_dropout_prob)

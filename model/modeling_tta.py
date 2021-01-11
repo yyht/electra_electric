@@ -159,7 +159,7 @@ class BertModel(object):
     with tf.variable_scope(scope, default_name="bert"):
       with tf.variable_scope("embeddings", reuse=tf.AUTO_REUSE):
         # Perform embedding lookup on the word ids.
-        (self.embedding_output, self.embedding_table) = embedding_lookup(
+        (self.token_embeddings, self.embedding_table) = embedding_lookup(
             input_ids=input_ids,
             vocab_size=config.vocab_size,
             embedding_size=config.hidden_size,
@@ -170,30 +170,32 @@ class BertModel(object):
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.
         self.embedding_output = embedding_postprocessor(
-            input_tensor=self.embedding_output,
+            input_tensor=self.token_embeddings,
             use_position_embeddings=True,
             use_token_type=True,
             token_type_ids=token_type_ids,
+            token_type_embedding_name="token_type_embeddings",
             token_type_vocab_size=config.type_vocab_size,
             position_embedding_name="position_embeddings",
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
             dropout_prob=config.hidden_dropout_prob)
         
-        (self.position_embeddings, _) = embedding_lookup(
+        (self.dummy_embeddings, _) = embedding_lookup(
             input_ids=dummy_ids,
             vocab_size=config.vocab_size,
             embedding_size=config.hidden_size,
             initializer_range=config.initializer_range,
             word_embedding_name="word_embeddings",
+            token_type_embedding_name="token_type_embeddings",
             use_one_hot_embeddings=use_one_hot_embeddings)
 
-        self.position_embeddings = 0.0 * tf.stop_gradient(self.position_embeddings)
+        self.dummy_embeddings = 0.0 * tf.stop_gradient(self.dummy_embeddings)
         
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.
         self.position_embeddings = embedding_postprocessor(
-            input_tensor=self.position_embeddings,
+            input_tensor=self.dummy_embeddings,
             use_position_embeddings=True,
             use_token_type=True,
             token_type_ids=token_type_ids,

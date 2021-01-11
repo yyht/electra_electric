@@ -240,7 +240,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=total_loss,
-          # train_op=train_op,
+          train_op=train_op,
           scaffold_fn=scaffold_fn,
           host_call=host_call)
     elif mode == tf.estimator.ModeKeys.EVAL:
@@ -308,15 +308,20 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
     label_ids = tf.reshape(label_ids, [-1])
-
-    one_hot_labels = tf.one_hot(label_ids, depth=config.vocab_size, dtype=tf.float32)
-    print(one_hot_labels, "==one_hot_labels==")
+    
     # The `positions` tensor might be zero-padded (if the sequence is too
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
     # padding predictions.
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
     
+    # one_hot_labels = tf.one_hot(label_ids, depth=config.vocab_size, dtype=tf.float32)
+    # print(one_hot_labels, "==one_hot_labels==")
+    # per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    
+    per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                        labels=label_ids, 
+                        logits=logits)
+
     label_mask = tf.reshape(label_mask, [-1])
     loss_mask = tf.cast(label_mask, tf.float32)
 
@@ -499,8 +504,9 @@ def main(_):
         content = line.strip()
         if 'tfrecord' in content:
             train_file_path = os.path.join(FLAGS.input_data_dir, content)
-            print(train_file_path, "====train_file_path====")
+            # print(train_file_path, "====train_file_path====")
             input_files.append(train_file_path)
+  print("==total input files==", len(input_files))
   # for input_pattern in FLAGS.input_file.split(","):
   #   input_files.extend(tf.gfile.Glob(input_pattern))
 

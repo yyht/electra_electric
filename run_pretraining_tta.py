@@ -307,7 +307,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     label_ids = tf.reshape(label_ids, [-1])
 
     one_hot_labels = tf.one_hot(label_ids, depth=config.vocab_size, dtype=tf.float32)
-
+    print(one_hot_labels, "==one_hot_labels==")
     # The `positions` tensor might be zero-padded (if the sequence is too
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
@@ -319,7 +319,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
 
     numerator = tf.reduce_sum(loss_mask * per_example_loss)
     denominator = tf.reduce_sum(loss_mask) + 1e-5
-    loss = numerator / (denominator+1e-10)
+    loss = numerator / (denominator)
 
     print(log_probs, '==log_probs==')
     print(label_ids, '==label_ids==')

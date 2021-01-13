@@ -189,7 +189,7 @@ class BertModel(object):
             word_embedding_name="word_embeddings",
             use_one_hot_embeddings=use_one_hot_embeddings)
 
-        self.dummy_embeddings = 0.0 * tf.stop_gradient(self.dummy_embeddings)
+        self.dummy_embeddings = tf.stop_gradient(self.dummy_embeddings)
         
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.

@@ -14,6 +14,7 @@
     "model_scope":"electra",
     "disallow_correct":true,
     "tpu_name":"albert0",
+    "lr_decay_power":1.0,
     "use_tpu":true,
     "num_tpu_cores":8,
     "disc_weight":1.0,

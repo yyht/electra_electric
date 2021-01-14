@@ -10,6 +10,7 @@
     "two_tower_generator": true,
     "model_scope":"electra",
     "tpu_name":"albert1",
+    "lr_decay_power":1.0,
     "use_tpu":true,
     "monitoring":true,
     "num_tpu_cores":8,

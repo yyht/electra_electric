@@ -74,6 +74,9 @@ flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
 flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
+flags.DEFINE_float("weight_decay_rate", 0.01, "The initial learning rate for Adam.")
+flags.DEFINE_float("lr_decay_power", 1.0, "The initial learning rate for Adam.")
+flags.DEFINE_float("layerwise_lr_decay_power", 1.0, "The initial learning rate for Adam.")
 
 flags.DEFINE_integer("num_train_steps", 100000, "Number of training steps.")
 
@@ -224,6 +227,15 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
+      train_op, output_learning_rate = optimization.create_optimizer(
+          total_loss, learning_rate, num_train_steps, 
+          weight_decay_rate=FLAGS.weight_decay_rate,
+          use_tpu=use_tpu,
+          warmup_steps=num_warmup_steps,
+          lr_decay_power=FLAGS.lr_decay_power,
+          layerwise_lr_decay_power=FLAGS.layerwise_lr_decay_power)
+
+      monitor_dict['learning_rate'] = output_learning_rate
       if FLAGS.monitoring and monitor_dict:
         host_call = log_utils.construct_scalar_host_call_v1(
                                     monitor_dict=monitor_dict,
@@ -233,9 +245,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         host_call = None
 
       print(host_call, "====host_call====")
-
-      train_op = optimization.create_optimizer(
-          total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
 
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
@@ -308,7 +317,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
     label_ids = tf.reshape(label_ids, [-1])
-    
+
     # The `positions` tensor might be zero-padded (if the sequence is too
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the

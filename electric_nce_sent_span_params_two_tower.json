@@ -16,6 +16,7 @@
     "disallow_correct":false,
     "tpu_name":"albert0",
     "use_tpu":true,
+    "lr_decay_power":1.0,
     "num_tpu_cores":8,
     "disc_weight":1.0,
     "logprob_avg":false,

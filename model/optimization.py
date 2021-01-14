@@ -45,7 +45,7 @@ def create_optimizer(
   warmup_steps = max(num_train_steps * warmup_proportion, warmup_steps)
   learning_rate *= tf.minimum(
       1.0, tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32))
-
+  output_learning_rate = tf.identity(learning_rate)
   if layerwise_lr_decay_power > 0:
     learning_rate = _get_layer_lrs(learning_rate, layerwise_lr_decay_power,
                                    n_transformer_layers)
@@ -66,7 +66,7 @@ def create_optimizer(
       zip(grads, tvars), global_step=global_step)
   new_global_step = global_step + 1
   train_op = tf.group(train_op, [global_step.assign(new_global_step)])
-  return train_op
+  return train_op, output_learning_rate
 
 def create_optimizer_v1(
     loss, learning_rate, num_train_steps, weight_decay_rate=0.0, use_tpu=False,
@@ -86,7 +86,7 @@ def create_optimizer_v1(
   warmup_steps = max(num_train_steps * warmup_proportion, warmup_steps)
   learning_rate *= tf.minimum(
       1.0, tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32))
-
+  output_learning_rate = tf.identity(learning_rate)
   if layerwise_lr_decay_power > 0:
     learning_rate = _get_layer_lrs(learning_rate, layerwise_lr_decay_power,
                                    n_transformer_layers)
@@ -110,7 +110,7 @@ def create_optimizer_v1(
       zip(grads, tvars), global_step=global_step)
   new_global_step = global_step + 1
   train_op = tf.group(train_op, [global_step.assign(new_global_step)])
-  return train_op
+  return train_op, output_learning_rate
 
 
 class AdamWeightDecayOptimizer(tf.train.Optimizer):

@@ -16,4 +16,6 @@ nohup python run_pretraining_tta.py \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \
-	--monitoring True
+	--monitoring True \
+	--layerwise_lr_decay_power 0.0 \
+	--lr_decay_power 1.0

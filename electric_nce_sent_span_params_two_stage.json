@@ -17,6 +17,7 @@
     "tpu_name":"albert0",
     "use_tpu":true,
     "num_tpu_cores":8,
+    "lr_decay_power":1.0,
     "disc_weight":2.0,
     "logprob_avg":false,
     "num_train_steps":1000000,

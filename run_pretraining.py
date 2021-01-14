@@ -772,13 +772,14 @@ def model_fn_builder(config):
 
     if mode == tf.estimator.ModeKeys.TRAIN:
       if config.stage == 'one_stage':
-        train_op = optimization.create_optimizer(
+        train_op, output_learning_rate = optimization.create_optimizer(
             model.total_loss, config.learning_rate, config.num_train_steps,
             weight_decay_rate=config.weight_decay_rate,
             use_tpu=config.use_tpu,
             warmup_steps=config.num_warmup_steps,
             lr_decay_power=config.lr_decay_power
         )
+        model.monitor_dict["learning_rate"] = output_learning_rate
       elif config.stage == 'two_stage':
         prev_op = tf.no_op()
         all_params = [model.gen_params, model.disc_params]
@@ -793,7 +794,7 @@ def model_fn_builder(config):
           with tf.control_dependencies([prev_op]):
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-              prev_op = optimization.create_optimizer_v1(
+              prev_op, pre_learning_rate = optimization.create_optimizer_v1(
                 loss, lr, config.num_train_steps,
                 weight_decay_rate=config.weight_decay_rate,
                 use_tpu=config.use_tpu,
@@ -802,6 +803,8 @@ def model_fn_builder(config):
                 tvars=params,
                 global_step_name=step_name
               )
+              model.monitor_dict[step_name+"_learning_rate"] = pre_learning_rate
+        
         with tf.control_dependencies([prev_op]):
           train_op = global_step.assign_add(1)
 

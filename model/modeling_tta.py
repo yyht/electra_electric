@@ -172,7 +172,7 @@ class BertModel(object):
         self.embedding_output = embedding_postprocessor(
             input_tensor=self.token_embeddings,
             use_position_embeddings=True,
-            use_token_type=False,
+            use_token_type=True,
             token_type_ids=token_type_ids,
             token_type_embedding_name="token_type_embeddings",
             token_type_vocab_size=config.type_vocab_size,
@@ -196,7 +196,7 @@ class BertModel(object):
         self.position_embeddings = embedding_postprocessor(
             input_tensor=self.dummy_embeddings,
             use_position_embeddings=True,
-            use_token_type=False,
+            use_token_type=True,
             token_type_ids=token_type_ids,
             token_type_vocab_size=config.type_vocab_size,
             position_embedding_name="position_embeddings",

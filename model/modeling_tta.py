@@ -153,7 +153,7 @@ class BertModel(object):
 
     if input_mask is None:
       input_mask = tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
-    dummy_ids = input_mask * 4 * tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
+    dummy_ids = input_mask * 103 * tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
     
 
     with tf.variable_scope(scope, default_name="bert"):
@@ -189,7 +189,7 @@ class BertModel(object):
             word_embedding_name="word_embeddings",
             use_one_hot_embeddings=use_one_hot_embeddings)
 
-        self.dummy_embeddings = tf.stop_gradient(self.dummy_embeddings)
+        # self.dummy_embeddings = tf.stop_gradient(self.dummy_embeddings)
         
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.

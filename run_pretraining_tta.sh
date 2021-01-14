@@ -17,5 +17,5 @@ nohup python run_pretraining_tta.py \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \
 	--monitoring True \
-	--layerwise_lr_decay_power 0.0 \
-	--lr_decay_power 1.0
+	--lr_decay_power 1.0 \
+	--weight_decay_rate 0.01

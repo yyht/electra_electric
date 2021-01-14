@@ -47,6 +47,7 @@ def create_optimizer(
       1.0, tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32))
   output_learning_rate = tf.identity(learning_rate)
   if layerwise_lr_decay_power > 0:
+    print("==apply layerwise_lr_decay_power==")
     learning_rate = _get_layer_lrs(learning_rate, layerwise_lr_decay_power,
                                    n_transformer_layers)
   optimizer = AdamWeightDecayOptimizer(
@@ -88,6 +89,7 @@ def create_optimizer_v1(
       1.0, tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32))
   output_learning_rate = tf.identity(learning_rate)
   if layerwise_lr_decay_power > 0:
+    print("==apply layerwise_lr_decay_power==")
     learning_rate = _get_layer_lrs(learning_rate, layerwise_lr_decay_power,
                                    n_transformer_layers)
   optimizer = AdamWeightDecayOptimizer(

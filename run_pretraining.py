@@ -29,6 +29,7 @@ tf.disable_v2_behavior()
 
 import configure_pretraining
 from model import modeling
+from model import modeling_tta
 from model import optimization
 from pretrain import pretrain_data
 from pretrain import pretrain_helpers
@@ -66,6 +67,34 @@ class PretrainingModel(object):
       print("==apply span_mask random mask strategy==")
 
     self.monitor_dict = {}
+    if not config.untied_generator:
+      if self.config.use_pretrained_generator:
+        self.generator_scope = 'generator/bert'
+        self.generator_cls_scope = 'generator/cls/predictions'
+        self.generator_cloze_scope = 'generator/cls/predictions'
+        print("==apply pretrained generator==")
+      else:
+        self.generator_scope = 'generator'
+        self.generator_cls_scope = 'generator_predictions'
+        self.generator_cloze_scope = 'cloze_predictions'
+      if self.config.use_pretrained_discriminator:
+        self.discriminator_scope = 'discriminator/bert'
+      else:
+        self.discriminator_scope = 'electra'
+    else:
+      if self.config.use_pretrained_generator or self.config.use_pretrained_discriminator:
+        self.generator_scope = 'discriminator/bert'
+        self.generator_cls_scope = 'discriminator/cls/predictions'
+        self.generator_cloze_scope = 'discriminator/cls/predictions'
+        self.discriminator_scope = 'discriminator/bert'
+        print("==apply pretrained generator==")
+      else:
+        self.discriminator_scope = 'electra'
+        self.generator_scope = 'electra'
+        self.generator_cls_scope = 'generator_predictions'
+        self.generator_cloze_scope = 'cloze_predictions'
+
+    self.discriminator_cls_scope = 'discriminator_predictions'
 
     # Generator
     embedding_size = (
@@ -74,26 +103,46 @@ class PretrainingModel(object):
     cloze_output = None
     if config.uniform_generator:
       # simple generator sampling fakes uniformly at random
+      # mlm_output = self._get_masked_lm_output(masked_inputs, None)
       mlm_output = self._get_masked_lm_output(masked_inputs, None)
       self.gen_params = []
     elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
       generator_config = get_generator_config(config, self._bert_config)
-      if config.two_tower_generator:
+      if config.two_tower_generator or config.tta_generator:
         # two-tower cloze model generator used for electric
-        generator = TwoTowerClozeTransformer(
-            config, generator_config, unmasked_inputs, is_training,
-            embedding_size)
-        cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
-        mlm_output = get_softmax_output(
-            pretrain_helpers.gather_positions(
-                cloze_output.logits, masked_inputs.masked_lm_positions),
-            masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-            self._bert_config.vocab_size)
-        print("==two_tower_generator==")
-        self.gen_params = []
-        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
-        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
+        if config.two_tower_generator:
+          generator = TwoTowerClozeTransformer(
+              config, generator_config, unmasked_inputs, is_training,
+              embedding_size)
+          cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
+          mlm_output = get_softmax_output(
+              pretrain_helpers.gather_positions(
+                  cloze_output.logits, masked_inputs.masked_lm_positions),
+              masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
+              self._bert_config.vocab_size)
+          print("==two_tower_generator==")
+          self.gen_params = []
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
+        elif config.tta_generator:
+          generator = build_tta_transformer(
+              config, unmasked_inputs, is_training, generator_config,
+              embedding_size=(None if config.untied_generator_embeddings
+                              else embedding_size),
+              untied_embeddings=config.untied_generator_embeddings,
+              scope=self.generator_scope)
+          cloze_output = self._get_cloze_outputs(unmasked_inputs, generator, self.generator_cls_scope)
+          mlm_output = get_softmax_output(
+              pretrain_helpers.gather_positions(
+                  cloze_output.logits, masked_inputs.masked_lm_positions),
+              masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
+              self._bert_config.vocab_size)
+          print("==two_tower_generator==")
+          self.gen_params = []
+          self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cloze_scope)
       else:
         # small masked language model generator
         generator = build_transformer(
@@ -101,26 +150,27 @@ class PretrainingModel(object):
             embedding_size=(None if config.untied_generator_embeddings
                             else embedding_size),
             untied_embeddings=config.untied_generator_embeddings,
-            scope="generator")
-        mlm_output = self._get_masked_lm_output(masked_inputs, generator)
+            scope=self.generator_scope)
+        mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
         print("==mlm share embeddings==")
-        self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
-        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_predictions')
+        self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
         print("==untied_generator_embeddings==", config.untied_generator_embeddings)
         if not config.untied_generator_embeddings:
           print("==add shared embeddings==")
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope+"/embeddings")
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
         print(mlm_output, "===mlm_output using tied embedding mlm generator===")
     else:
       # full-sized masked language model generator if using BERT objective or if
       # the generator and discriminator have tied weights
       generator = build_transformer(
           config, masked_inputs, is_training, self._bert_config,
-          embedding_size=embedding_size)
+          embedding_size=embedding_size,
+          scope=self.generator_scope)
       print("==share all params==")
-      mlm_output = self._get_masked_lm_output(masked_inputs, generator)
-      self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
-      self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_predictions')
+      mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
+      self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
+      self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     
     fake_data = self._get_fake_data(masked_inputs, mlm_output.logits)
     self.mlm_output = mlm_output
@@ -136,7 +186,7 @@ class PretrainingModel(object):
       discriminator = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
-          scope=config.model_scope)
+          scope=self.discriminator_scope)
       disc_output = self._get_discriminator_output(
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
           cloze_output)
@@ -148,13 +198,13 @@ class PretrainingModel(object):
       disc_fake = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
-          scope=config.model_scope)
+          scope=self.discriminator_scope)
       print(disc_fake, "===disc_fake using for conditional fake data energy function===")
 
       disc_real = build_transformer(
           config, unmasked_inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
-          scope=config.model_scope)
+          scope=self.discriminator_scope)
       print(disc_real, "===disc_real using for conditional real data energy function===")
 
       self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
@@ -389,9 +439,13 @@ class PretrainingModel(object):
       return metrics
     self.eval_metrics = (metric_fn, eval_fn_values)
 
-  def _get_masked_lm_output(self, inputs, model):
+  def _get_masked_lm_output(self, inputs, model, scope=''):
     """Masked language modeling softmax layer."""
-    with tf.variable_scope("generator_predictions"):
+    # if scope:
+    #   pretrained_scope = scope + 'cls/predictions'
+    # else:
+    #   pretrained_scope = 'generator_predictions'
+    with tf.variable_scope(scope if scope else 'generator_predictions'):
       if self._config.uniform_generator:
         logits = tf.zeros(self._bert_config.vocab_size)
         logits_tiled = tf.zeros(
@@ -634,16 +688,28 @@ class PretrainingModel(object):
                      sampled_tokens=sampled_tokens,
                      pseudo_logprob=pseudo_logprob)
 
-  def _get_cloze_outputs(self, inputs, model):
-    """Cloze model softmax layer."""
+  # def _get_cloze_outputs(self, inputs, model):
+  #   """Cloze model softmax layer."""
+  #   weights = tf.cast(pretrain_helpers.get_candidates_mask(
+  #       self._config, inputs), tf.float32)
+  #   with tf.variable_scope("cloze_predictions"):
+  #     logits = get_token_logits(model.get_sequence_output(),
+  #                               model.get_embedding_table(), self._bert_config)
+  #     return get_softmax_output(logits, inputs.input_ids, weights,
+  #                               self._bert_config.vocab_size)
+
+  def _get_cloze_outputs(self, inputs, model, scope=''):
     weights = tf.cast(pretrain_helpers.get_candidates_mask(
         self._config, inputs), tf.float32)
-    with tf.variable_scope("cloze_predictions"):
+    # if scope:
+    #   pretrained_scope = scope + "/cls/predictions"
+    # else:
+    #   pretrained_scope = 'cloze_predictions'
+    with tf.variable_scope(scope if scope else 'cloze_predictions'):
       logits = get_token_logits(model.get_sequence_output(),
                                 model.get_embedding_table(), self._bert_config)
       return get_softmax_output(logits, inputs.input_ids, weights,
                                 self._bert_config.vocab_size)
-
 
 def get_token_logits(input_reprs, embedding_table, bert_config):
   hidden = tf.layers.dense(
@@ -726,6 +792,20 @@ def build_transformer(config,
   """Build a transformer encoder network."""
   with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
     return modeling.BertModel(
+        bert_config=bert_config,
+        is_training=is_training,
+        input_ids=inputs.input_ids,
+        input_mask=inputs.input_mask,
+        token_type_ids=inputs.segment_ids,
+        use_one_hot_embeddings=config.use_tpu,
+        **kwargs)
+
+def build_tta_transformer(config,
+                      inputs, is_training,
+                      bert_config, reuse=False, **kwargs):
+  """Build a transformer encoder network."""
+  with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
+    return modeling_tta.BertModel(
         bert_config=bert_config,
         is_training=is_training,
         input_ids=inputs.input_ids,

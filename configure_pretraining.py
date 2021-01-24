@@ -55,6 +55,9 @@ class PretrainingConfig(object):
     self.initial_ratio = 0.2
     self.final_ratio = 0.2
 
+    self.use_pretrained_generator = False
+    self.use_pretrained_discriminator = False
+
     # training settings
     self.iterations_per_loop = 200
     self.save_checkpoints_steps = 1000

@@ -132,16 +132,17 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     for name in sorted(features.keys()):
       tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
 
-    input_mask = features["input_mask"]
     segment_ids = features["segment_ids"]
 
     if FLAGS.mask_strategy == 'unigram_mask':
       input_ids = features["input_ids"]
       target_ids = features["target_ids"]
       target_mask = features["target_mask"]
+      input_mask = features["input_mask"]
     elif FLAGS.mask_strategy == 'span_mask':
       input_ids = features['masked_input']
       target_ids = features["origin_input"]
+      input_mask = features['pad_mask']
       excelude_cls_target_mask = tf.cast(tf.equal(features['origin_input'], 
                             101), tf.int32) # [cls]
       excelude_sep_target_mask = tf.cast(tf.equal(features['origin_input'], 

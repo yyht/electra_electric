@@ -426,7 +426,7 @@ data_config.truncate_seq = False
 data_config.stride = 1
 data_config.use_bfloat16 = False
 data_config.max_predictions_per_seq = int(data_config.mask_prob*FLAGS.max_seq_length)
-
+data_config.max_seq_length = FLAGS.max_seq_length
 
 def input_fn_builder(input_files,
                      max_seq_length,

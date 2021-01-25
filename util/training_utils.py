@@ -103,12 +103,40 @@ def get_bert_config(config):
     args = {"hidden_size": 768, "num_hidden_layers": 12}
   elif config.model_size == "small":
     args = {"hidden_size": 256, "num_hidden_layers": 12}
+  elif config.model_size == "tiny":
+    args = {"hidden_size": 312, "num_hidden_layers": 4, 
+          'num_attention_heads':12}
   else:
     raise ValueError("Unknown model size", config.model_size)
   args["vocab_size"] = config.vocab_size
   args.update(**config.model_hparam_overrides)
   # by default the ff size and num attn heads are determined by the hidden size
-  args["num_attention_heads"] = max(1, args["hidden_size"] // 64)
+  if 'num_attention_heads' not in args:
+    args["num_attention_heads"] = max(1, args["hidden_size"] // 64)
   args["intermediate_size"] = 4 * args["hidden_size"]
+  args.update(**config.model_hparam_overrides)
+  return modeling.BertConfig.from_dict(args)
+
+
+def get_bert_generator_config(config):
+  """Get model hyperparameters based on a pretraining/finetuning config"""
+  if config.model_size_generator == "large":
+    args = {"hidden_size": 1024, "num_hidden_layers": 24}
+  elif config.model_size_generator == "base":
+    args = {"hidden_size": 768, "num_hidden_layers": 12}
+  elif config.model_size_generator == "small":
+    args = {"hidden_size": 256, "num_hidden_layers": 12}
+  elif config.model_size_generator == "tiny":
+    args = {"hidden_size": 312, "num_hidden_layers": 4, 
+          'num_attention_heads':12}
+  else:
+    raise ValueError("Unknown model size", config.model_size_generator)
+  args["vocab_size"] = config.vocab_size
+  args.update(**config.model_hparam_overrides)
+  # by default the ff size and num attn heads are determined by the hidden size
+  if 'num_attention_heads' not in args:
+    args["num_attention_heads"] = max(1, args["hidden_size"] // 64)
+  args["intermediate_size"] = 4 * args["hidden_size"]
+  args['embedding_size'] = args['hidden_size']
   args.update(**config.model_hparam_overrides)
   return modeling.BertConfig.from_dict(args)

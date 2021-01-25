@@ -46,6 +46,7 @@ class PretrainingModel(object):
     # Set up model config
     self._config = config
     self._bert_config = training_utils.get_bert_config(config)
+    # self._bert_config_generator = training_utils.get_bert_generator_config(config)
     self.is_training = is_training
     if config.debug:
       self._bert_config.num_hidden_layers = 3
@@ -67,7 +68,7 @@ class PretrainingModel(object):
       print("==apply span_mask random mask strategy==")
 
     self.monitor_dict = {}
-    if not config.untied_generator:
+    if config.untied_generator:
       if self.config.use_pretrained_generator:
         self.generator_scope = 'generator/bert'
         self.generator_cls_scope = 'generator/cls/predictions'
@@ -108,7 +109,8 @@ class PretrainingModel(object):
       self.gen_params = []
     elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
-      generator_config = get_generator_config(config, self._bert_config)
+      # generator_config = get_generator_config(config, self._bert_config)
+      generator_config = training_utils.get_bert_generator_config(config)
       if config.two_tower_generator or config.tta_generator:
         # two-tower cloze model generator used for electric
         if config.two_tower_generator:

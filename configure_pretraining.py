@@ -72,6 +72,9 @@ class PretrainingConfig(object):
     # override the default transformer hparams for the provided model size; see
     # modeling.BertConfig for the possible hparams and util.training_utils for
     # the defaults
+
+    self.model_size_generator = 'tiny'
+
     self.model_hparam_overrides = (
         kwargs["model_hparam_overrides"]
         if "model_hparam_overrides" in kwargs else {})

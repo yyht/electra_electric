@@ -1,7 +1,7 @@
 nohup python run_pretraining_tta.py \
 	--bert_config_file ./config/bert_config_tiny.json \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_tiny_tta \
+	--output_dir gs://yyht_source/pretrain/models/bert_tiny_tta_span_mask \
 	--input_data_dir gs://yyht_source/pretrain \
 	--max_seq_length 512 \
 	--do_train True \
@@ -18,4 +18,5 @@ nohup python run_pretraining_tta.py \
 	--max_predictions_per_seq 78 \
 	--monitoring True \
 	--lr_decay_power 1.0 \
-	--weight_decay_rate 0.01
+	--weight_decay_rate 0.01 \
+	--mask_strategy "span_mask"

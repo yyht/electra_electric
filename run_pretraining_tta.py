@@ -25,6 +25,8 @@ import os
 from model import modeling_tta
 from model import optimization
 from util import utils, log_utils
+from pretrain.span_mask_utils import _decode_record as span_decode_record
+from bunch import Bunch
 
 flags = tf.flags
 
@@ -111,6 +113,7 @@ tf.flags.DEFINE_string(
     "metadata.")
 
 tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
+tf.flags.DEFINE_string("mask_strategy", 'span_mask', "[Optional] TensorFlow master URL.")
 
 flags.DEFINE_integer(
     "num_tpu_cores", 8,
@@ -408,6 +411,23 @@ def gather_indexes(sequence_tensor, positions):
   output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
   return output_tensor
 
+data_config = Bunch({})
+data_config.min_tok = 3
+data_config.max_tok = 7
+data_config.sep_id = 102
+data_config.pad_id = 0
+data_config.cls_id = 101
+data_config.mask_id = 103
+data_config.leak_ratio = 0.1
+data_config.rand_ratio = 0.8
+data_config.vocab_size = config.vocab_size
+data_config.mask_prob = 0.3
+data_config.sample_strategy = 'token_span'
+data_config.truncate_seq = False
+data_config.stride = 1
+data_config.use_bfloat16 = False
+data_config.max_predictions_per_seq = int(data_config.mask_prob*FLAGS.max_seq_length)
+
 
 def input_fn_builder(input_files,
                      max_seq_length,
@@ -453,9 +473,22 @@ def input_fn_builder(input_files,
     # size dimensions. For eval, we assume we are evaluating on the CPU or GPU
     # and we *don't* want to drop the remainder, otherwise we wont cover
     # every sample.
-    d = d.apply(
-        tf.contrib.data.map_and_batch(
-            lambda record: _decode_record(record, name_to_features),
+    if FLAGS.mask_strategy == 'unigram_mask':
+      d = d.apply(
+          tf.contrib.data.map_and_batch(
+              lambda record: _decode_record(record, name_to_features),
+              batch_size=batch_size,
+              num_parallel_batches=num_cpu_threads,
+              drop_remainder=True))
+    elif FLAGS.mask_strategy == 'span_mask'::
+      d = d.apply(
+          tf.contrib.data.map_and_batch(
+              lambda record: span_decode_record(data_config, record, 
+                  data_config.max_predictions_per_seq,
+                  data_config.max_seq_length, 
+                  use_bfloat16=data_config.use_bfloat16, 
+                  truncate_seq=data_config.truncate_seq, 
+                  stride=data_config.stride),
             batch_size=batch_size,
             num_parallel_batches=num_cpu_threads,
             drop_remainder=True))

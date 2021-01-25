@@ -480,7 +480,7 @@ def input_fn_builder(input_files,
               batch_size=batch_size,
               num_parallel_batches=num_cpu_threads,
               drop_remainder=True))
-    elif FLAGS.mask_strategy == 'span_mask'::
+    elif FLAGS.mask_strategy == 'span_mask':
       d = d.apply(
           tf.contrib.data.map_and_batch(
               lambda record: span_decode_record(data_config, record, 

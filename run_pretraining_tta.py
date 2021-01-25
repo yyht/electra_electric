@@ -132,6 +132,9 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     for name in sorted(features.keys()):
       tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
 
+    input_mask = features["input_mask"]
+    segment_ids = features["segment_ids"]
+
     if FLAGS.mask_strategy == 'unigram_mask':
       input_ids = features["input_ids"]
       target_ids = features["target_ids"]
@@ -147,9 +150,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                                 100), tf.int32) # [unk]
       excelud_target_mask = excelude_unk_target_mask + excelude_cls_target_mask + excelude_sep_target_mask
       target_mask = input_mask * (1 - excelud_target_mask)
-
-    input_mask = features["input_mask"]
-    segment_ids = features["segment_ids"]
     
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 

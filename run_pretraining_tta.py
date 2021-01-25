@@ -142,7 +142,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     elif FLAGS.mask_strategy == 'span_mask':
       input_ids = features['masked_input']
       target_ids = features["origin_input"]
-      input_mask = features['pad_mask']
+      input_mask = tf.cast(features['pad_mask'], dtype=tf.int32)
       excelude_cls_target_mask = tf.cast(tf.equal(features['origin_input'], 
                             101), tf.int32) # [cls]
       excelude_sep_target_mask = tf.cast(tf.equal(features['origin_input'], 

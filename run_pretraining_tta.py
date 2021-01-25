@@ -420,7 +420,6 @@ data_config.cls_id = 101
 data_config.mask_id = 103
 data_config.leak_ratio = 0.1
 data_config.rand_ratio = 0.8
-data_config.vocab_size = config.vocab_size
 data_config.mask_prob = 0.3
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
@@ -433,9 +432,10 @@ def input_fn_builder(input_files,
                      max_seq_length,
                      max_predictions_per_seq,
                      is_training,
+                     vocab_size,
                      num_cpu_threads=4):
   """Creates an `input_fn` closure to be passed to TPUEstimator."""
-
+  data_config.vocab_size = vocab_size
   def input_fn(params):
     """The actual input function."""
     batch_size = params["batch_size"]
@@ -595,6 +595,7 @@ def main(_):
     train_input_fn = input_fn_builder(
         input_files=input_files,
         max_seq_length=FLAGS.max_seq_length,
+        vocab_size=bert_config.vocab_size,
         max_predictions_per_seq=FLAGS.max_predictions_per_seq,
         is_training=True)
     estimator.train(input_fn=train_input_fn, max_steps=FLAGS.num_train_steps)

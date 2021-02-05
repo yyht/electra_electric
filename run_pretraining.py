@@ -70,7 +70,7 @@ class PretrainingModel(object):
 
     self.monitor_dict = {}
     if config.untied_generator:
-      if self.config.use_pretrained_generator:
+      if self._config.use_pretrained_generator:
         self.generator_scope = 'generator/bert'
         self.generator_cls_scope = 'generator/cls/predictions'
         self.generator_cloze_scope = 'generator/cls/predictions'
@@ -88,7 +88,7 @@ class PretrainingModel(object):
           self._generator_config.hidden_size if config.generator_embedding_size is None else
           config.embedding_size)
         self.generator_exclude_scope = ''
-      if self.config.use_pretrained_discriminator:
+      if self._config.use_pretrained_discriminator:
         self.discriminator_scope = 'discriminator/bert'
         self.discriminator_exclude_scope = 'discriminator'
         self.discriminator_embedding_size = (
@@ -102,7 +102,7 @@ class PretrainingModel(object):
           config.embedding_size)
         self.discriminator_exclude_scope = ''
     else:
-      if self.config.use_pretrained_generator or self.config.use_pretrained_discriminator:
+      if self._config.use_pretrained_generator or self._config.use_pretrained_discriminator:
         self.generator_scope = 'discriminator/bert'
         self.generator_cls_scope = 'discriminator/cls/predictions'
         self.generator_cloze_scope = 'discriminator/cls/predictions'

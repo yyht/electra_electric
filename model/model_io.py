@@ -16,8 +16,11 @@ def init_pretrained(assignment_map, initialized_variable_names,
       
       tf.logging.info(" name = %s, shape = %s%s, from checkpoint = %s", 
               var.name, var.shape, init_string, init_checkpoint_string)
+      print(" name = %s, shape = %s%s, from checkpoint = %s", 
+              var.name, var.shape, init_string, init_checkpoint_string)
   else:
     tf.logging.info(" **** no need for checkpoint initialization **** ")
+    print(" **** no need for checkpoint initialization **** ")
 
 
 def get_actual_scope(name, exclude_scope):
@@ -33,6 +36,7 @@ def get_assigment_map_from_checkpoint(tvars, init_checkpoint, **kargs):
   restore_var_name = kargs.get("restore_var_name", [])
   for name in restore_var_name:
     tf.logging.info("== restore variable name from checkpoint: %s ==", name)
+    print("== restore variable name from checkpoint: %s ==", name)
 
   name_to_variable = collections.OrderedDict()
   for var in tvars:
@@ -105,6 +109,7 @@ def load_multi_pretrained(var_checkpoint_dict_list, **kargs):
     init_multi_model(var_checkpoint_dict_list)
   else:
     tf.logging.info(" initializing parameter from init checkpoint ")
+    print(" initializing parameter from init checkpoint ")
     def tpu_scaffold():
       init_multi_model(var_checkpoint_dict_list)
       return tf.train.Scaffold()

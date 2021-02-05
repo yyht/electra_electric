@@ -745,13 +745,14 @@ class PretrainingModel(object):
                                 self._bert_config.vocab_size)
 
 def get_token_logits(input_reprs, embedding_table, bert_config):
-  hidden = tf.layers.dense(
-      input_reprs,
-      units=modeling.get_shape_list(embedding_table)[-1],
-      activation=modeling.get_activation(bert_config.hidden_act),
-      kernel_initializer=modeling.create_initializer(
-          bert_config.initializer_range))
-  hidden = modeling.layer_norm(hidden)
+  with tf.variable_scope("transform"): 
+    hidden = tf.layers.dense(
+        input_reprs,
+        units=modeling.get_shape_list(embedding_table)[-1],
+        activation=modeling.get_activation(bert_config.hidden_act),
+        kernel_initializer=modeling.create_initializer(
+            bert_config.initializer_range))
+    hidden = modeling.layer_norm(hidden)
   output_bias = tf.get_variable(
       "output_bias",
       shape=[bert_config.vocab_size],

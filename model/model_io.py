@@ -3,6 +3,23 @@ import tensorflow as tf
 import numpy as np
 import collections, re
 
+def init_pretrained(assignment_map, initialized_variable_names,
+                    tvars, init_checkpoint, **kargs):
+  if len(assignment_map) >= 1:
+    tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+    for var in tvars:
+      init_string = ""
+      init_checkpoint_string = ""
+      if var.name in initialized_variable_names:
+        init_string = ", *INIT_FROM_CKPT*"
+        init_checkpoint_string = init_checkpoint
+      
+      tf.logging.info(" name = %s, shape = %s%s, from checkpoint = %s", 
+              var.name, var.shape, init_string, init_checkpoint_string)
+  else:
+    tf.logging.info(" **** no need for checkpoint initialization **** ")
+
+
 def get_actual_scope(name, exclude_scope):
   return "/".join([exclude_scope, name])
 
@@ -79,7 +96,7 @@ def load_multi_pretrained(var_checkpoint_dict_list, **kargs):
                                 init_checkpoint, 
                                 exclude_scope=exclude_scope,
                                 restore_var_name=restore_var_name)
-      model_io_utils.init_pretrained(assignment_map, 
+      init_pretrained(assignment_map, 
                     initialized_variable_names,
                     tvars, init_checkpoint, **kargs)
 

@@ -22,7 +22,7 @@ from __future__ import print_function
 import argparse
 import collections
 import json
-from model import model_io_fn
+from model import model_io as model_io_fn
 
 # import tensorflow.compat.v1 as tf
 import tensorflow as tf

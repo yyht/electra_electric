@@ -79,7 +79,8 @@ class PretrainingModel(object):
         self.generator_embedding_size = (
           self._generator_config.hidden_size if config.generator_embedding_size is None else
           config.embedding_size)
-        config.untied_generator_embeddings = True
+        self.untied_generator_embeddings = True
+        # config.untied_generator_embeddings = True
         print("==apply pretrained generator==")
       else:
         self.generator_scope = 'generator'
@@ -88,6 +89,7 @@ class PretrainingModel(object):
         self.generator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
+        self.untied_generator_embeddings = config.untied_generator_embeddings
         self.generator_exclude_scope = ''
       if self._config.use_pretrained_discriminator:
         self.discriminator_scope = 'discriminator/bert'
@@ -95,12 +97,15 @@ class PretrainingModel(object):
         self.discriminator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
+        self.untied_discriminator_embeddings = True
+        # config.untied_generator_embeddings = True
       else:
         self.discriminator_scope = 'electra'
         self.discriminator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
         self.discriminator_exclude_scope = ''
+        self.untied_discriminator_embeddings = config.untied_generator_embeddings
     else:
       if self._config.use_pretrained_generator or self._config.use_pretrained_discriminator:
         self.generator_scope = 'discriminator/bert'
@@ -115,7 +120,9 @@ class PretrainingModel(object):
         self.generator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
-        config.untied_generator_embeddings = True
+        self.untied_generator_embeddings = True
+        self.untied_discriminator_embeddings = True
+        # config.untied_generator_embeddings = True
         print("==apply pretrained generator==")
       else:
         self.discriminator_scope = 'electra'
@@ -130,6 +137,8 @@ class PretrainingModel(object):
           config.embedding_size)
         self.discriminator_exclude_scope = ''
         self.generator_exclude_scope = ''
+        self.untied_generator_embeddings = True
+        self.untied_discriminator_embeddings = True
 
     # Generator
     cloze_output = None
@@ -162,7 +171,7 @@ class PretrainingModel(object):
           generator = build_tta_transformer(
               config, unmasked_inputs, is_training, self._generator_config,
               embedding_size=self.generator_embedding_size,
-              untied_embeddings=config.untied_generator_embeddings,
+              untied_embeddings=self.untied_generator_embeddings,
               scope=self.generator_scope)
           cloze_output = self._get_cloze_outputs(unmasked_inputs, generator, self.generator_cls_scope)
           mlm_output = get_softmax_output(
@@ -179,7 +188,7 @@ class PretrainingModel(object):
         generator = build_transformer(
             config, masked_inputs, is_training, self._generator_config,
             embedding_size=self.generator_embedding_size,
-            untied_embeddings=config.untied_generator_embeddings,
+            untied_embeddings=self.untied_generator_embeddings,
             scope=self.generator_scope)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
         print("==mlm share embeddings==")
@@ -196,6 +205,7 @@ class PretrainingModel(object):
       generator = build_transformer(
           config, masked_inputs, is_training, self._bert_config,
           embedding_size=self.discriminator_embedding_size,
+          untied_embeddings=self.untied_generator_embeddings,
           scope=self.generator_scope)
       print("==share all params==")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
@@ -217,6 +227,7 @@ class PretrainingModel(object):
           config, fake_data.inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, 
           embedding_size=self.discriminator_embedding_size,
+          untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope)
       disc_output = self._get_discriminator_output(
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
@@ -230,6 +241,7 @@ class PretrainingModel(object):
           config, fake_data.inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, 
           embedding_size=self.discriminator_embedding_size,
+          untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope)
       print(disc_fake, "===disc_fake using for conditional fake data energy function===")
 

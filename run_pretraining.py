@@ -22,6 +22,7 @@ from __future__ import print_function
 import argparse
 import collections
 import json
+from model import model_io_fn
 
 # import tensorflow.compat.v1 as tf
 import tensorflow as tf
@@ -85,7 +86,7 @@ class PretrainingModel(object):
         self.generator_cls_scope = 'generator_predictions'
         self.generator_cloze_scope = 'cloze_predictions'
         self.generator_embedding_size = (
-          self._generator_config.hidden_size if config.generator_embedding_size is None else
+          self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
         self.generator_exclude_scope = ''
       if self._config.use_pretrained_discriminator:
@@ -949,6 +950,9 @@ def model_fn_builder(config):
           }
         var_checkpoint_dict_list.append(discriminator_dict)
       if var_checkpoint_dict_list:
+        for item in var_checkpoint_dict_list:
+          for key in item:
+            print(key, item[key], '===========')
         scaffold_fn = model_io_fn.load_multi_pretrained(
                         var_checkpoint_dict_list,
                         use_tpu=True)

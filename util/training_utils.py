@@ -128,7 +128,8 @@ def get_bert_generator_config(config):
     args = {"hidden_size": 256, "num_hidden_layers": 12}
   elif config.model_size_generator == "tiny":
     args = {"hidden_size": 312, "num_hidden_layers": 4, 
-          'num_attention_heads':12}
+          'num_attention_heads':12,
+          'intermediate_size':1200}
   else:
     raise ValueError("Unknown model size", config.model_size_generator)
   args["vocab_size"] = config.vocab_size
@@ -136,7 +137,8 @@ def get_bert_generator_config(config):
   # by default the ff size and num attn heads are determined by the hidden size
   if 'num_attention_heads' not in args:
     args["num_attention_heads"] = max(1, args["hidden_size"] // 64)
-  args["intermediate_size"] = 4 * args["hidden_size"]
+  if 'intermediate_size' not in args:
+    args["intermediate_size"] = 4 * args["hidden_size"]
   args['embedding_size'] = args['hidden_size']
   args.update(**config.model_hparam_overrides)
   return modeling.BertConfig.from_dict(args)

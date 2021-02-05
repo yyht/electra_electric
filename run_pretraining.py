@@ -145,7 +145,7 @@ class PretrainingModel(object):
         # two-tower cloze model generator used for electric
         if config.two_tower_generator:
           generator = TwoTowerClozeTransformer(
-              config, generator_config, unmasked_inputs, is_training,
+              config, self._generator_config, unmasked_inputs, is_training,
               self.generator_embedding_size)
           cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
           mlm_output = get_softmax_output(
@@ -160,7 +160,7 @@ class PretrainingModel(object):
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
         elif config.tta_generator:
           generator = build_tta_transformer(
-              config, unmasked_inputs, is_training, generator_config,
+              config, unmasked_inputs, is_training, self._generator_config,
               embedding_size=self.generator_embedding_size,
               untied_embeddings=config.untied_generator_embeddings,
               scope=self.generator_scope)
@@ -177,7 +177,7 @@ class PretrainingModel(object):
       else:
         # small masked language model generator
         generator = build_transformer(
-            config, masked_inputs, is_training, generator_config,
+            config, masked_inputs, is_training, self._generator_config,
             embedding_size=self.generator_embedding_size,
             untied_embeddings=config.untied_generator_embeddings,
             scope=self.generator_scope)

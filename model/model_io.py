@@ -64,7 +64,7 @@ def get_assigment_map_from_checkpoint(tvars, init_checkpoint, **kargs):
 
   return (assignment_map, initialized_variable_names)
 
-def load_multi_pretrained(self, var_checkpoint_dict_list, **kargs):
+def load_multi_pretrained(var_checkpoint_dict_list, **kargs):
   print(kargs.get("exclude_scope", ""), "===============")
   def init_multi_model(var_checkpoint_dict_list):
     for item in var_checkpoint_dict_list:

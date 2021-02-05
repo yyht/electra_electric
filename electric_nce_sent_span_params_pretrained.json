@@ -28,6 +28,8 @@
     "generator_hidden_size":0.25,
     "nce":"nce",
     "mask_strategy":"span_mask",
-    "stage":"one_stage",
+    "stage":"two_stage",
+    "gen_learning_rate":1e-4,
+    "disc_learning_rate":2e-5,
     "spectral_regularization":true
 }

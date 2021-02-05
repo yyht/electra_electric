@@ -47,7 +47,7 @@ class PretrainingConfig(object):
     self.logprob_avg = False
     self.stage = 'one_stage'
     self.gen_learning_rate = 5e-5
-    self.disc_learning_rate = 1e-3
+    self.disc_learning_rate = 1e-4
     self.spectral_regularization = False
     # optimization
     self.learning_rate = 5e-4

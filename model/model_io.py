@@ -1,7 +1,7 @@
 
 import tensorflow as tf
 import numpy as np
-import collections
+import collections, re
 
 def get_actual_scope(name, exclude_scope):
   return "/".join([exclude_scope, name])

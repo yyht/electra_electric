@@ -95,7 +95,6 @@ class PretrainingModel(object):
         self.discriminator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
-        self.discriminator_exclude_scope = ''
       else:
         self.discriminator_scope = 'electra'
         self.discriminator_embedding_size = (

@@ -153,7 +153,8 @@ class BertModel(object):
                untied_embeddings=False,
                ltr=False,
                rtl=False,
-               spectral_regularization=False):
+               spectral_regularization=False,
+               **kargs):
     """Constructor for BertModel.
 
     Args:

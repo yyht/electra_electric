@@ -26,7 +26,9 @@ import tensorflow as tf
 class PretrainingConfig(object):
   """Defines pre-training hyperparameters."""
 
-  def __init__(self, model_name, data_dir, data_file_list, **kwargs):
+  def __init__(self, model_name, data_dir, data_file_list, 
+                generator_ckpt, discriminator_ckpt,
+                **kwargs):
     self.model_name = model_name
     self.debug = False  # debug mode for quickly running things
     self.do_train = True  # pre-train ELECTRA
@@ -55,9 +57,16 @@ class PretrainingConfig(object):
     self.initial_ratio = 0.2
     self.final_ratio = 0.2
 
-    self.use_pretrained_generator = False
-    self.use_pretrained_discriminator = False
-
+    self.use_pretrained_generator = True
+    self.use_pretrained_discriminator = True
+    if generator_ckpt:
+        self.generator_init_checkpoint = os.path.join(data_dir, generator_ckpt)
+    else:
+        self.generator_init_checkpoint = ''
+    if discriminator_ckpt:
+        self.discriminator_init_checkpoint = os.path.join(data_dir, discriminator_ckpt)
+    else:
+        self.discriminator_init_checkpoint = ''
     # training settings
     self.iterations_per_loop = 200
     self.save_checkpoints_steps = 1000
@@ -79,6 +88,7 @@ class PretrainingConfig(object):
         kwargs["model_hparam_overrides"]
         if "model_hparam_overrides" in kwargs else {})
     self.embedding_size = None  # bert hidden size by default
+    self.generator_embedding_size = None
     self.vocab_size = 30522  # number of tokens in the vocabulary
     self.do_lower_case = True  # lowercase the input?
     self.monitoring = True

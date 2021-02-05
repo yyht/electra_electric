@@ -46,6 +46,7 @@ class PretrainingModel(object):
     # Set up model config
     self._config = config
     self._bert_config = training_utils.get_bert_config(config)
+    self._generator_config = training_utils.get_bert_generator_config(config)
     # self._bert_config_generator = training_utils.get_bert_generator_config(config)
     self.is_training = is_training
     if config.debug:
@@ -73,34 +74,64 @@ class PretrainingModel(object):
         self.generator_scope = 'generator/bert'
         self.generator_cls_scope = 'generator/cls/predictions'
         self.generator_cloze_scope = 'generator/cls/predictions'
+        self.generator_exclude_scope = 'generator'
+        self.generator_embedding_size = (
+          self._generator_config.hidden_size if config.generator_embedding_size is None else
+          config.embedding_size)
+        config.untied_generator_embeddings = True
         print("==apply pretrained generator==")
       else:
         self.generator_scope = 'generator'
         self.generator_cls_scope = 'generator_predictions'
         self.generator_cloze_scope = 'cloze_predictions'
+        self.generator_embedding_size = (
+          self._generator_config.hidden_size if config.generator_embedding_size is None else
+          config.embedding_size)
+        self.generator_exclude_scope = ''
       if self.config.use_pretrained_discriminator:
         self.discriminator_scope = 'discriminator/bert'
+        self.discriminator_exclude_scope = 'discriminator'
+        self.discriminator_embedding_size = (
+          self._bert_config.hidden_size if config.embedding_size is None else
+          config.embedding_size)
+        self.discriminator_exclude_scope = ''
       else:
         self.discriminator_scope = 'electra'
+        self.discriminator_embedding_size = (
+          self._bert_config.hidden_size if config.embedding_size is None else
+          config.embedding_size)
+        self.discriminator_exclude_scope = ''
     else:
       if self.config.use_pretrained_generator or self.config.use_pretrained_discriminator:
         self.generator_scope = 'discriminator/bert'
         self.generator_cls_scope = 'discriminator/cls/predictions'
         self.generator_cloze_scope = 'discriminator/cls/predictions'
         self.discriminator_scope = 'discriminator/bert'
+        self.discriminator_exclude_scope = 'discriminator'
+        self.generator_exclude_scope = 'discriminator'
+        self.discriminator_embedding_size = (
+          self._bert_config.hidden_size if config.embedding_size is None else
+          config.embedding_size)
+        self.generator_embedding_size = (
+          self._bert_config.hidden_size if config.embedding_size is None else
+          config.embedding_size)
+        config.untied_generator_embeddings = True
         print("==apply pretrained generator==")
       else:
         self.discriminator_scope = 'electra'
         self.generator_scope = 'electra'
         self.generator_cls_scope = 'generator_predictions'
         self.generator_cloze_scope = 'cloze_predictions'
-
-    self.discriminator_cls_scope = 'discriminator_predictions'
+        self.discriminator_embedding_size = (
+          self._bert_config.hidden_size if config.embedding_size is None else
+          config.embedding_size)
+        self.generator_embedding_size = (
+          self._bert_config.hidden_size if config.embedding_size is None else
+          config.embedding_size)
+        self.discriminator_exclude_scope = ''
+        self.generator_exclude_scope = ''
 
     # Generator
-    embedding_size = (
-        self._bert_config.hidden_size if config.embedding_size is None else
-        config.embedding_size)
     cloze_output = None
     if config.uniform_generator:
       # simple generator sampling fakes uniformly at random
@@ -110,13 +141,12 @@ class PretrainingModel(object):
     elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
       # generator_config = get_generator_config(config, self._bert_config)
-      generator_config = training_utils.get_bert_generator_config(config)
       if config.two_tower_generator or config.tta_generator:
         # two-tower cloze model generator used for electric
         if config.two_tower_generator:
           generator = TwoTowerClozeTransformer(
               config, generator_config, unmasked_inputs, is_training,
-              embedding_size)
+              self.generator_embedding_size)
           cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
           mlm_output = get_softmax_output(
               pretrain_helpers.gather_positions(
@@ -131,8 +161,7 @@ class PretrainingModel(object):
         elif config.tta_generator:
           generator = build_tta_transformer(
               config, unmasked_inputs, is_training, generator_config,
-              embedding_size=(None if config.untied_generator_embeddings
-                              else embedding_size),
+              embedding_size=self.generator_embedding_size,
               untied_embeddings=config.untied_generator_embeddings,
               scope=self.generator_scope)
           cloze_output = self._get_cloze_outputs(unmasked_inputs, generator, self.generator_cls_scope)
@@ -149,8 +178,7 @@ class PretrainingModel(object):
         # small masked language model generator
         generator = build_transformer(
             config, masked_inputs, is_training, generator_config,
-            embedding_size=(None if config.untied_generator_embeddings
-                            else embedding_size),
+            embedding_size=self.generator_embedding_size,
             untied_embeddings=config.untied_generator_embeddings,
             scope=self.generator_scope)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
@@ -167,7 +195,7 @@ class PretrainingModel(object):
       # the generator and discriminator have tied weights
       generator = build_transformer(
           config, masked_inputs, is_training, self._bert_config,
-          embedding_size=embedding_size,
+          embedding_size=self.discriminator_embedding_size,
           scope=self.generator_scope)
       print("==share all params==")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
@@ -187,29 +215,32 @@ class PretrainingModel(object):
     if config.electra_objective or config.electric_objective:
       discriminator = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
-          reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
+          reuse=tf.AUTO_REUSE, 
+          embedding_size=self.discriminator_embedding_size,
           scope=self.discriminator_scope)
       disc_output = self._get_discriminator_output(
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
           cloze_output)
-      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
+      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
       self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
       self.disc_loss = disc_output.loss
       self.total_loss += config.disc_weight * disc_output.loss
     elif config.electra_nce_objective:
       disc_fake = build_transformer(
           config, fake_data.inputs, is_training, self._bert_config,
-          reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
+          reuse=tf.AUTO_REUSE, 
+          embedding_size=self.discriminator_embedding_size,
           scope=self.discriminator_scope)
       print(disc_fake, "===disc_fake using for conditional fake data energy function===")
 
       disc_real = build_transformer(
           config, unmasked_inputs, is_training, self._bert_config,
-          reuse=tf.AUTO_REUSE, embedding_size=embedding_size,
+          reuse=tf.AUTO_REUSE, 
+          embedding_size=self.discriminator_embedding_size,
           scope=self.discriminator_scope)
       print(disc_real, "===disc_real using for conditional real data energy function===")
 
-      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, config.model_scope)
+      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
 
       if config.nce == 'nce':
         disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
@@ -900,6 +931,30 @@ def model_fn_builder(config):
           host_call = None
         print("==host_call==", host_call)
 
+      var_checkpoint_dict_list = []
+      if config.use_pretrained_generator:
+        generator_dict = {
+              "tvars":model.gen_params,
+              "init_checkpoint":config.generator_init_checkpoint,
+              "exclude_scope":model.generator_exclude_scope,
+              "restore_var_name":[]
+          }
+        var_checkpoint_dict_list.append(generator_dict)
+      if config.use_pretrained_discriminator:
+        discriminator_dict = {
+              "tvars":model.disc_params,
+              "init_checkpoint":config.discriminator_init_checkpoint,
+              "exclude_scope":model.discriminator_exclude_scope,
+              "restore_var_name":[]
+          }
+        var_checkpoint_dict_list.append(discriminator_dict)
+      if var_checkpoint_dict_list:
+        scaffold_fn = model_io_fn.load_multi_pretrained(
+                        var_checkpoint_dict_list,
+                        use_tpu=True)
+      else:
+        scaffold_fn = None
+
       output_spec = tf.estimator.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=model.total_loss,
@@ -908,7 +963,8 @@ def model_fn_builder(config):
               {} if config.use_tpu else dict(loss=model.total_loss),
               config.num_train_steps, config.iterations_per_loop,
               config.use_tpu)],
-          host_call=host_call if config.monitoring else None
+          host_call=host_call if config.monitoring else None,
+          scaffold_fn=scaffold_fn
       )
     elif mode == tf.estimator.ModeKeys.EVAL:
       output_spec = tf.estimator.tpu.TPUEstimatorSpec(
@@ -1005,6 +1061,10 @@ def main():
                       help="Location of data files (model weights, etc).")
   parser.add_argument("--model-name", required=True,
                       help="The name of the model being fine-tuned.")
+  parser.add_argument("--generator-ckpt", required=False,
+                      help="The name of the model being fine-tuned.")
+  parser.add_argument("--discriminator-ckpt", required=False,
+                      help="The name of the model being fine-tuned.")
   parser.add_argument("--hparams", default="{}",
                       help="JSON dict of model hyperparameters.")
   args = parser.parse_args()
@@ -1014,7 +1074,9 @@ def main():
     hparams = json.loads(args.hparams)
   tf.logging.set_verbosity(tf.logging.ERROR)
   train_or_eval(configure_pretraining.PretrainingConfig(
-      args.model_name, args.data_dir, args.data_file_list, **hparams))
+      args.model_name, args.data_dir, args.data_file_list, 
+      args.generator_ckpt, args.discriminator_ckpt,
+      **hparams))
 
 
 if __name__ == "__main__":

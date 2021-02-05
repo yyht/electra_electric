@@ -125,7 +125,8 @@ class BertModel(object):
                input_mask=None,
                token_type_ids=None,
                use_one_hot_embeddings=False,
-               scope=None):
+               scope=None,
+               **kargs):
     """Constructor for BertModel.
     Args:
       config: `BertConfig` instance.

@@ -105,6 +105,7 @@ class PretrainingConfig(object):
                                    # tokens (so 15% of tokens are always
                                    # fake)
     self.temperature = 1.0  # temperature for sampling from generator
+    self.tta_generator = False
 
     # batch sizes
     self.max_seq_length = 128

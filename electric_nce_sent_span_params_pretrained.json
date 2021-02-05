@@ -30,6 +30,6 @@
     "mask_strategy":"span_mask",
     "stage":"two_stage",
     "gen_learning_rate":1e-4,
-    "disc_learning_rate":2e-5,
+    "disc_learning_rate":5e-5,
     "spectral_regularization":true
 }

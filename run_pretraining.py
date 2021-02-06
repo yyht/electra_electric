@@ -348,8 +348,8 @@ class PretrainingModel(object):
       mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      monitor_dict['mlm_loss'] = mlm_loss
-      monitor_dict['mlm_acc'] = mlm_acc
+      monitor_dict['generator_mlm_loss'] = mlm_loss
+      monitor_dict['generator_mlm_acc'] = mlm_acc
 
       sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
@@ -361,7 +361,7 @@ class PretrainingModel(object):
                                 dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
-      monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
+      monitor_dict['generator_sampeld_mlm_acc'] = sampeld_mlm_acc
 
       token_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
@@ -369,8 +369,8 @@ class PretrainingModel(object):
       token_acc *= token_acc_mask
       token_acc = tf.reduce_sum(token_acc) / (1e-10+tf.reduce_sum(token_acc_mask))
 
-      monitor_dict['token_acc'] = token_acc
-      monitor_dict['token_loss'] = tf.reduce_mean(d['disc_loss'])
+      monitor_dict['disriminator_token_acc'] = token_acc
+      monitor_dict['disriminator_token_loss'] = tf.reduce_mean(d['disc_loss'])
 
       token_precision = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
@@ -378,7 +378,7 @@ class PretrainingModel(object):
       token_precision *= token_precision_mask
       token_precision = tf.reduce_sum(token_precision) / (1e-10+tf.reduce_sum(token_precision_mask))
 
-      monitor_dict['token_precision'] = token_precision
+      monitor_dict['disriminator_token_precision'] = token_precision
 
       token_recall = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
@@ -386,7 +386,7 @@ class PretrainingModel(object):
       token_recall *= token_recall_mask
       token_recall = tf.reduce_sum(token_recall) / (1e-10+tf.reduce_sum(token_recall_mask))
 
-      monitor_dict['token_recall'] = token_recall
+      monitor_dict['disriminator_token_recall'] = token_recall
       return monitor_dict
 
     def electra_nce_monitor_fn(eval_fn_inputs, keys):
@@ -412,8 +412,8 @@ class PretrainingModel(object):
       mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      monitor_dict['mlm_loss'] = mlm_loss
-      monitor_dict['mlm_acc'] = mlm_acc
+      monitor_dict['generator_mlm_loss'] = mlm_loss
+      monitor_dict['generator_mlm_acc'] = mlm_acc
 
       sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
@@ -421,26 +421,26 @@ class PretrainingModel(object):
       sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
+      monitor_dict['generator_sampeld_mlm_acc'] = sampeld_mlm_acc
 
       sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
-      monitor_dict['sent_nce_pred_acc'] = sent_nce_pred_acc
-      monitor_dict['sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
-      monitor_dict['sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
-      monitor_dict['sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
+      monitor_dict['discriminator_sent_nce_pred_acc'] = sent_nce_pred_acc
+      monitor_dict['discriminator_sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
+      monitor_dict['discriminator_sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
+      monitor_dict['discriminator_sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
 
       sent_nce_real_pred_acc = tf.cast(tf.equal(d["disc_real_preds"], d['disc_real_labels']),
                                 dtype=tf.float32)
       sent_nce_real_pred_acc = tf.reduce_mean(sent_nce_real_pred_acc)
-      monitor_dict['sent_nce_real_pred_acc'] = sent_nce_real_pred_acc
+      monitor_dict['discriminator_sent_nce_real_pred_acc'] = sent_nce_real_pred_acc
 
       sent_nce_fake_pred_acc = tf.cast(tf.equal(d["disc_fake_preds"], d['disc_fake_labels']),
                                 dtype=tf.float32)
       sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
-      monitor_dict['sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
+      monitor_dict['discriminator_sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
 
       return monitor_dict
 

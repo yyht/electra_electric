@@ -142,7 +142,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-    model = modeling_tta.BertModel(
+    model = modeling_nystromformer.BertModel(
         config=bert_config,
         is_training=is_training,
         input_ids=input_ids,

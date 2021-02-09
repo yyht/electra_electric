@@ -414,7 +414,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""
-  sequence_shape = modeling_tta.get_shape_list(sequence_tensor, expected_rank=3)
+  sequence_shape = modeling_nystromformer.get_shape_list(sequence_tensor, expected_rank=3)
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
   width = sequence_shape[2]

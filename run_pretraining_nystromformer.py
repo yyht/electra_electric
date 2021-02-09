@@ -212,7 +212,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling_tta.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling_nystromformer.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -304,7 +304,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  input_shape = modeling_tta.get_shape_list(input_tensor, expected_rank=3)
+  input_shape = modeling_nystromformer.get_shape_list(input_tensor, expected_rank=3)
   input_tensor = tf.reshape(input_tensor, [input_shape[0]*input_shape[1], input_shape[2]])
   
   with tf.variable_scope("cls/predictions"):
@@ -314,9 +314,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_tta.get_activation(config.hidden_act),
-          kernel_initializer=modeling_tta.create_initializer(config.initializer_range))
-      input_tensor = modeling_tta.layer_norm(input_tensor)
+          activation=modeling_nystromformer.get_activation(config.hidden_act),
+          kernel_initializer=modeling_nystromformer.create_initializer(config.initializer_range))
+      input_tensor = modeling_nystromformer.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -374,10 +374,10 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
       input_tensor = tf.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
-          activation=modeling_tta.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_tta.create_initializer(
+          activation=modeling_nystromformer.get_activation(bert_config.hidden_act),
+          kernel_initializer=modeling_nystromformer.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling_tta.layer_norm(input_tensor)
+      input_tensor = modeling_nystromformer.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.

@@ -201,8 +201,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       masked_lm_loss = tf.reduce_sum(masked_lm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
       masked_lm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      monitor_dict['masked_lm_loss'] = lm_loss
-      monitor_dict['masked_lm_acc'] = lm_acc
+      monitor_dict['masked_lm_loss'] = masked_lm_loss
+      monitor_dict['masked_lm_acc'] = masked_lm_acc
 
       return monitor_dict
 

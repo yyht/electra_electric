@@ -769,7 +769,7 @@ def attention_layer(from_tensor,
 
     value_layer = tf.reshape(
       value_layer,
-      [batch_size, to_seq_length, num_attention_heads, attention_head_size])
+      [batch_size, to_seq_length, num_attention_heads, size_per_head])
 
     # [batch_size, N, N-landmarks, from_seq_length//N-landmarks, H]
     query_layer_landmarks = tf.reshape(

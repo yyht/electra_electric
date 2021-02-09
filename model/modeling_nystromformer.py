@@ -1102,3 +1102,26 @@ def assert_rank(tensor, expected_rank, name=None):
         "For the tensor `%s` in scope `%s`, the actual rank "
         "`%d` (shape = %s) is not equal to the expected rank `%s`" %
         (name, scope_name, actual_rank, str(tensor.shape), str(expected_rank)))
+
+
+def get_assignment_map_from_checkpoint(tvars, init_checkpoint, prefix=""):
+  """Compute the union of the current variables and checkpoint variables."""
+  name_to_variable = collections.OrderedDict()
+  for var in tvars:
+    name = var.name
+    m = re.match("^(.*):\\d+$", name)
+    if m is not None:
+      name = m.group(1)
+    name_to_variable[name] = var
+
+  initialized_variable_names = {}
+  assignment_map = collections.OrderedDict()
+  for x in tf.train.list_variables(init_checkpoint):
+    (name, var) = (x[0], x[1])
+    if prefix + name not in name_to_variable:
+      continue
+    assignment_map[name] = prefix + name
+    initialized_variable_names[name] = 1
+    initialized_variable_names[name + ":0"] = 1
+
+  return assignment_map, initialized_variable_names

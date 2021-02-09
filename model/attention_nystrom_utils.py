@@ -1,5 +1,12 @@
 
 import tensorflow as tf
+import collections
+import copy
+import json
+import math
+import re
+import six
+import tensorflow as tf
 
 def iterative_inv(mat, n_iter=6):
 

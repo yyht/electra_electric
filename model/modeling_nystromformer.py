@@ -763,6 +763,10 @@ def attention_layer(from_tensor,
 
   else:
     # [B, N, T, H]
+
+    query_layer /= math.sqrt(math.sqrt(float(size_per_head)))
+    key_layer /= math.sqrt(math.sqrt(float(size_per_head)))
+
     value_layer = tf.reshape(
       value_layer,
       [batch_size, to_seq_length, num_attention_heads, attention_head_size])
@@ -770,33 +774,43 @@ def attention_layer(from_tensor,
     # [batch_size, N, N-landmarks, from_seq_length//N-landmarks, H]
     query_layer_landmarks = tf.reshape(
         query_layer, [batch_size, num_attention_heads, num_landmarks,
-                        from_seq_length//num_landmarks, width])
+                        from_seq_length//num_landmarks, size_per_head])
+
+    print(query_layer_landmarks, "==query_layer_landmarks==")
 
     # [batch_size, N, N-landmarks, to_seq_length//N-landmarks, H]
     key_layer_landmarks = tf.reshape(
         query_layer, [batch_size, num_attention_heads, num_landmarks,
-                        to_seq_length//num_landmarks, width])
+                        to_seq_length//num_landmarks, size_per_head])
+
+    print(key_layer_landmarks, "==key_layer_landmarks==")
 
     # [batch_size, N, N-landmarks, H]
     query_layer_landmarks = tf.reduce_mean(query_layer_landmarks, axis=-2)
-    
+    print(query_layer_landmarks, "==key_layer_landmarks==")
+
     # [batch_size, N, N-landmarks, H]
     key_layer_landmarks = tf.reduce_mean(key_layer_landmarks, axis=-2)
+    print(key_layer_landmarks, "==key_layer_landmarks==")
 
     # query-layer: [B, N, F, H]
     # key_layer_landmarks: [B, N, n-landmarks, H]
     # kernel_1: [B, N, F, n-landmarks]
     kernel_1 = tf.nn.softmax(tf.matmul(query_layer, tf.transpose(key_layer_landmarks, [0, 1, 3, 2])), axis=-1)
-    
+    print(kernel_1, "==kernel_1==")
+
     # query_layer_landmarks: [B, N, n-landmarks, H]
     # key_layer_landmarks:   [B, N, n-landmarks, H]
     # kernel_2: [B, N, n-landmarks, n-landmarks]
     kernel_2 = tf.nn.softmax(tf.matmul(query_layer_landmarks, tf.transpose(key_layer_landmarks, [0, 1, 3, 2])), axis=-1)
+    print(kernel_2, "==kernel_2==")
 
     # query_layer_landmarks: [B, N, n-landmarks, H]
     # key_layer: [B, N, T, H]
     # kernel_3: [B, N, n-landmarks, T]
     kernel_3 = tf.matmul(query_layer_landmarks, tf.transpose(key_layer, [0, 1, 3 ,2]))
+    print(kernel_3, "==kernel_3==")
+
     if original_mask is not None:
       # `attention_mask` = [B, 1, T]
       original_mask = tf.expand_dims(original_mask, axis=[1])
@@ -814,21 +828,25 @@ def attention_layer(from_tensor,
 
     # kernel_3: [B, N, n-landmarks, T]
     kernel_3 = tf.nn.softmax(kernel_3, axis=-1)
+    print(kernel_3, "==kernel_3==")
 
     # kernel_1: [B, N, F, n-landmarks]
     # iterative_inv(kernel_2) : [B, N, n-landmarks, n-landmarks]
     # kernel_12:[B, N, F, n-landmarks]
     kernel_12 = tf.matmul(kernel_1, iterative_inv(kernel_2))
+    print(kernel_12, "==kernel_12==")
 
     # kernel_3: [B, N, n-landmarks, T]
     # value_layer: [B, N, T, H]
     # kernel_3_value: [B, N, n-landmarks, H]
     kernel_3_value = tf.matmul(kernel_3, value_layer)
+    print(kernel_3_value, "==kernel_3_value==")
     
     # kernel_12:[B, N, F, n-landmarks]
     # kernel_3_value: [B, N, n-landmarks, H]
     # context_layer: [B, N, F, H]
     context_layer = tf.matmul(kernel_12, kernel_3_value)
+    print(context_layer, "==context_layer==")
 
   if do_return_2d_tensor:
     # `context_layer` = [B*F, N*V]

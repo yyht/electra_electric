@@ -836,6 +836,9 @@ def attention_layer(from_tensor,
     kernel_12 = tf.matmul(kernel_1, iterative_inv(kernel_2))
     print(kernel_12, "==kernel_12==")
 
+    # `value_layer` = [B, N, T, H]
+    value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
+
     # kernel_3: [B, N, n-landmarks, T]
     # value_layer: [B, N, T, H]
     # kernel_3_value: [B, N, n-landmarks, H]

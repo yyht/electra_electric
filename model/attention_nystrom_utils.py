@@ -29,6 +29,38 @@ def iterative_inv(mat, n_iter=6):
   V = tf.stop_gradient(V)
   return V
 
+def iterative_inv_v1(mat, n_iter=6, stopThr=1e-2):
+  """
+  https://downloads.hindawi.com/journals/aaa/2014/563787.pdf
+  A New Iterative Method for Finding Approximate Inverses of
+  Complex Matrices
+  """
+
+  mat_shape = get_shape_list(mat, expected_rank=[2,3,4])
+  I = tf.cast(tf.eye(mat_shape[-1]), dtype=tf.float32)
+  K = tf.identity(mat) 
+  # [B, N, n-landmarks, n-landmarks]
+  V = 1 / (tf.reduce_max(tf.reduce_sum(tf.abs(K), axis=-2)) * tf.reduce_max(tf.reduce_sum(tf.abs(K), axis=-1))) * tf.transpose(K, [0,1,3,2])
+
+  cpt = tf.constant(0)
+  err = tf.constant(1.0)
+
+  c = lambda cpt, V, err: tf.logical_and(cpt < n_iter, err > stopThr)
+
+  def loop_func(cpt, V, err):
+    V_old = tf.identity(V)
+    KV = tf.matmul(K, V)
+    V = tf.matmul(0.25 * V, 13 * I - tf.matmul(KV, 15 * I - tf.matmul(KV, 7 * I - KV)))
+    
+    err = tf.reduce_mean(tf.reduce_sum(tf.abs(V - V_old), axis=-1))
+
+    cpt = tf.add(cpt, 1)
+    return cpt, V, err
+
+  _, V, _ = tf.while_loop(c, loop_func, loop_vars=[cpt, V, err])
+  V = tf.stop_gradient(V)
+  return V
+
 def get_shape_list(tensor, expected_rank=None, name=None):
   """Returns a list of the shape of tensor, preferring static dimensions.
 

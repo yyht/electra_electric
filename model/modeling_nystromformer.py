@@ -25,7 +25,7 @@ import math
 import re
 import six
 import tensorflow as tf
-from model.attention_nystrom_utils import iterative_inv
+from model.attention_nystrom_utils import iterative_inv, iterative_inv_v1
 
 
 class BertConfig(object):
@@ -833,7 +833,7 @@ def attention_layer(from_tensor,
     # kernel_1: [B, N, F, n-landmarks]
     # iterative_inv(kernel_2) : [B, N, n-landmarks, n-landmarks]
     # kernel_12:[B, N, F, n-landmarks]
-    kernel_12 = tf.matmul(kernel_1, iterative_inv(kernel_2))
+    kernel_12 = tf.matmul(kernel_1, iterative_inv_v1(kernel_2))
     print(kernel_12, "==kernel_12==")
 
     # `value_layer` = [B, N, T, H]

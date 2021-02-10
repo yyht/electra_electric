@@ -159,9 +159,9 @@ class PretrainingConfig(object):
     self.cls_id = 101
     self.mask_id = 103
     self.leak_ratio = 0.1
-    self.rand_ratio = 0.1
+    self.rand_ratio = 0.7
     self.vocab_size = 30522
-    self.mask_prob = 0.15
+    self.mask_prob = 0.4
     self.sample_strategy = 'token_span'
     self.truncate_seq = False
     self.stride = 1

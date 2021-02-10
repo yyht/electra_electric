@@ -12,7 +12,7 @@ nohup python run_pretraining_tta.py \
 	--save_checkpoints_steps 1000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
-	--tpu_name albert1 \
+	--tpu_name albert2 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \

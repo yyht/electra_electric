@@ -531,7 +531,7 @@ class PretrainingModel(object):
       energy = tf.reduce_sum(hidden*weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=1))
       # enrergy:[batch_size, hidden_size]
       print("==energy output==", energy)
-      energy = tf.squeeze(tf.layers.dense(energy, units=1, use_bias=False), -1)
+      energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
       return energy
 
   def _get_gan_output(self, inputs,
@@ -708,8 +708,11 @@ class PretrainingModel(object):
     # [batch_size, n_pos]
     # mlm_logprobs: [batch_size, n_pos. n_vocab]
     mlm_logprobs = tf.nn.log_softmax(mlm_logits, axis=-1)
+    print(mlm_logprobs, "===mlm_logprobs===")
     pseudo_logprob = tf.reduce_sum(mlm_logprobs*sampled_tokens_fp32, axis=-1)
+    print(pseudo_logprob, "===pseudo_logprob===")
     pseudo_logprob *= tf.cast(masked_lm_weights, dtype=tf.float32)
+    print(pseudo_logprob, "===pseudo_logprob===")
     # [batch_size]
     pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)
     # [batch_size]
@@ -782,7 +785,9 @@ def get_softmax_output(logits, targets, weights, vocab_size,
   log_probs = tf.nn.log_softmax(logits)
   # [batch_size, num_masked]
   label_log_probs = -tf.reduce_sum(log_probs * oh_labels, axis=-1)
+  print(label_log_probs, "===label_log_probs===")
   numerator = tf.reduce_sum(weights * label_log_probs, axis=-1)
+  print(numerator, "===numerator===")
   # [batch_size, num_masked]
   denominator = tf.reduce_sum(weights, axis=-1)
   pseudo_logprob = -numerator

@@ -493,8 +493,8 @@ class PretrainingModel(object):
                                 dtype=tf.float32)
       sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
       monitor_dict['discriminator_sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
-      monitor_dict['discriminator_real_energy'] = d["d_real_energy"]
-      monitor_dict['discriminator_fake_energy'] = d["d_fake_energy"]
+      monitor_dict['discriminator_real_energy'] = d["disc_real_energy"]
+      monitor_dict['discriminator_fake_energy'] = d["disc_fake_energy"]
       monitor_dict['generator_noise_real_logprob'] = d["disc_noise_real_logprob"]
       monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
       return monitor_dict

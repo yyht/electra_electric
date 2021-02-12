@@ -349,6 +349,11 @@ class PretrainingModel(object):
           "disc_real_preds":nce_disc_output.real_preds,
           "disc_fake_labels":nce_disc_output.fake_labels,
           "disc_fake_preds":nce_disc_output.fake_preds,
+          'disc_real_energy':nce_disc_output.d_real_energy,
+          'disc_fake_energy':nce_disc_output.d_fake_energy,
+          "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
+          "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob
+
       })
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
@@ -488,7 +493,10 @@ class PretrainingModel(object):
                                 dtype=tf.float32)
       sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
       monitor_dict['discriminator_sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
-
+      monitor_dict['discriminator_real_energy'] = d["d_real_energy"]
+      monitor_dict['discriminator_fake_energy'] = d["d_fake_energy"]
+      monitor_dict['generator_noise_real_logprob'] = d["disc_noise_real_logprob"]
+      monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
       return monitor_dict
 
     if config.electra_objective or config.electric_objective:
@@ -615,6 +623,12 @@ class PretrainingModel(object):
             logits=d_out_fake, labels=tf.zeros_like(d_out_fake)
       ))
 
+      d_real_energy = tf.reduce_mean(discriminator_real_energy)
+      d_fake_energy = tf.reduce_mean(discriminator_fake_energy)
+
+      d_noise_real_logprob = tf.reduce_mean(tf.zeros_like(d_real_energy))
+      d_noise_fake_logprob = tf.reduce_mean(tf.zeros_like(d_fake_energy))
+
       per_example_loss = d_loss_real + d_loss_fake
       d_loss = tf.reduce_mean(per_example_loss)
 
@@ -640,13 +654,18 @@ class PretrainingModel(object):
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
                          "labels", "real_loss", 'fake_loss',
                          'real_preds', 'real_labels',
-                         'fake_preds', 'fake_labels'])     
+                         'fake_preds', 'fake_labels',
+                         'd_real_energy', 'd_fake_energy',
+                         'd_noise_real_logprob', 'd_noise_fake_logprob'])     
       return DiscOutput(
           loss=d_loss, per_example_loss=per_example_loss, probs=probs,
           preds=preds, labels=labels, real_loss=d_loss_real,
           fake_loss=d_loss_fake,
           real_preds=real_preds, real_labels=real_labels,
-          fake_preds=fake_preds, fake_labels=fake_labels
+          fake_preds=fake_preds, fake_labels=fake_labels,
+          d_real_energy=d_real_energy, d_fake_energy=d_fake_energy,
+          d_noise_real_logprob=d_noise_real_logprob, 
+          d_noise_fake_logprob=d_noise_fake_logprob
       )
 
   def _get_nce_disc_output(self, 
@@ -660,6 +679,12 @@ class PretrainingModel(object):
 
       print(d_out_real, "==d_out_real==")
       print(d_out_fake, "==d_out_fake==")
+
+      d_real_energy = tf.reduce_mean(-discriminator_real_energy)
+      d_fake_energy = tf.reduce_mean(-discriminator_fake_energy)
+
+      d_noise_real_logprob = tf.reduce_mean(noise_real_logprobs)
+      d_noise_fake_logprob = tf.reduce_mean(noise_fake_logprobs)
 
       d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
             logits=d_out_real, labels=tf.ones_like(d_out_real)
@@ -693,13 +718,18 @@ class PretrainingModel(object):
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
                          "labels", "real_loss", 'fake_loss',
                          'real_preds', 'real_labels',
-                         'fake_preds', 'fake_labels'])
+                         'fake_preds', 'fake_labels',
+                         'd_real_energy', 'd_fake_energy',
+                         'd_noise_real_logprob', 'd_noise_fake_logprob'])
       return DiscOutput(
           loss=d_loss, per_example_loss=per_example_loss, probs=probs,
           preds=preds, labels=labels, real_loss=d_loss_real,
           fake_loss=d_loss_fake,
           real_preds=real_preds, real_labels=real_labels,
-          fake_preds=fake_preds, fake_labels=fake_labels
+          fake_preds=fake_preds, fake_labels=fake_labels,
+          d_real_energy=d_real_energy, d_fake_energy=d_fake_energy,
+          d_noise_real_logprob=d_noise_real_logprob, 
+          d_noise_fake_logprob=d_noise_fake_logprob
       )
  
   def _get_discriminator_output(

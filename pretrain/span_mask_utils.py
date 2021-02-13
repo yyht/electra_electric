@@ -11,6 +11,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 from pretrain import pretrain_data
+from pretrain import pretrain_helpers
 
 def check_tf_version():
   version = tf.__version__
@@ -298,14 +299,16 @@ def _online_sample_masks(FLAGS,
   input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
   num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.float32)
 
-  global_step = tf.train.get_or_create_global_step()
-  mask_prob = tf.train.polynomial_decay(
-                          FLAGS.initial_ratio,
-                          global_step,
-                          int(FLAGS.num_train_steps*0.1),
-                          end_learning_rate=FLAGS.final_ratio,
-                          power=1.0,
-                          cycle=True)
+  # global_step = tf.train.get_or_create_global_step()
+  # mask_prob = tf.train.polynomial_decay(
+  #                         FLAGS.initial_ratio,
+  #                         global_step,
+  #                         int(FLAGS.num_train_steps*0.1),
+  #                         end_learning_rate=FLAGS.final_ratio,
+  #                         power=1.0,
+  #                         cycle=True)
+
+  mask_prob = FLAGS.final_ratio
 
   num_predict = tf.maximum(1, tf.minimum(
       num_predict, tf.cast(tf.round(num_tokens * mask_prob), tf.int32)))
@@ -453,6 +456,7 @@ def _decode_record(FLAGS, record, num_predict,
   example["masked_lm_positions"] = tf.argmax(example['target_mapping'], axis=-1)
   example["masked_lm_weights"] = example['target_mask']
   example["masked_lm_ids"] = example['target']
+
   # type cast for example
   convert_example(example, use_bfloat16)
 

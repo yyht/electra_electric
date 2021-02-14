@@ -601,8 +601,8 @@ def main(_):
       use_one_hot_embeddings=FLAGS.use_tpu,
       input_embeddings=None,
       input_reprs=None, 
-      update_embeddings=None,
-      untied_embeddings=None,
+      update_embeddings=True,
+      untied_embeddings=True,
       scope='bert')
 
   # If TPU is not available, this will fall back to normal Estimator on CPU

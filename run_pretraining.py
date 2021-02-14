@@ -575,6 +575,7 @@ class PretrainingModel(object):
     else:
       custom_getter = None
       print("==no spectral_regularization==")
+    print(discriminator.get_sequence_output(), "==discriminator.get_sequence_output()==")
     with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE,
           custom_getter=custom_getter):
       hidden = tf.layers.dense(
@@ -597,6 +598,7 @@ class PretrainingModel(object):
                               discriminator):
 
     with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):
+      print(discriminator.get_sequence_output(), "==discriminator.get_sequence_output()==")
       hidden = tf.layers.dense(
           discriminator.get_sequence_output(),
           units=self._bert_config.hidden_size,

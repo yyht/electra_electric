@@ -628,8 +628,8 @@ class PretrainingModel(object):
       d_real_energy = tf.reduce_mean(d_out_real)
       d_fake_energy = tf.reduce_mean(d_out_fake)
 
-      d_noise_real_logprob = tf.reduce_mean(tf.zeros_like(d_real_energy))
-      d_noise_fake_logprob = tf.reduce_mean(tf.zeros_like(d_fake_energy))
+      d_noise_real_logprob = tf.reduce_mean(discriminator_real_energy)
+      d_noise_fake_logprob = tf.reduce_mean(discriminator_fake_energy)
 
       per_example_loss = d_loss_real + d_loss_fake
       d_loss = tf.reduce_mean(per_example_loss)
@@ -1062,10 +1062,10 @@ def model_fn_builder(config):
           mode=mode,
           loss=model.total_loss,
           train_op=train_op,
-          training_hooks=[training_utils.ETAHook(
-              {} if config.use_tpu else dict(loss=model.total_loss),
-              config.num_train_steps, config.iterations_per_loop,
-              config.use_tpu)],
+          # training_hooks=[training_utils.ETAHook(
+          #     {} if config.use_tpu else dict(loss=model.total_loss),
+          #     config.num_train_steps, config.iterations_per_loop,
+          #     config.use_tpu)],
           host_call=host_call if config.monitoring else None,
           scaffold_fn=scaffold_fn
       )
@@ -1074,10 +1074,11 @@ def model_fn_builder(config):
           mode=mode,
           loss=model.total_loss,
           eval_metrics=model.eval_metrics,
-          evaluation_hooks=[training_utils.ETAHook(
-              {} if config.use_tpu else dict(loss=model.total_loss),
-              config.num_eval_steps, config.iterations_per_loop,
-              config.use_tpu, is_training=False)])
+          # evaluation_hooks=[training_utils.ETAHook(
+          #     {} if config.use_tpu else dict(loss=model.total_loss),
+          #     config.num_eval_steps, config.iterations_per_loop,
+          #     config.use_tpu, is_training=False)]
+          )
     else:
       raise ValueError("Only TRAIN and EVAL modes are supported")
     return output_spec

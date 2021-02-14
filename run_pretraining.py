@@ -625,6 +625,12 @@ class PretrainingModel(object):
             logits=d_out_fake, labels=tf.ones_like(d_out_fake)
       ))
 
+      print(d_out_real, "==d_out_real==")
+      print(d_out_fake, "==d_out_fake==")
+
+      print(d_loss_real, "==d_loss_real==")
+      print(d_loss_fake, "==d_loss_fake==")
+
       d_real_energy = tf.reduce_mean(d_out_real)
       d_fake_energy = tf.reduce_mean(d_out_fake)
 
@@ -634,8 +640,14 @@ class PretrainingModel(object):
       per_example_loss = d_loss_real + d_loss_fake
       d_loss = tf.reduce_mean(per_example_loss)
 
+      print(per_example_loss, "==per_example_loss==")
+      print(d_loss, "==d_loss==")
+
       d_real_probs = 1.0 - tf.nn.sigmoid(d_out_real)
       d_fake_probs = tf.nn.sigmoid(d_out_fake)
+
+      print(d_real_probs, "==d_real_probs==")
+      print(d_fake_probs, "==d_fake_probs==")
 
       d_real_labels = tf.zeros_like(d_out_real)
       d_fake_labels = tf.ones_like(d_out_fake)
@@ -643,11 +655,20 @@ class PretrainingModel(object):
       probs = tf.concat([d_fake_probs, d_real_probs], axis=0)
       preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
 
+      print(probs, "==probs==")
+      print(preds, "==preds==")
+
       real_preds = tf.cast(tf.greater(d_real_probs, 0.5), dtype=tf.int32)
       real_labels = tf.cast(d_real_labels, dtype=tf.int32)
 
+      print(real_preds, "==real_preds==")
+      print(real_labels, "==real_labels==")
+
       fake_preds = tf.cast(tf.greater(d_fake_probs, 0.5), dtype=tf.int32)
       fake_labels = tf.cast(d_fake_labels, dtype=tf.int32)
+
+      print(fake_preds, "==fake_preds==")
+      print(fake_labels, "==fake_labels==")
 
       labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
       labels = tf.cast(labels, dtype=tf.int32)

@@ -1122,7 +1122,8 @@ def train_or_eval(config):
       eval_batch_size=config.eval_batch_size)
 
   if config.do_train:
-    utils.heading("Running training")
+    # utils.heading("Running training")
+    tf.logging.info("Running training")
 
     if config.mask_strategy == 'electra':
       estimator.train(input_fn=pretrain_data.get_input_fn(config, True),
@@ -1131,7 +1132,8 @@ def train_or_eval(config):
       estimator.train(input_fn=span_mask_utils.get_input_fn(config, True),
                       max_steps=config.num_train_steps)
   if config.do_eval:
-    utils.heading("Running evaluation")
+    # utils.heading("Running evaluation")
+    tf.logging.info("Running evaluation")
     if config.mask_strategy == 'electra':
       result = estimator.evaluate(
           input_fn=pretrain_data.get_input_fn(config, False),

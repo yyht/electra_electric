@@ -1060,7 +1060,7 @@ def model_fn_builder(config):
 
       output_spec = tf.estimator.tpu.TPUEstimatorSpec(
           mode=mode,
-          loss=model.total_loss,
+          loss=model.disc_loss,
           train_op=train_op,
           # training_hooks=[training_utils.ETAHook(
           #     {} if config.use_tpu else dict(loss=model.total_loss),

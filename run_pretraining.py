@@ -973,7 +973,7 @@ def model_fn_builder(config):
     """Build the model for training."""
     model = PretrainingModel(config, features,
                              mode == tf.estimator.ModeKeys.TRAIN)
-    utils.log("Model is built!")
+    print("Model is built!")
     tvars = tf.trainable_variables()
 
     for tvar in tvars:
@@ -1092,8 +1092,10 @@ def train_or_eval(config):
     raise ValueError("Exactly one of `do_train` or `do_eval` must be True.")
   if config.debug and config.do_train:
     utils.rmkdir(config.model_dir)
-  utils.heading("Config:")
-  utils.log_config(config)
+  # utils.heading("Config:")
+  # utils.log_config(config)
+  for key, value in sorted(config.__dict__.items()):
+    print(key, value, "=======")
 
   is_per_host = tf.estimator.tpu.InputPipelineConfig.PER_HOST_V2
   tpu_cluster_resolver = None
@@ -1139,7 +1141,7 @@ def train_or_eval(config):
           input_fn=span_mask_utils.get_input_fn(config, False),
           steps=config.num_eval_steps)
     for key in sorted(result.keys()):
-      utils.log("  {:} = {:}".format(key, str(result[key])))
+      print("  {:} = {:}".format(key, str(result[key])))
     return result
 
 
@@ -1154,7 +1156,7 @@ def train_one_step(config):
   model = PretrainingModel(config, features, True)
   with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    utils.log(sess.run(model.total_loss))
+    print(sess.run(model.total_loss))
 
 
 def main():

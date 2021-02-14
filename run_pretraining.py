@@ -1181,6 +1181,7 @@ def main():
   else:
     hparams = json.loads(args.hparams)
   # tf.logging.set_verbosity(tf.logging.ERROR)
+  tf.logging.set_verbosity(tf.logging.INFO)
   train_or_eval(configure_pretraining.PretrainingConfig(
       args.model_name, args.data_dir, args.data_file_list, 
       args.generator_ckpt, args.discriminator_ckpt,

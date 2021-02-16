@@ -55,7 +55,7 @@ def iterative_inv_v1(mat, n_iter=6):
     return cpt, V
 
   _, V_final = tf.while_loop(c, loop_func, loop_vars=[cpt, V])
-  V_final = tf.stop_gradient(V_final)
+  # V_final = tf.stop_gradient(V_final)
   return V_final
 
 def get_shape_list(tensor, expected_rank=None, name=None):

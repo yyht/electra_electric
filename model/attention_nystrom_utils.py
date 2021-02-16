@@ -54,7 +54,9 @@ def iterative_inv_v1(mat, n_iter=6):
     cpt = tf.add(cpt, 1)
     return cpt, V
 
-  _, V_final = tf.while_loop(c, loop_func, loop_vars=[cpt, V])
+  _, V_final = tf.while_loop(c, loop_func, 
+                            loop_vars=[cpt, V],
+                            maximum_iterations=n_iter)
   # V_final = tf.stop_gradient(V_final)
   return V_final
 

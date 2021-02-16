@@ -26,7 +26,7 @@ def iterative_inv(mat, n_iter=6):
       KV = tf.matmul(K, V)
       V = tf.matmul(0.25 * V, 13 * I - tf.matmul(KV, 15 * I - tf.matmul(KV, 7 * I - KV)))
   # [B, N, n-landmarks, n-landmarks]
-  V = tf.stop_gradient(V)
+  # V = tf.stop_gradient(V)
   return V
 
 def iterative_inv_v1(mat, n_iter=6):

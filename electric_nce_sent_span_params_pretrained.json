@@ -31,7 +31,8 @@
     "stage":"two_stage",
     "gen_learning_rate":1e-4,
     "disc_learning_rate":5e-5,
-    "mask_prob":0.4,
-    "final_ratio":0.4,
+    "mask_prob":0.2,
+    "final_ratio":0.2,
+    "initial_ratio":0.2,
     "spectral_regularization":false
 }

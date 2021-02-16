@@ -3,7 +3,7 @@ nohup python run_pretraining_nystromformer.py \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_tiny_nystromformer \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint model/tiny/roberta_tiny_50G_whole/model.ckpt-1990000 \
+	--init_checkpoint models/bert_tiny_50g/model.ckpt-765000 \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 512 \
@@ -13,7 +13,7 @@ nohup python run_pretraining_nystromformer.py \
 	--save_checkpoints_steps 1000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
-	--tpu_name albert2 \
+	--tpu_name albert0 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \

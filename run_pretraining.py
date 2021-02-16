@@ -904,11 +904,13 @@ def get_softmax_output(logits, targets, weights, vocab_size,
   loss = tf.reduce_sum(numerator) / (tf.reduce_sum(denominator) + 1e-6)
   SoftmaxOutput = collections.namedtuple(
       "SoftmaxOutput", ["logits", "probs", "loss", "per_example_loss", "preds",
-                        "weights", "pseudo_logprob"])
+                        "weights", "pseudo_logprob",
+                        "targets"])
   return SoftmaxOutput(
       logits=logits, probs=probs, per_example_loss=label_log_probs,
       loss=loss, preds=preds, weights=weights,
-      pseudo_logprob=pseudo_logprob
+      pseudo_logprob=pseudo_logprob,
+      targets=targets
       )
 
 

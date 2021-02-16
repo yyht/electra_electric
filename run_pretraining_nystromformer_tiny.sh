@@ -1,7 +1,7 @@
 nohup python run_pretraining_nystromformer.py \
 	--bert_config_file ./config/bert_config_tiny_nystromformer.json \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_tiny_nystromformer \
+	--output_dir gs://yyht_source/pretrain/models/bert_tiny_nystromformer_50g \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/bert_tiny_50g/model.ckpt-765000 \
 	--max_seq_length 512 \

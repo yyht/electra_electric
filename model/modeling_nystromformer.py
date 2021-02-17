@@ -719,6 +719,7 @@ def attention_layer(from_tensor,
 
   
   # [B, N, T, H]
+  # https://github.com/mlpen/Nystromformer/blob/main/LRA/code/attention_nystrom.py
 
   query_layer /= math.sqrt(math.sqrt(float(size_per_head)))
   key_layer /= math.sqrt(math.sqrt(float(size_per_head)))
@@ -736,7 +737,7 @@ def attention_layer(from_tensor,
 
   # [batch_size, N, N-landmarks, to_seq_length//N-landmarks, H]
   key_layer_landmarks = tf.reshape(
-      query_layer, [batch_size, num_attention_heads, num_landmarks,
+      key_layer, [batch_size, num_attention_heads, num_landmarks,
                       to_seq_length//num_landmarks, size_per_head])
 
   print(key_layer_landmarks, "==key_layer_landmarks==")

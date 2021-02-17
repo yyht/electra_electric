@@ -790,7 +790,7 @@ def attention_layer(from_tensor,
   # kernel_1: [B, N, F, n-landmarks]
   # iterative_inv(kernel_2) : [B, N, n-landmarks, n-landmarks]
   # kernel_12:[B, N, F, n-landmarks]
-  kernel_2_plinv = iterative_inv(kernel_2, n_iter=6)
+  kernel_2_plinv = iterative_inv(kernel_2, n_iter=20)
   kernel_12 = tf.matmul(kernel_1, kernel_2_plinv)
   print(kernel_12, "==kernel_12==")
 

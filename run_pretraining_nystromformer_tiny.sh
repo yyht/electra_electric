@@ -3,7 +3,7 @@ nohup python run_pretraining_nystromformer.py \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_tiny_nystromformer_50g \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint models/bert_tiny_50g/model.ckpt-921000 \
+	--init_checkpoint models/bert_tiny_50g/model.ckpt-977000 \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 512 \
@@ -17,7 +17,7 @@ nohup python run_pretraining_nystromformer.py \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \
-	--monitoring True \
+	--monitoring False \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \
 	--mask_strategy "span_mask"

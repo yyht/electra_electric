@@ -730,14 +730,14 @@ def attention_layer(from_tensor,
 
   # [batch_size, N, N-landmarks, from_seq_length//N-landmarks, H]
   query_layer_landmarks = tf.reshape(
-      query_layer, [batch_size, num_attention_heads, num_landmarks,
+    query_layer, [batch_size, num_attention_heads, num_landmarks,
                       from_seq_length//num_landmarks, size_per_head])
 
   print(query_layer_landmarks, "==query_layer_landmarks==")
 
   # [batch_size, N, N-landmarks, to_seq_length//N-landmarks, H]
   key_layer_landmarks = tf.reshape(
-      key_layer, [batch_size, num_attention_heads, num_landmarks,
+    key_layer, [batch_size, num_attention_heads, num_landmarks,
                       to_seq_length//num_landmarks, size_per_head])
 
   print(key_layer_landmarks, "==key_layer_landmarks==")
@@ -790,7 +790,7 @@ def attention_layer(from_tensor,
   # kernel_1: [B, N, F, n-landmarks]
   # iterative_inv(kernel_2) : [B, N, n-landmarks, n-landmarks]
   # kernel_12:[B, N, F, n-landmarks]
-  kernel_2_plinv = iterative_inv(kernel_2)
+  kernel_2_plinv = iterative_inv(kernel_2, n_iter=20)
   kernel_12 = tf.matmul(kernel_1, kernel_2_plinv)
   print(kernel_12, "==kernel_12==")
 

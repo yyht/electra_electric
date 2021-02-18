@@ -645,7 +645,7 @@ class PretrainingModel(object):
       print(per_example_loss, "==per_example_loss==")
       print(d_loss, "==d_loss==")
 
-      d_real_probs = 1.0 - tf.nn.sigmoid(d_out_real)
+      d_real_probs = tf.nn.sigmoid(d_out_real)
       d_fake_probs = tf.nn.sigmoid(d_out_fake)
 
       print(d_real_probs, "==d_real_probs==")
@@ -721,7 +721,7 @@ class PretrainingModel(object):
       per_example_loss = d_loss_real + d_loss_fake
       d_loss = tf.reduce_mean(per_example_loss)
 
-      d_real_probs = 1.0 - tf.nn.sigmoid(d_out_real)
+      d_real_probs = tf.nn.sigmoid(d_out_real)
       d_fake_probs = tf.nn.sigmoid(d_out_fake)
 
       d_real_labels = tf.zeros_like(d_out_real)

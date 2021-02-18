@@ -56,6 +56,9 @@ class PretrainingConfig(object):
     self.num_warmup_steps = 10000
     self.initial_ratio = 0.2
     self.final_ratio = 0.2
+    self.fake_data_sample = 'sample_from_softmax'
+    self.topk = 20
+    self.topp = 0.95
 
     self.use_pretrained_generator = True
     self.use_pretrained_discriminator = True

@@ -241,7 +241,7 @@ def sample_from_softmax(logits, disallow=None):
   return tf.one_hot(tf.argmax(tf.nn.softmax(logits + gumbel_noise), -1,
                               output_type=tf.int32), logits.shape[-1])
 
-def sample_from_top_k(logits, k=20, disallow=None):
+def sample_from_top_k(logits, disallow=None, k=20):
     print(logits, '===========')
     logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
     depth_dimension = (len(logits_shape) == 3)

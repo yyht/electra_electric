@@ -240,3 +240,66 @@ def sample_from_softmax(logits, disallow=None):
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
   return tf.one_hot(tf.argmax(tf.nn.softmax(logits + gumbel_noise), -1,
                               output_type=tf.int32), logits.shape[-1])
+
+def sample_from_top_k(logits, k=20, disallow=None):
+    print(logits, '===========')
+    logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
+    depth_dimension = (len(logits_shape) == 3)
+    if depth_dimension:
+        reshape_logits = tf.reshape(logits, [-1, logits_shape[-1]])
+    else:
+        reshape_logits = logits
+    print(reshape_logits, '======')
+    reshape_logits_shape = modeling.get_shape_list(reshape_logits, expected_rank=[2])
+    batch = reshape_logits_shape[0]
+    
+    values, _ = tf.nn.top_k(reshape_logits, k=k)
+    min_values = values[:, -1, tf.newaxis]
+
+    reshape_topk_logits = tf.where(
+            reshape_logits < min_values,
+            tf.ones_like(reshape_logits, dtype=logits.dtype) * -1e10,
+            reshape_logits,
+        )
+    topk_logits = tf.reshape(reshape_topk_logits, logits_shape)
+    if disallow is not None:
+        topk_logits -= 1e10 * disallow
+    uniform_noise = tf.random.uniform(modeling.get_shape_list(topk_logits), minval=0, maxval=1)
+    gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
+    return tf.one_hot(tf.argmax(tf.nn.softmax(topk_logits + gumbel_noise), -1,
+                              output_type=tf.int32), topk_logits.shape[-1])
+
+def sample_from_top_p(logits, disallow=None, p=0.95):
+    """Nucleus sampling"""
+    print(logits, '===========')
+    logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
+    depth_dimension = (len(logits_shape) == 3)
+    if depth_dimension:
+        reshape_logits = tf.reshape(logits, [-1, logits_shape[-1]])
+    else:
+        reshape_logits = logits
+    print(reshape_logits, '======')
+    reshape_logits_shape = modeling.get_shape_list(reshape_logits, expected_rank=[2])
+    batch = reshape_logits_shape[0]
+    sorted_logits = tf.sort(reshape_logits, direction='DESCENDING', axis=-1)
+    cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1), axis=-1)
+    indices = tf.stack([
+        tf.range(0, batch),
+        # number of indices to include
+        tf.maximum(tf.reduce_sum(tf.cast(cumulative_probs <= p, tf.int32), axis=-1) - 1, 0),
+    ], axis=-1)
+    min_values = tf.gather_nd(sorted_logits, indices)
+    min_values = tf.expand_dims(min_values, axis=-1)
+    reshape_topp_logits = tf.where(
+        reshape_logits < min_values,
+        tf.ones_like(reshape_logits) * -1e10,
+        reshape_logits,
+    )
+    topp_logits = tf.reshape(reshape_topp_logits, logits_shape)
+    print(topp_logits, '====topp_logits====')
+    if disallow is not None:
+        topp_logits -= 1e10 * disallow
+    uniform_noise = tf.random.uniform(modeling.get_shape_list(topp_logits), minval=0, maxval=1)
+    gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
+    return tf.one_hot(tf.argmax(tf.nn.softmax(topp_logits + gumbel_noise), -1,
+                              output_type=tf.int32), topp_logits.shape[-1])

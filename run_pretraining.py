@@ -276,6 +276,7 @@ class PretrainingModel(object):
           config, unmasked_inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, 
           embedding_size=self.discriminator_embedding_size,
+          untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope)
       print(disc_real, "===disc_real using for conditional real data energy function===")
 

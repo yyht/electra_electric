@@ -21,6 +21,10 @@ import six
 import tensorflow as tf
 from tensorflow.contrib import layers as contrib_layers
 
+from model import dropout_utils
+
+stable_dropout = dropout_utils.ReuseDropout()
+
 class BertConfig(object):
   """Configuration for `BertModel` (ELECTRA uses the same model as BERT, 
   while ConvBERT use several additional configuration but remain most of 

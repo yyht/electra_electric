@@ -26,6 +26,10 @@ import re
 import six
 import tensorflow as tf
 
+from model import dropout_utils
+
+stable_dropout = dropout_utils.ReuseDropout()
+
 
 class BertConfig(object):
   """Configuration for `BertModel`."""

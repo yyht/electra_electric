@@ -62,6 +62,15 @@ def gelu(x):
       (np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3)))))
   return x * cdf
 
+def layer_norm(input_tensor, name=None):
+  """Run layer normalization on the last dimension of the tensor."""
+  return funnel_transformer_ops.layer_norm_op(inputs=input_tensor,
+                                          begin_norm_axis=-1,
+                                          name=name)
+  # contrib_layers.layer_norm(
+  #     inputs=input_tensor, begin_norm_axis=-1, begin_params_axis=-1, scope=name)
+
+
 def get_activation(activation_type):
   """Get the corresponding activation function from string."""
   if activation_type == "relu":

@@ -77,7 +77,6 @@ class ModelConfig(object):
     self.use_bfloat16 = use_bfloat16
     self.truncate_seq = truncate_seq
     self.scope = scope
-    self.pretrain_loss = pretrain_loss
     self.verbose = verbose
     self.d_embed = d_embed
     self.d_model = d_model

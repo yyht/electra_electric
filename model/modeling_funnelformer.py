@@ -47,6 +47,19 @@ def get_initializer(net_config):
     raise ValueError("Initializer {} not supported".format(net_config.init))
   return initializer
 
+def get_activation(activation_type):
+  """Get the corresponding activation function from string."""
+  if activation_type == "relu":
+    activation = tf.nn.relu
+  elif activation_type == "gelu":
+    activation = gelu
+  elif activation_type == "tanh":
+    activation = tf.tanh
+  else:
+    raise ValueError("Unsupported activation type {}".format(activation_type))
+
+  return activation
+
 class ModelConfig(object):
   """ModelConfig contains fixed hyperparameters of a Funnel-Transformer."""
 

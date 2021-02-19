@@ -375,8 +375,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
           input_tensor,
           units=bert_config.hidden_size,
           activation=modeling_funnelformer.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_funnelformer.create_initializer(
-              bert_config.initializer_range))
+          kernel_initializer=modeling_funnelformer.get_initializer(bert_config))
       input_tensor = modeling_funnelformer.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is

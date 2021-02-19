@@ -538,7 +538,7 @@ def main(_):
   if not FLAGS.do_train and not FLAGS.do_eval:
     raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
-  bert_config = modeling_funnelformer.ModelConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling_funnelformer.ModelConfig.init_from_json(FLAGS.bert_config_file)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
 

@@ -74,7 +74,6 @@ class ModelConfig(object):
     self.vocab_size = vocab_size
     self.if_skip_connetion = if_skip_connetion
     self.corrupted = corrupted
-    self.denoise_mode = denoise_mode
     self.use_bfloat16 = use_bfloat16
     self.truncate_seq = truncate_seq
     self.scope = scope

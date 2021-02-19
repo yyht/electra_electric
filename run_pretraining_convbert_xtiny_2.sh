@@ -16,7 +16,7 @@ nohup python run_pretraining_convbert.py \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \
-	--monitoring True \
+	--monitoring False \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \
 	--mask_strategy "span_mask"

@@ -101,8 +101,8 @@ def embedding_lookup(x, n_embed, d_embed, initializer, lookup_table=None,
       einsum_prefix = get_einsum_prefix(x.shape.ndims)
       einsum_str = "{0}n,nd->{0}d".format(einsum_prefix)
     tf.logging.info("*** einsum_str: %s ***", einsum_str)
-    output = tf.einsum(einsum_str, one_hot_idx, embedding_table_adv)
-    print(one_hot_idx.get_shape(), embedding_table_adv.get_shape(), 
+    output = tf.einsum(einsum_str, one_hot_idx, lookup_table)
+    print(one_hot_idx.get_shape(), lookup_table.get_shape(), 
       "==embedding shape==", einsum_str, output.get_shape())
 
     return output, lookup_table

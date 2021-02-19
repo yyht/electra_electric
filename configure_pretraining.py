@@ -169,7 +169,7 @@ class PretrainingConfig(object):
 
     self.max_predictions_per_seq = int((self.mask_prob + 0.005) *
                                        self.max_seq_length)
-    tf.logging.info(" max_predictions_per_seq: %s", max_predictions_per_seq)
+    tf.logging.info(" max_predictions_per_seq: %s", self.max_predictions_per_seq)
 
     # debug-mode settings
     if self.debug:

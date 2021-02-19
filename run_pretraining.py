@@ -812,7 +812,7 @@ class PretrainingModel(object):
         mlm_logits / self._config.temperature, disallow=disallow, k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
-      sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_k(
+      sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_p(
         mlm_logits / self._config.temperature, disallow=disallow, p=self._config.topp))
       tf.logging.info("***** apply sample_from_top_p *****")
     else:

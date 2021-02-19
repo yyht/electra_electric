@@ -148,9 +148,6 @@ class PretrainingConfig(object):
     self.results_txt = os.path.join(results_dir, "unsup_results.txt")
     self.results_pkl = os.path.join(results_dir, "unsup_results.pkl")
 
-    self.max_predictions_per_seq = int((self.mask_prob + 0.005) *
-                                       self.max_seq_length)
-
     # span-mask-config
     self.min_tok = 1
     self.max_tok = 10
@@ -169,6 +166,10 @@ class PretrainingConfig(object):
 
     # update defaults with passed-in hyperparameters
     self.update(kwargs)
+
+    self.max_predictions_per_seq = int((self.mask_prob + 0.005) *
+                                       self.max_seq_length)
+    tf.logging.info(" max_predictions_per_seq: %s", max_predictions_per_seq)
 
     # debug-mode settings
     if self.debug:

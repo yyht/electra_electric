@@ -309,6 +309,7 @@ def _online_sample_masks(FLAGS,
   #                         cycle=True)
 
   mask_prob = FLAGS.final_ratio
+  tf.logging.info("mask_prob: `%s`.", mask_prob)
 
   num_predict = tf.maximum(1, tf.minimum(
       num_predict, tf.cast(tf.round(num_tokens * mask_prob), tf.int32)))

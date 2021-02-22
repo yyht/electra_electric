@@ -15,6 +15,7 @@
     "use_pretrained_discriminator":true,
     "temperature":1.0,
     "monitoring":true,
+    "vocab_file":"./vocab/vocab_uncased_en.txt",
     "model_scope":"electra",
     "disallow_correct":false,
     "tpu_name":"albert4",

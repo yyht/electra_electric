@@ -130,6 +130,14 @@ def get_bert_generator_config(config):
     args = {"hidden_size": 312, "num_hidden_layers": 4, 
           'num_attention_heads':12,
           'intermediate_size':1200}
+  elif config.model_size_generator == "tiny_256":
+    args = {"hidden_size": 256, "num_hidden_layers": 4, 
+          'num_attention_heads':4,
+          'intermediate_size':1024}
+  elif config.model_size_generator == "tiny_512":
+    args = {"hidden_size": 512, "num_hidden_layers": 4, 
+          'num_attention_heads':8,
+          'intermediate_size':2048}
   else:
     raise ValueError("Unknown model size", config.model_size_generator)
   args["vocab_size"] = config.vocab_size

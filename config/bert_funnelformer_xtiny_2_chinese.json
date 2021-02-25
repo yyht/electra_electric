@@ -1,5 +1,5 @@
 {
-    "block_size": "4",
+    "block_size": "2",
     "d_embed": 312,
     "d_head": 26,
     "d_inner": 1200,

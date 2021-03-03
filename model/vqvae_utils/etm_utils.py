@@ -20,7 +20,9 @@ class ETMConfig(object):
                num_hidden_layers=12,
                hidden_act="gelu",
                hidden_dropout_prob=0.1,
-               initializer_range=0.02):
+               initializer_range=0.02,
+               apply_bn_vae_mean=True,
+               apply_bn_vae_var=True):
     
     self.vocab_size = vocab_size
     self.topic_size = topic_size
@@ -30,6 +32,8 @@ class ETMConfig(object):
     self.hidden_act = hidden_act
     self.hidden_dropout_prob = hidden_dropout_prob
     self.initializer_range = initializer_range
+    self.apply_bn_vae_mean = apply_bn_vae_mean
+    self.apply_bn_vae_var = apply_bn_vae_var
 
   @classmethod
   def from_dict(cls, json_object):
@@ -73,7 +77,7 @@ class ETM(object):
       etm_config.hidden_dropout_prob = 0.0
 
     with tf.variable_scope("etm", scope):
-      with tf.variable_scope("embeddings"):
+      with tf.variable_scope("bow_embeddings"):
        [self.term_count, 
        self.term_binary, 
        self.term_freq] = tokenid2bow(input_ids, etm_config.vocab_size)
@@ -88,6 +92,14 @@ class ETM(object):
                           intermediate_act_fn=get_activation(etm_config.hidden_act),
                           scope="bow_mlp")
 
+    if hidden_vector is not None:
+      with tf.variable_scope("etm", scope):
+        if hidden_vector.shape[-1] != etm_config.hidden_size:
+          self.hidden_vector = tf.layers.dense(
+              hidden_vector, etm_config.hidden_size,
+              name="hidden_vector_project")
+      self.q_theta = tf.concat([self.q_theta, self.hidden_vector], axis=-1)
+
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("bridge"):
         self.mu_q_theta = mlp(
@@ -97,24 +109,43 @@ class ETM(object):
                               is_training=is_training,
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=None,
-                              scope="mu")
+                              scope="mu_theta")
+        if etm_config.apply_bn_vae_mean:
+          with tf.variable_scope("vae_mu_bn"): 
+            self.mu_q_theta = tf.layers.batch_normalization(
+                      self.mu_q_theta,
+                      training=is_training,
+                      scale=False,
+                      center=False
+              )
+            self.mu_q_theta = scalar_layer(self.mu_q_theta, tau=0.5, 
+              mode='positive', initializer_range=0.02):
 
-        self.logsigma_q_theta = mlp(
+        self.sigma_std_q_theta = mlp(
                               input_tensor=self.q_theta, 
                               num_hidden_layers=1,
                               hidden_size=etm_config.topic_size,
                               is_training=is_training,
                               dropout_prob=etm_config.hidden_dropout_prob,
-                              intermediate_act_fn=None,
-                              scope="logsigma"
+                              intermediate_act_fn=tf.nn.softplus,
+                              scope="sigma_std"
                               )
+        if etm_config.apply_bn_vae_var:
+          with tf.variable_scope("vae_sigma_std_bn"): 
+            self.sigma_std_q_theta = tf.layers.batch_normalization(
+                      self.sigma_std_q_theta,
+                      training=is_training,
+                      scale=False,
+                      center=False
+              )
+            self.sigma_std_q_theta = scalar_layer(self.sigma_std_q_theta, tau=0.5, 
+              mode='negative', initializer_range=0.02):
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("reparameterize"):
         self.z = reparameterize(self.mu_q_theta, 
-                        self.logsigma_q_theta, is_training)
+                        self.sigma_std_q_theta, is_training)
 
-        
         # [batch_size, topic_size]
         self.theta = tf.nn.softmax(self.z, dim=-1)
 
@@ -144,7 +175,6 @@ class ETM(object):
         # preds: [batch_size, vocab_size]
         self.preds = tf.log(tf.matmul(self.theta, self.beta)+1e-10)
         
-
   def get_hidden_vector(self):
     return self.z
 
@@ -160,9 +190,25 @@ class ETM(object):
     return self.recon_loss
 
   def get_kl_loss(self):
+    self.sigma_q_theta = tf.pow(self.sigma_std_q_theta, 2.0)
+    self.logsigma_theta = tf.log(self.sigma_q_theta+1e-10)
     self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_theta - tf.pow(self.mu_theta, 2) - tf.exp(self.logsigma_theta), dim=-1)
     self.kl_theta_loss = tf.reduce_mean(self.per_example_kl_theta_loss)
     return self.kl_theta_loss
+
+
+def scalar_layer(input_tensor, tau=0.5, 
+              mode='positive', initializer_range=0.02):
+  with tf.variable_scope("vae_bn_scale"):
+    scale = tf.get_variable(
+                  name="scale",
+                  shape=[input_tensor.shape[-1]],
+                  initializer=create_initializer(initializer_range))
+  if mode == 'positive':
+      scale = tau + (1 - tau) * tf.nn.sigmoid(scale)
+  else:
+      scale = (1 - tau) * K.sigmoid(-scale)
+  return input_tensor * tf.sqrt(scale)
 
 def gelu(input_tensor):
   """Gaussian Error Linear Unit.
@@ -248,10 +294,10 @@ def mlp(input_tensor,
     final_outputs = prev_output
     return final_outputs
 
-def reparameterize(mu_q_theta, logsigma_q_theta, is_training):
+def reparameterize(mu_q_theta, sigma_q_theta, is_training):
   if is_training:
-    sigma_q_theta = tf.exp(0.5 * logsigma_q_theta) 
-    eps = tf.random.normal(tf.get_shape_list(logsigma_q_theta), 
+    sigma_q_theta = tf.pow(sigma_std_q_theta, 2)
+    eps = tf.random.normal(get_shape_list(sigma_q_theta), 
                             mean=0.0, stddev=1.0, dtype=tf.dtypes.float32)
     return eps*sigma_q_theta+mu_q_theta
   else:

@@ -867,7 +867,7 @@ def attention_layer(from_tensor,
                     from_seq_length=None,
                     to_seq_length=None,
                     use_relative_position=False,
-                    relative_position_bias=None,
+                    relative_position_embeddings=None,
                     dropout_name=None):
   """Performs multi-headed attention from `from_tensor` to `to_tensor`.
   This is an implementation of multi-headed attention based on "Attention
@@ -996,7 +996,7 @@ def attention_layer(from_tensor,
     assert from_seq_length == to_seq_length
     # max_relative_position = 64
     # `relation_keys` = [F|T, F|T, H]
-    relations_keys = tf.identity(relative_position_bias)
+    relations_keys = tf.identity(relative_position_embeddings)
     # query_layer_t is [F, B, N, H]
     query_layer_t = tf.transpose(query_layer, [2, 0, 1, 3])
     # query_layer_r is [F, B * N, H]
@@ -1045,7 +1045,7 @@ def attention_layer(from_tensor,
 
   if use_relative_position:
     # `relation_values` = [F|T, F|T, H]
-    relations_values = tf.identity(relative_position_bias)
+    relations_values = tf.identity(relative_position_embeddings)
     # attention_probs_t is [F, B, N, T]
     attention_probs_t = tf.transpose(attention_probs, [2, 0, 1, 3])
     # attention_probs_r is [F, B * N, T]

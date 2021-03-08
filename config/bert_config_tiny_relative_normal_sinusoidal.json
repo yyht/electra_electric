@@ -19,7 +19,7 @@
   "corrupted":false,
   "conv_bert":"none",
   "use_relative_position":true,
-  "max_relative_position":32,
+  "max_relative_position":64,
   "relative_position_type":"relative_normal",
   "relative_position_embedding_type":"sinusoidal",
   "num_buckets":32

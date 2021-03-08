@@ -223,6 +223,15 @@ class BertModel(object):
                     relative_position_type=config.relative_position_type,
                     relative_position_embedding_type=config.relative_position_embedding_type)
 
+        print(self.relative_position_table, "===relative_position_table===")
+        print(self.relative_position_embeddings, "===relative_position_embeddings===")
+
+        tf.logging.info("===relative_position_table===")
+        tf.logging.info(self.relative_position_table)
+
+        tf.logging.info("===relative_position_embeddings===")
+        tf.logging.info(self.relative_position_embeddings)
+
         # Run the stacked transformer.
         # `sequence_output` shape = [batch_size, seq_length, hidden_size].
         [self.all_encoder_layers, 

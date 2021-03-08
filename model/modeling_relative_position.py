@@ -867,8 +867,8 @@ def attention_layer(from_tensor,
                     from_seq_length=None,
                     to_seq_length=None,
                     use_relative_position=False,
-                    relative_position_bias=None
-                    ):
+                    relative_position_bias=None,
+                    dropout_name=None):
   """Performs multi-headed attention from `from_tensor` to `to_tensor`.
   This is an implementation of multi-headed attention based on "Attention
   is all you Need". If `from_tensor` and `to_tensor` are the same, then
@@ -1030,7 +1030,7 @@ def attention_layer(from_tensor,
 
   # This is actually dropping out entire tokens to attend to, which might
   # seem a bit unusual, but is taken from the original Transformer paper.
-  attention_probs = dropout(attention_probs, attention_probs_dropout_prob, dropout_name=)
+  attention_probs = dropout(attention_probs, attention_probs_dropout_prob, dropout_name=dropout_name)
 
   # `value_layer` = [B, T, N, H]
   value_layer = tf.reshape(

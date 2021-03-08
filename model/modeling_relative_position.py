@@ -207,7 +207,7 @@ class BertModel(object):
         attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
 
-        input_shape = get_shape_list(inputs)
+        input_shape = get_shape_list(input_ids)
         size_per_head = config.hidden_size // config.num_attention_heads
 
         [self.relative_position_embeddings, 

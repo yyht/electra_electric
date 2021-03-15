@@ -867,7 +867,7 @@ def attention_layer(from_tensor,
         num_attention_heads * size_per_head,
         conv_kernel_size,
         padding='same',
-        activation=value_act,
+        activation=None,
         depthwise_initializer=create_initializer(initializer_range),
         pointwise_initializer=create_initializer(initializer_range),
         name="conv_attn_key")

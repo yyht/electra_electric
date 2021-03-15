@@ -845,19 +845,21 @@ def attention_layer(from_tensor,
     # original_mask = [B, T]
     # `value_layer` = [B, N, T, H]
     # [B, T, N, H]
-    value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
+    context_value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
+    print(value_layer, "===value_layer===")
     # [B, T, N*H]
-    value_layer = tf.reshape(
-        value_layer,
+    context_value_layer = tf.reshape(
+        context_value_layer,
         [batch_size, to_seq_length, num_attention_heads * size_per_head])
 
+    print(context_value_layer, "===context_value_layer===")
     value_layer_mask = tf.expand_dims(original_mask, axis=-1)
 
     # value_layer_mask: [B, T, 1]
     # value_layer: [B, T, N*H]
     # masked_value_layer: [B, T, N*H]
-    masked_value_layer = value_layer * value_layer_mask
-
+    masked_value_layer = context_value_layer * value_layer_mask
+    print(masked_value_layer, "===masked_value_layer===")
     # [B, T, N*H]
     conv_value_layer = tf.layers.separable_conv1d(
         masked_value_layer,
@@ -870,10 +872,12 @@ def attention_layer(from_tensor,
         name="conv_attn_key")
 
     conv_value_layer *= value_layer_mask
+    print(conv_value_layer, "===conv_value_layer===")
 
     conv_value_layer = tf.reshape(
         conv_value_layer,
         [batch_size, to_seq_length, num_attention_heads, size_per_head])
+    print(conv_value_layer, "===conv_value_layer===")
 
     # context_layer: [B, F, N, H]
     # conv_value_layer: [B, T, N, H]

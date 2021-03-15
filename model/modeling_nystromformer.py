@@ -875,7 +875,6 @@ def attention_layer(from_tensor,
             pointwise_initializer=create_initializer(initializer_range)
     )
 
-    conv_value_layer *= value_layer_mask
     print(conv_value_layer, "===conv_value_layer===")
 
     conv_value_layer = tf.transpose(conv_value_layer,

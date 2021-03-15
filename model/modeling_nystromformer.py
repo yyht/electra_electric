@@ -849,7 +849,7 @@ def attention_layer(from_tensor,
     # [B, N, T, H]
     print(context_value_layer, "===context_value_layer===")
     value_layer_mask = tf.expand_dims(original_mask, axis=1)
-    value_layer_mask = tf.expand_dims(original_mask, axis=-1)
+    value_layer_mask = tf.expand_dims(value_layer_mask, axis=-1)
 
     # value_layer_mask:   [B, 1, T, 1]
     # value_layer:        [B, N, T, H]

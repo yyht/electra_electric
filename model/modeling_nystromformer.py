@@ -841,6 +841,7 @@ def attention_layer(from_tensor,
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
 
   if use_conv:
+    print("==use_conv==")
     # # `value_layer` = [B, N, T, H]
     # original_mask = [B, T]
     # `value_layer` = [B, N, T, H]

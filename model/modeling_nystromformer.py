@@ -878,9 +878,9 @@ def attention_layer(from_tensor,
     conv_value_layer *= value_layer_mask
     print(conv_value_layer, "===conv_value_layer===")
 
-    conv_value_layer = tf.reshape(
-        conv_value_layer,
-        [batch_size, to_seq_length, num_attention_heads, size_per_head])
+    conv_value_layer = tf.transpose(conv_value_layer,
+                [0, 1, 3, 2]
+                    )
     print(conv_value_layer, "===conv_value_layer===")
 
     # context_layer: [B, F, N, H]

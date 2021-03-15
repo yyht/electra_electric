@@ -844,33 +844,36 @@ def attention_layer(from_tensor,
     print("==use_conv==")
     # # `value_layer` = [B, N, T, H]
     # original_mask = [B, T]
-    # `value_layer` = [B, N, T, H]
-    # [B, T, N, H]
-    context_value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
+    context_value_layer = value_layer
     print(value_layer, "===value_layer===")
-    # [B, T, N*H]
-    context_value_layer = tf.reshape(
-        context_value_layer,
-        [batch_size, to_seq_length, num_attention_heads * size_per_head])
-
+    # [B, N, T, H]
     print(context_value_layer, "===context_value_layer===")
+    value_layer_mask = tf.expand_dims(original_mask, axis=1)
     value_layer_mask = tf.expand_dims(original_mask, axis=-1)
 
-    # value_layer_mask: [B, T, 1]
-    # value_layer: [B, T, N*H]
-    # masked_value_layer: [B, T, N*H]
+    # value_layer_mask:   [B, 1, T, 1]
+    # value_layer:        [B, N, T, H]
+    # masked_value_layer: [B, N, T, H]
     masked_value_layer = context_value_layer * value_layer_mask
     print(masked_value_layer, "===masked_value_layer===")
-    # [B, T, N*H]
-    conv_value_layer = tf.layers.separable_conv1d(
-        masked_value_layer,
-        num_attention_heads * size_per_head,
-        conv_kernel_size,
-        padding='same',
-        activation=None,
-        depthwise_initializer=create_initializer(initializer_range),
-        pointwise_initializer=create_initializer(initializer_range),
-        name="conv_attn_key")
+
+    # channel-last: (B, T, H, N)
+    masked_value_layer = tf.transpose(masked_value_layer,
+                          [0, 2, 3, 1])
+
+    conv_value_layer = tf.layers.separable_conv2d(
+            masked_value_layer, 
+            filters=num_attention_heads, 
+            kernel_size=(conv_kernel_size, 1), 
+            strides=(1, 1), 
+            padding='same',
+            dilation_rate=(1, 1), 
+            depth_multiplier=1,
+            activation=value_act, 
+            use_bias=False, 
+            depthwise_initializer=create_initializer(initializer_range),
+            pointwise_initializer=create_initializer(initializer_range)
+    )
 
     conv_value_layer *= value_layer_mask
     print(conv_value_layer, "===conv_value_layer===")

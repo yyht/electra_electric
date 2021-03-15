@@ -800,7 +800,7 @@ def attention_layer(from_tensor,
     # `attention_mask` = [B, 1, T]
     attention_mask = tf.expand_dims(original_mask, axis=[1])
     # `attention_mask` = [B, 1, 1, T]
-    attention_mask = tf.expand_dims(original_mask, axis=[2])
+    attention_mask = tf.expand_dims(attention_mask, axis=[2])
 
     # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
     # masked positions, this operation will create a tensor which is 0.0 for

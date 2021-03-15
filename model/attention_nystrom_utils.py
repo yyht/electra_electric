@@ -8,7 +8,7 @@ import re
 import six
 import tensorflow as tf
 
-def iterative_inv(mat, n_iter=6):
+def iterative_inv(mat, n_iter=20):
 
   """
   https://downloads.hindawi.com/journals/aaa/2014/563787.pdf

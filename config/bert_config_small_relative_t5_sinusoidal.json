@@ -3,13 +3,13 @@
   "directionality": "bidi", 
   "hidden_act": "gelu", 
   "hidden_dropout_prob": 0.1, 
-  "hidden_size": 312, 
+  "hidden_size": 256, 
   "initializer_range": 0.02, 
-  "intermediate_size": 1200, 
+  "intermediate_size": 1024, 
   "max_position_embeddings": 512, 
-  "num_attention_heads": 12, 
-  "num_hidden_layers": 4, 
-  "pooler_fc_size": 312, 
+  "num_attention_heads": 4, 
+  "num_hidden_layers": 12, 
+  "pooler_fc_size": 256, 
   "pooler_num_attention_heads": 12, 
   "pooler_num_fc_layers": 3, 
   "pooler_size_per_head": 128,
@@ -18,8 +18,11 @@
   "vocab_size": 21128,
   "corrupted":false,
   "conv_bert":"none",
-  "num_landmarks":32,
-  "n_iter":20,
-  "use_conv":true,
-  "conv_kernel_size":33
+  "use_relative_position":true,
+  "max_relative_position":64,
+  "relative_position_type":"relative_t5",
+  "relative_position_embedding_type":"sinusoidal_trainable",
+  "num_buckets":32
 }
+
+

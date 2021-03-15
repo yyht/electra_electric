@@ -46,7 +46,10 @@ class BertConfig(object):
                max_position_embeddings=512,
                type_vocab_size=16,
                initializer_range=0.02,
-               num_landmarks=32):
+               num_landmarks=32,
+               use_conv=False,
+               conv_kernel_size=33,
+               n_iter=10):
     """Constructs BertConfig.
 
     Args:
@@ -83,6 +86,9 @@ class BertConfig(object):
     self.type_vocab_size = type_vocab_size
     self.initializer_range = initializer_range
     self.num_landmarks = num_landmarks
+    self.use_conv = use_conv
+    self.conv_kernel_size = conv_kernel_size
+    self.n_iter = n_iter
 
   @classmethod
   def from_dict(cls, json_object):
@@ -224,7 +230,10 @@ class BertModel(object):
             do_return_all_layers=True,
             num_landmarks=config.num_landmarks,
             original_mask=tf.cast(input_mask, dtype=tf.float32),
-            dropout_name=tf.get_variable_scope().name+"/encoder")
+            dropout_name=tf.get_variable_scope().name+"/encoder",
+            use_conv=config.use_conv,
+            conv_kernel_size=config.conv_kernel_size,
+            n_iter=config.n_iter)
 
       self.sequence_output = self.all_encoder_layers[-1]
       # The "pooler" converts the encoded sequence tensor of shape
@@ -607,7 +616,10 @@ def attention_layer(from_tensor,
                     to_seq_length=None,
                     num_landmarks=64,
                     original_mask=None,
-                    dropout_name=None):
+                    dropout_name=None,
+                    use_conv=False,
+                    conv_kernel_size=33,
+                    n_iter=10):
   """Performs multi-headed attention from `from_tensor` to `to_tensor`.
 
   This is an implementation of multi-headed attention based on "Attention
@@ -786,14 +798,14 @@ def attention_layer(from_tensor,
 
   if original_mask is not None:
     # `attention_mask` = [B, 1, T]
-    original_mask = tf.expand_dims(original_mask, axis=[1])
+    attention_mask = tf.expand_dims(original_mask, axis=[1])
     # `attention_mask` = [B, 1, 1, T]
-    original_mask = tf.expand_dims(original_mask, axis=[2])
+    attention_mask = tf.expand_dims(original_mask, axis=[2])
 
     # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
     # masked positions, this operation will create a tensor which is 0.0 for
     # positions we want to attend and -10000.0 for masked positions.
-    adder = (1.0 - tf.cast(original_mask, tf.float32)) * -10000.0
+    adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
 
     # Since we are adding it to the raw scores before the softmax, this is
     # effectively the same as removing these entirely.
@@ -806,7 +818,7 @@ def attention_layer(from_tensor,
   # kernel_1: [B, N, F, n-landmarks]
   # iterative_inv(kernel_2) : [B, N, n-landmarks, n-landmarks]
   # kernel_12:[B, N, F, n-landmarks]
-  kernel_2_plinv = iterative_inv(kernel_2, n_iter=10)
+  kernel_2_plinv = iterative_inv(kernel_2, n_iter=n_iter)
   kernel_12 = tf.matmul(kernel_1, kernel_2_plinv)
   print(kernel_12, "==kernel_12==")
 
@@ -827,6 +839,45 @@ def attention_layer(from_tensor,
 
   # `context_layer` = [B, F, N, H]
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
+
+  if use_conv:
+    # # `value_layer` = [B, N, T, H]
+    # original_mask = [B, T]
+    # `value_layer` = [B, N, T, H]
+    # [B, T, N, H]
+    value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
+    # [B, T, N*H]
+    value_layer = tf.reshape(
+        value_layer,
+        [batch_size, to_seq_length, num_attention_heads * size_per_head])
+
+    value_layer_mask = tf.expand_dims(original_mask, axis=-1)
+
+    # value_layer_mask: [B, T, 1]
+    # value_layer: [B, T, N*H]
+    # masked_value_layer: [B, T, N*H]
+    masked_value_layer = value_layer * value_layer_mask
+
+    # [B, T, N*H]
+    conv_value_layer = tf.layers.separable_conv1d(
+        masked_value_layer,
+        num_attention_heads * size_per_head,
+        conv_kernel_size,
+        padding='same',
+        activation=value_act,
+        depthwise_initializer=create_initializer(1/conv_kernel_size),
+        pointwise_initializer=create_initializer(initializer_range),
+        name="conv_attn_key")
+
+    conv_value_layer *= value_layer_mask
+
+    conv_value_layer = tf.reshape(
+        conv_value_layer,
+        [batch_size, to_seq_length, num_attention_heads, size_per_head])
+
+    # context_layer: [B, F, N, H]
+    # conv_value_layer: [B, T, N, H]
+    context_layer += conv_value_layer
 
   if do_return_2d_tensor:
     # `context_layer` = [B*F, N*V]
@@ -855,7 +906,10 @@ def transformer_model(input_tensor,
                       do_return_all_layers=False,
                       num_landmarks=64,
                       original_mask=None,
-                      dropout_name=None):
+                      dropout_name=None,
+                      use_conv=False,
+                      conv_kernel_size=33,
+                      n_iter=10):
   """Multi-headed, multi-layer Transformer from "Attention is All You Need".
 
   This is almost an exact implementation of the original Transformer encoder.
@@ -944,7 +998,10 @@ def transformer_model(input_tensor,
               to_seq_length=seq_length,
               num_landmarks=num_landmarks,
               original_mask=original_mask,
-              dropout_name=attention_dropout_name)
+              dropout_name=attention_dropout_name,
+              use_conv=use_conv,
+              conv_kernel_size=conv_kernel_size,
+              n_iter=n_iter)
           attention_heads.append(attention_head)
 
         attention_output = None

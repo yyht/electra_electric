@@ -576,8 +576,10 @@ def main(_):
           num_shards=FLAGS.num_tpu_cores,
           per_host_input_for_training=is_per_host))
 
-  init_checkpoint = os.path.join(FLAGS.input_data_dir, FLAGS.init_checkpoint)
-
+  if FLAGS.init_checkpoint:
+    init_checkpoint = os.path.join(FLAGS.input_data_dir, FLAGS.init_checkpoint)
+  else:
+    init_checkpoint = None
   model_fn = model_fn_builder(
       bert_config=bert_config,
       init_checkpoint=init_checkpoint,

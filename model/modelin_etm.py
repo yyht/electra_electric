@@ -117,7 +117,7 @@ class ETM(object):
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
-                              scope="mu_theta")
+                              scope="mu_theta_mlp")
         if etm_config.apply_bn_vae_mean:
           with tf.variable_scope("vae_mu_bn"): 
             self.mu_q_theta = tf.layers.batch_normalization(
@@ -137,7 +137,7 @@ class ETM(object):
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=tf.nn.softplus,
                               initializer_range=etm_config.initializer_range,
-                              scope="sigma_std"
+                              scope="sigma_std_mlp"
                               )
         if etm_config.apply_bn_vae_var:
           with tf.variable_scope("vae_sigma_std_bn"): 
@@ -291,7 +291,7 @@ def mlp(input_tensor,
         scope=None
         ):
   prev_output = input_tensor
-  with tf.variable_scope("mlp", scope):
+  with tf.variable_scope(scope, default_name="mlp"):
     for layer_idx in range(num_hidden_layers):
       with tf.variable_scope("layer_%d" % layer_idx):
         layer_input = prev_output

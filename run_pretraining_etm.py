@@ -382,7 +382,7 @@ def main(_):
         continue
       content = line.strip()
       vec = map(float, content.split()[1:])
-      embedding_matrix.append(vec)
+      embedding_matrix.append(list(vec))
 
   embedding_matrix = tf.convert_to_tensor(np.array(embedding_matrix).astype(np.float32))
 

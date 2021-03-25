@@ -221,7 +221,7 @@ def tokenid2tf_tpu(input_ids, vocab_size, **kargs):
   # one_hot_input_ids = tf.one_hot(input_ids, depth=vocab_size)
   if input_ids.shape.ndims == 2:
     input_ids = tf.expand_dims(input_ids, axis=[-1])
-  input_shape = bert_utils.get_shape_list(input_ids)
+  input_shape = get_shape_list(input_ids)
   flat_input_ids = tf.reshape(input_ids, [-1])
   one_hot_input_ids = tf.one_hot(flat_input_ids, depth=vocab_size)
   one_hot_input_ids = tf.reshape(one_hot_input_ids,

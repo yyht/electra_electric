@@ -76,8 +76,8 @@ def reshape_from_matrix(output_tensor, orig_shape_list):
   if len(orig_shape_list) == 2:
     return output_tensor
 
-  # output_shape = get_shape_list(output_tensor)
-  output_shape = tf.shape(output_tensor)
+  output_shape = get_shape_list(output_tensor)
+  # output_shape = tf.shape(output_tensor)
 
   orig_dims = orig_shape_list[0:-1]
   width = output_shape[-1]
@@ -206,7 +206,7 @@ def sparse_idf2dense(sparse_term_freq, sparse_term_count):
   return dense_term_freq, dense_term_count
 
 def tokenid2tf(input_ids, vocab_size, **kargs):
-  sparse_input_ids = _to_sparse_v1(input_ids)
+  sparse_input_ids = _to_sparse(input_ids)
   cleaned_input = _to_vocab_range(sparse_input_ids, vocab_size)
   [sparse_term_freq, 
   sparse_term_count] = _to_term_frequency(cleaned_input, 

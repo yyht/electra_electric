@@ -76,7 +76,8 @@ def reshape_from_matrix(output_tensor, orig_shape_list):
   if len(orig_shape_list) == 2:
     return output_tensor
 
-  output_shape = get_shape_list(output_tensor)
+  # output_shape = get_shape_list(output_tensor)
+  output_shape = tf.shape(output_tensor)
 
   orig_dims = orig_shape_list[0:-1]
   width = output_shape[-1]

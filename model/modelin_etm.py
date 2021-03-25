@@ -92,6 +92,7 @@ class ETM(object):
                           is_training=is_training,
                           dropout_prob=etm_config.hidden_dropout_prob,
                           intermediate_act_fn=get_activation(etm_config.hidden_act),
+                          initializer_range=etm_config.initializer_range,
                           scope="bow_mlp")
 
     if hidden_vector is not None:

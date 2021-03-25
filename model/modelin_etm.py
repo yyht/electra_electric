@@ -111,6 +111,7 @@ class ETM(object):
                               is_training=is_training,
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=None,
+                              initializer_range=etm_config.initializer_range,
                               scope="mu_theta")
         if etm_config.apply_bn_vae_mean:
           with tf.variable_scope("vae_mu_bn"): 
@@ -130,6 +131,7 @@ class ETM(object):
                               is_training=is_training,
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=tf.nn.softplus,
+                              initializer_range=etm_config.initializer_range,
                               scope="sigma_std"
                               )
         if etm_config.apply_bn_vae_var:
@@ -280,6 +282,7 @@ def mlp(input_tensor,
         is_training,
         dropout_prob,
         intermediate_act_fn,
+        initializer_range,
         scope=None
         ):
   prev_output = input_tensor

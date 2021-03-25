@@ -185,6 +185,7 @@ def _to_sparse(x):
 
 def _to_sparse_v1(x):
   tensor_shape = tf.shape(x)
+  tensor_shape = tf.cast(tensor_shape, dtype=tf.int64)
   idx = tf.where(tf.not_equal(x, 0))
   # Use tf.shape(a_t, out_type=tf.int64) instead of a_t.get_shape() if tensor shape is dynamic
   sparse = tf.SparseTensor(idx, tf.gather_nd(x, idx), tensor_shape)

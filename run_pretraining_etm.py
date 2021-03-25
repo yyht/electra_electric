@@ -142,7 +142,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     [term_count, 
     term_binary, 
     term_freq] = tfidf_utils.tokenid2tf(
-                      example["input_ori_ids"],
+                      features["input_ori_ids"],
                       vocab_size)
 
     features["input_term_count"] = term_count

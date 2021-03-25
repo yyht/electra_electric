@@ -251,7 +251,6 @@ def input_fn_builder(input_files,
                      vocab_size,
                      num_cpu_threads=4):
   """Creates an `input_fn` closure to be passed to TPUEstimator."""
-  data_config.vocab_size = vocab_size
   def input_fn(params):
     """The actual input function."""
     batch_size = params["batch_size"]
@@ -291,7 +290,7 @@ def input_fn_builder(input_files,
 
     d = d.apply(
         tf.contrib.data.map_and_batch(
-            lambda record: _decode_record(record, name_to_features, data_config),
+            lambda record: _decode_record(record, name_to_features, vocab_size),
             batch_size=batch_size,
             num_parallel_batches=num_cpu_threads,
             drop_remainder=True))
@@ -301,7 +300,7 @@ def input_fn_builder(input_files,
   return input_fn
 
 
-def _decode_record(record, name_to_features, data_config):
+def _decode_record(record, name_to_features, vocab_size):
   """Decodes a record to a TensorFlow example."""
   example = tf.parse_single_example(record, name_to_features)
 
@@ -316,7 +315,7 @@ def _decode_record(record, name_to_features, data_config):
   [term_count, 
   term_binary, 
   term_freq] = tfidf_utils.tokenid2tf(example["input_ori_ids"], 
-                            data_config.vocab_size)
+                            vocab_size)
 
   example['input_term_count'] = term_count
   example['input_term_binary'] = term_binary

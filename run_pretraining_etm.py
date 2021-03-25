@@ -290,7 +290,7 @@ def input_fn_builder(input_files,
 
     d = d.batch(batch_size)
     d = d.map(
-      lambda record: _decode_record(record, name_to_features, vocab_size)
+      lambda record: _decode_record(record, name_to_features, vocab_size),
       num_parallel_calls=num_cpu_threads
       )
 

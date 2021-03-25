@@ -183,6 +183,13 @@ def _to_sparse(x):
   sparse = tf.SparseTensor(idx, tf.gather_nd(x, idx), tensor_shape)
   return sparse
 
+def _to_sparse_v1(x):
+  tensor_shape = tf.shape(x)
+  idx = tf.where(tf.not_equal(x, 0))
+  # Use tf.shape(a_t, out_type=tf.int64) instead of a_t.get_shape() if tensor shape is dynamic
+  sparse = tf.SparseTensor(idx, tf.gather_nd(x, idx), tensor_shape)
+  return sparse
+
 def _to_vocab_range(x, vocab_size):
   """Enforces that the vocab_ids in x are positive."""
   output = tf.SparseTensor(
@@ -197,7 +204,7 @@ def sparse_idf2dense(sparse_term_freq, sparse_term_count):
   return dense_term_freq, dense_term_count
 
 def tokenid2tf(input_ids, vocab_size, **kargs):
-  sparse_input_ids = _to_sparse(input_ids)
+  sparse_input_ids = _to_sparse_v1(input_ids)
   cleaned_input = _to_vocab_range(sparse_input_ids, vocab_size)
   [sparse_term_freq, 
   sparse_term_count] = _to_term_frequency(cleaned_input, 

@@ -180,8 +180,13 @@ class ETM(object):
         self.topic_word_align = tf.matmul(self.topic_embedding_table,
                                         self.embedding_table,
                                         transpose_b=True)
+
+        tf.logging.info("*** topic_word_align ***")
+        tf.logging.info(self.topic_word_align)
         # [topic_size, vocab_size]
-        self.beta = tf.softmax(self.topic_word_align, axis=-1)
+        self.beta = tf.nn.softmax(self.topic_word_align, axis=-1)
+        tf.logging.info("*** beta ***")
+        tf.logging.info(self.beta)
 
         # theta: [batch_size, topic_size]
         # beta : [topic_size, vocab_size]

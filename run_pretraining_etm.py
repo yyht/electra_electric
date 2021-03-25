@@ -27,6 +27,7 @@ from model import optimization
 from util import utils, log_utils
 from bunch import Bunch
 from model.vqvae_utils import tfidf_utils
+import numpy as np
 
 flags = tf.flags
 

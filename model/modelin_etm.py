@@ -90,6 +90,7 @@ class ETM(object):
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("encoder"):
+        # [batch_size, hidden_size]
         self.q_theta = mlp(input_tensor=self.term_count, 
                           num_hidden_layers=etm_config.num_hidden_layers, 
                           hidden_size=etm_config.hidden_size,
@@ -109,6 +110,7 @@ class ETM(object):
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("bridge"):
+        # [batch_size, hidden_size]
         self.mu_q_theta = mlp(
                               input_tensor=self.q_theta, 
                               num_hidden_layers=1,
@@ -118,6 +120,9 @@ class ETM(object):
                               intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
                               scope="mu_theta_mlp")
+        tf.logging.info("*** mu_q_theta ***")
+        tf.logging.info(self.mu_q_theta)
+
         if etm_config.apply_bn_vae_mean:
           with tf.variable_scope("vae_mu_bn"): 
             self.mu_q_theta = tf.layers.batch_normalization(
@@ -129,6 +134,9 @@ class ETM(object):
             self.mu_q_theta = scalar_layer(self.mu_q_theta, tau=0.5, 
               mode='positive', initializer_range=0.02)
 
+            tf.logging.info("*** after bn mu_q_theta ***")
+            tf.logging.info(self.mu_q_theta)
+
         self.sigma_std_q_theta = mlp(
                               input_tensor=self.q_theta, 
                               num_hidden_layers=1,
@@ -139,6 +147,10 @@ class ETM(object):
                               initializer_range=etm_config.initializer_range,
                               scope="sigma_std_mlp"
                               )
+
+        tf.logging.info("*** sigma_std_q_theta ***")
+        tf.logging.info(self.sigma_std_q_theta)
+
         if etm_config.apply_bn_vae_var:
           with tf.variable_scope("vae_sigma_std_bn"): 
             self.sigma_std_q_theta = tf.layers.batch_normalization(
@@ -150,13 +162,22 @@ class ETM(object):
             self.sigma_std_q_theta = scalar_layer(self.sigma_std_q_theta, tau=0.5, 
               mode='negative', initializer_range=0.02)
 
+            tf.logging.info("*** after bn sigma_std_q_theta ***")
+            tf.logging.info(self.sigma_std_q_theta)
+
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("reparameterize"):
         self.z = reparameterize(self.mu_q_theta, 
                         self.sigma_std_q_theta, is_training)
 
+        tf.logging.info("*** reparameterize z ***")
+        tf.logging.info(self.z)
+
         # [batch_size, topic_size]
         self.theta = tf.nn.softmax(self.z, dim=-1)
+
+        tf.logging.info("*** theta ***")
+        tf.logging.info(self.theta)
 
         with tf.variable_scope("embeddings"):
           if embedding_matrix is None:
@@ -171,11 +192,17 @@ class ETM(object):
                   initializer=tf.constant_initializer(embedding_matrix, dtype=tf.float32),
                   trainable=False)
 
+          tf.logging.info("*** vocab_word_embeddings ***")
+          tf.logging.info(self.embedding_table)
+
         with tf.variable_scope("embeddings"):
           self.topic_embedding_table = tf.get_variable(
                   name="topic_word_embeddings",
                   shape=[etm_config.topic_size, etm_config.embedding_size],
                   initializer=create_initializer(etm_config.initializer_range))
+
+          tf.logging.info("*** topic_word_embeddings ***")
+          tf.logging.info(self.topic_embedding_table)
 
         self.topic_word_align = tf.matmul(self.topic_embedding_table,
                                         self.embedding_table,
@@ -192,6 +219,9 @@ class ETM(object):
         # beta : [topic_size, vocab_size]
         # preds: [batch_size, vocab_size]
         self.preds = tf.log(tf.matmul(self.theta, self.beta)+1e-10)
+
+        tf.logging.info("*** preds ***")
+        tf.logging.info(self.preds)
         
   def get_hidden_vector(self):
     return self.z
@@ -210,7 +240,7 @@ class ETM(object):
   def get_kl_loss(self):
     self.sigma_q_theta = tf.pow(self.sigma_std_q_theta, 2.0)
     self.logsigma_theta = tf.log(self.sigma_q_theta+1e-10)
-    self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_theta - tf.pow(self.mu_theta, 2) - tf.exp(self.logsigma_theta), dim=-1)
+    self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_theta - tf.pow(self.mu_q_theta, 2) - tf.exp(self.logsigma_theta), dim=-1)
     self.kl_theta_loss = tf.reduce_mean(self.per_example_kl_theta_loss)
     return self.kl_theta_loss
 

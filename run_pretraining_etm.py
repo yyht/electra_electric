@@ -393,7 +393,7 @@ def main(_):
       content = line.strip()
       embedding_matrix.append([float(item) for item in content.split()])
 
-  embedding_matrix = tf.convert_to_tensor(np.array(embedding_matrix).astype(np.float32))
+  embedding_matrix = np.array(embedding_matrix).astype(np.float32)
 
   model_fn = model_fn_builder(
       bert_config=bert_config,

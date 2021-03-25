@@ -160,12 +160,16 @@ class ETM(object):
 
         with tf.variable_scope("embeddings"):
           if embedding_matrix is None:
-           self.embedding_table = tf.get_variable(
+            self.embedding_table = tf.get_variable(
                   name="vocab_word_embeddings",
                   shape=[etm_config.vocab_size, etm_config.embedding_size],
                   initializer=create_initializer(initializer_range))
           else:
-            self.embedding_table = embedding_matrix
+            self.embedding_table = tf.get_variable(
+                  name="vocab_word_embeddings",
+                  shape=[etm_config.vocab_size, etm_config.embedding_size],
+                  initializer=tf.constant_initializer(embedding_matrix, dtype=tf.float32),
+                  trainable=False)
 
         with tf.variable_scope("embeddings"):
           self.topic_embedding_table = tf.get_variable(

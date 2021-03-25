@@ -216,7 +216,7 @@ def scalar_layer(input_tensor, tau=0.5,
   if mode == 'positive':
       scale = tau + (1 - tau) * tf.nn.sigmoid(scale)
   else:
-      scale = (1 - tau) * K.sigmoid(-scale)
+      scale = (1 - tau) * tf.sigmoid(-scale)
   return input_tensor * tf.sqrt(scale)
 
 def gelu(input_tensor):

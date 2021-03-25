@@ -84,6 +84,10 @@ class ETM(object):
        self.term_binary = input_term_binary
        self.term_freq = input_term_freq
 
+       tf.logging.info(self.term_count)
+       tf.logging.info(self.term_binary)
+       tf.logging.info(self.term_freq)
+
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("encoder"):
         self.q_theta = mlp(input_tensor=self.term_count, 

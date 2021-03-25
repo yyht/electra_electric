@@ -14,7 +14,7 @@ import tensorflow as tf
 class ETMConfig(object):
   def __init__(self,
                vocab_size,
-               topic_size,
+               topic_size=768,
                hidden_size=768,
                embedding_size=768,
                num_hidden_layers=12,

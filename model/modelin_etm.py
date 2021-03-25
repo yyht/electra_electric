@@ -240,7 +240,7 @@ class ETM(object):
   def get_kl_loss(self):
     self.sigma_q_theta = tf.pow(self.sigma_std_q_theta, 2.0)
     self.logsigma_theta = tf.log(self.sigma_q_theta+1e-10)
-    self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_theta - tf.pow(self.mu_q_theta, 2) - tf.exp(self.logsigma_theta), dim=-1)
+    self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_theta - tf.pow(self.mu_q_theta, 2) - tf.exp(self.logsigma_theta), axis=-1)
     self.kl_theta_loss = tf.reduce_mean(self.per_example_kl_theta_loss)
     return self.kl_theta_loss
 

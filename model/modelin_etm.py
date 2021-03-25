@@ -141,7 +141,7 @@ class ETM(object):
                       center=False
               )
             self.sigma_std_q_theta = scalar_layer(self.sigma_std_q_theta, tau=0.5, 
-              mode='negative', initializer_range=0.02):
+              mode='negative', initializer_range=0.02)
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("reparameterize"):

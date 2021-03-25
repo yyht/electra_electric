@@ -121,7 +121,7 @@ class ETM(object):
                       center=False
               )
             self.mu_q_theta = scalar_layer(self.mu_q_theta, tau=0.5, 
-              mode='positive', initializer_range=0.02):
+              mode='positive', initializer_range=0.02)
 
         self.sigma_std_q_theta = mlp(
                               input_tensor=self.q_theta, 

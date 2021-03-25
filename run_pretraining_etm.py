@@ -288,18 +288,18 @@ def input_fn_builder(input_files,
     # and we *don't* want to drop the remainder, otherwise we wont cover
     # every sample.
 
-    d = d.batch(batch_size)
-    d = d.map(
-      lambda record: _decode_record(record, name_to_features, vocab_size),
-      num_parallel_calls=num_cpu_threads
-      )
+    # d = d.batch(batch_size)
+    # d = d.map(
+    #   lambda record: _decode_record(record, name_to_features, vocab_size),
+    #   num_parallel_calls=num_cpu_threads
+    #   )
 
-    # d = d.apply(
-    #     tf.contrib.data.map_and_batch(
-    #         lambda record: _decode_record(record, name_to_features, vocab_size),
-    #         batch_size=batch_size,
-    #         num_parallel_batches=num_cpu_threads,
-    #         drop_remainder=True))
+    d = d.apply(
+        tf.contrib.data.map_and_batch(
+            lambda record: _decode_record(record, name_to_features, vocab_size),
+            batch_size=batch_size,
+            num_parallel_batches=num_cpu_threads,
+            drop_remainder=True))
     
     return d
 
@@ -308,8 +308,8 @@ def input_fn_builder(input_files,
 
 def _decode_record(record, name_to_features, vocab_size):
   """Decodes a record to a TensorFlow example."""
-  # example = tf.parse_single_example(record, name_to_features)
-  example = tf.parse_example(record, name_to_features)
+  example = tf.parse_single_example(record, name_to_features)
+  # example = tf.parse_example(record, name_to_features)
 
   # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
   # So cast all int64 to int32.
@@ -322,12 +322,12 @@ def _decode_record(record, name_to_features, vocab_size):
   [term_count, 
   term_binary, 
   term_freq] = tfidf_utils.tokenid2tf(
-                      example["input_ori_ids"], 
+                      tf.expand_dims(example["input_ori_ids"], axis=0), 
                       vocab_size)
 
-  example['input_term_count'] = term_count
-  example['input_term_binary'] = term_binary
-  example['input_term_freq'] = term_freq
+  example['input_term_count'] = tf.squeeze(term_count, axis=0)
+  example['input_term_binary'] = tf.squeeze(term_binary, axis=0)
+  example['input_term_freq'] = tf.squeeze(term_freq, axis=0)
 
   return example
 

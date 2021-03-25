@@ -375,14 +375,14 @@ def main(_):
     init_checkpoint = FLAGS.init_checkpoint
 
   embedding_matrix_path = os.path.join(FLAGS.input_data_dir, FLAGS.embedding_matrix_path)
+   
   embedding_matrix = []
   with tf.gfile.Open(embedding_matrix_path, "r") as frobj:
     for index, line in enumerate(frobj):
       if index == 0:
         continue
       content = line.strip()
-      vec = map(float, content.split()[1:])
-      embedding_matrix.append(list(vec))
+      embedding_matrix.append([float(item) for item in content.split()])
 
   embedding_matrix = tf.convert_to_tensor(np.array(embedding_matrix).astype(np.float32))
 

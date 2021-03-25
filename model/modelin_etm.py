@@ -171,7 +171,7 @@ class ETM(object):
           self.topic_embedding_table = tf.get_variable(
                   name="topic_word_embeddings",
                   shape=[etm_config.topic_size, etm_config.embedding_size],
-                  initializer=create_initializer(initializer_range))
+                  initializer=create_initializer(etm_config.initializer_range))
 
         self.topic_word_align = tf.matmul(self.topic_embedding_table,
                                         self.embedding_table,

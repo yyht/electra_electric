@@ -233,5 +233,5 @@ def tokenid2tf_tpu(input_ids, vocab_size, **kargs):
   term_count = tf.reduce_sum(output, axis=1)
   # [batch, vocab_size]
   term_binary = tf.minimum(tf.reduce_sum(output, 1), 1)
-  term_freq = tf.reduce_sum(output, axis=1) / (1e-10+tf.reduce_sum(output, axis=(1, 2), keepdims=True))
+  term_freq = tf.reduce_sum(output, axis=1) / (1e-10+tf.reduce_sum(output, axis=(1, 2), keepdims=False))
   return term_count, term_binary, term_freq

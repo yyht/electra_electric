@@ -139,28 +139,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     for name in sorted(features.keys()):
       tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
 
-    [term_count, 
-    term_binary, 
-    term_freq] = tfidf_utils.tokenid2tf(
-                      features["input_ori_ids"],
-                      bert_config.vocab_size)
-
-    tf.logging.info(term_count)
-    tf.logging.info(term_binary)
-    tf.logging.info(term_freq)
-
-    term_freq = tf.cast(term_freq, dtype=tf.float32)
-    term_binary = tf.cast(term_binary, dtype=tf.float32)
-    term_count = tf.cast(term_count, dtype=tf.float32)
-
-    features["input_term_count"] = term_count
-    features["input_term_binary"] = term_binary
-    features["input_term_freq"] = term_freq
-
-  # example['input_term_count'] = tf.squeeze(term_count, axis=0)
-  # example['input_term_binary'] = tf.squeeze(term_binary, axis=0)
-  # example['input_term_freq'] = tf.squeeze(term_freq, axis=0)
-
     input_term_count = features["input_term_count"]
     input_term_binary = features['input_term_binary']
     input_term_freq = features['input_term_freq']
@@ -341,6 +319,17 @@ def _decode_record(record, name_to_features, vocab_size):
     if t.dtype == tf.int64:
       t = tf.to_int32(t)
     example[name] = t
+
+  [term_count, 
+  term_binary, 
+  term_freq] = tfidf_utils.tokenid2tf_tpu(
+              tf.expand_dims(example['input_ori_ids'], axis=0),
+              vocab_size
+            )
+
+  example['input_term_count'] = tf.squeeze(term_count, axis=0)
+  example['input_term_binary'] = tf.squeeze(term_binary, axis=0)
+  example['input_term_freq'] = tf.squeeze(term_freq, axis=0)
 
   return example
 

@@ -184,14 +184,6 @@ def _to_sparse(x):
   sparse = tf.SparseTensor(idx, tf.gather_nd(x, idx), tensor_shape)
   return sparse
 
-def _to_sparse_v1(x):
-  tensor_shape = tf.shape(x)
-  tensor_shape = tf.cast(tensor_shape, dtype=tf.int64)
-  idx = tf.where(tf.not_equal(x, 0))
-  # Use tf.shape(a_t, out_type=tf.int64) instead of a_t.get_shape() if tensor shape is dynamic
-  sparse = tf.SparseTensor(idx, tf.gather_nd(x, idx), tensor_shape)
-  return sparse
-
 def _to_vocab_range(x, vocab_size):
   """Enforces that the vocab_ids in x are positive."""
   output = tf.SparseTensor(
@@ -217,7 +209,29 @@ def tokenid2tf(input_ids, vocab_size, **kargs):
                     sparse_term_count)
 
   term_binary = tf.minimum(term_count, 1)
-  # term_freq = tf.cast(term_freq, dtype=tf.float32)
-  # term_binary = tf.cast(term_binary, dtype=tf.float32)
-  # term_count = tf.cast(term_count, dtype=tf.float32)
+  term_freq = tf.cast(term_freq, dtype=tf.float32)
+  term_binary = tf.cast(term_binary, dtype=tf.float32)
+  term_count = tf.cast(term_count, dtype=tf.float32)
+  return term_count, term_binary, term_freq
+
+def tokenid2tf_tpu(input_ids, vocab_size, **kargs):
+  input_mask = tf.cast(tf.not_equal(input_ids, kargs.get('[PAD]', 0)), 
+            tf.float32)
+  input_mask = tf.expand_dims(input_mask, axis=-1)
+  # one_hot_input_ids = tf.one_hot(input_ids, depth=vocab_size)
+  if input_ids.shape.ndims == 2:
+    input_ids = tf.expand_dims(input_ids, axis=[-1])
+  input_shape = bert_utils.get_shape_list(input_ids)
+  flat_input_ids = tf.reshape(input_ids, [-1])
+  one_hot_input_ids = tf.one_hot(flat_input_ids, depth=vocab_size)
+  one_hot_input_ids = tf.reshape(one_hot_input_ids,
+        input_shape[0:-1] + [input_shape[-1] * vocab_size])
+
+  # [batch, seq, vocab_size]
+  output = tf.cast(one_hot_input_ids, tf.float32) * input_mask
+  # [batch, vocab_size]
+  term_count = tf.reduce_sum(output, axis=1)
+  # [batch, vocab_size]
+  term_binary = tf.minimum(tf.reduce_sum(output, 1), 1)
+  term_freq = tf.reduce_sum(output, axis=1) / (1e-10+tf.reduce_sum(output, axis=(1, 2), keepdims=True))
   return term_count, term_binary, term_freq

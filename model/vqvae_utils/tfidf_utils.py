@@ -217,7 +217,7 @@ def tokenid2tf(input_ids, vocab_size, **kargs):
                     sparse_term_count)
 
   term_binary = tf.minimum(term_count, 1)
-  term_freq = tf.cast(term_freq, dtype=tf.float32)
-  term_binary = tf.cast(term_binary, dtype=tf.float32)
-  term_count = tf.cast(term_count, dtype=tf.float32)
+  # term_freq = tf.cast(term_freq, dtype=tf.float32)
+  # term_binary = tf.cast(term_binary, dtype=tf.float32)
+  # term_count = tf.cast(term_count, dtype=tf.float32)
   return term_count, term_binary, term_freq

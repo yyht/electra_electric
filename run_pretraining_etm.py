@@ -145,6 +145,14 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                       features["input_ori_ids"],
                       bert_config.vocab_size)
 
+    tf.logging.info(term_count)
+    tf.logging.info(term_binary)
+    tf.logging.info(term_freq)
+
+    term_freq = tf.cast(term_freq, dtype=tf.float32)
+    term_binary = tf.cast(term_binary, dtype=tf.float32)
+    term_count = tf.cast(term_count, dtype=tf.float32)
+
     features["input_term_count"] = term_count
     features["input_term_binary"] = term_binary
     features["input_term_freq"] = term_freq

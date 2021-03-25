@@ -270,7 +270,9 @@ def sample_from_top_k(logits, disallow=None, k=20):
                               output_type=tf.int32), topk_logits.shape[-1])
 
 def sample_from_top_p(logits, disallow=None, p=0.95):
-    """Nucleus sampling"""
+    """Nucleus sampling
+    https://github.com/wouterkool/ancestral-gumbel-top-k-sampling
+    """
     print(logits, '===========')
     logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
     depth_dimension = (len(logits_shape) == 3)

@@ -62,8 +62,10 @@ class ETMConfig(object):
 class ETM(object):
   def __init__(self,
                 etm_config,
-               is_training,
-               input_ids,
+               input_term_count,
+               input_term_binary,
+               input_term_freq,
+               is_training=False,
                embedding_matrix=None,
                hidden_vector=None,
                scope=None):
@@ -78,9 +80,9 @@ class ETM(object):
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("bow_embeddings"):
-       [self.term_count, 
-       self.term_binary, 
-       self.term_freq] = tokenid2bow(input_ids, etm_config.vocab_size)
+       self.term_count = input_term_count
+       self.term_binary = input_term_binary
+       self.term_freq = input_term_freq
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("encoder"):
@@ -294,9 +296,9 @@ def mlp(input_tensor,
     final_outputs = prev_output
     return final_outputs
 
-def reparameterize(mu_q_theta, sigma_q_theta, is_training):
+def reparameterize(mu_q_theta, sigma_std_q_theta, is_training):
   if is_training:
-    sigma_q_theta = tf.pow(sigma_std_q_theta, 2)
+    sigma_q_theta = sigma_std_q_theta
     eps = tf.random.normal(get_shape_list(sigma_q_theta), 
                             mean=0.0, stddev=1.0, dtype=tf.dtypes.float32)
     return eps*sigma_q_theta+mu_q_theta

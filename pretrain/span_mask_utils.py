@@ -12,6 +12,7 @@ import numpy as np
 import tensorflow as tf
 from pretrain import pretrain_data
 from pretrain import pretrain_helpers
+from model.vqvae_utils import tfidf_utils
 
 def check_tf_version():
   version = tf.__version__
@@ -457,6 +458,15 @@ def _decode_record(FLAGS, record, num_predict,
   example["masked_lm_positions"] = tf.argmax(example['target_mapping'], axis=-1)
   example["masked_lm_weights"] = example['target_mask']
   example["masked_lm_ids"] = example['target']
+
+  if FLAGS.tfidf:
+    [term_count, 
+    term_binary, 
+    term_freq] = tfidf_utils.tokenid2tf(inputs, FLAGS.vocab_size)
+
+    example['input_term_count'] = term_count
+    example['input_term_binary'] = term_binary
+    example['input_term_freq'] = term_freq
 
   # type cast for example
   convert_example(example, use_bfloat16)

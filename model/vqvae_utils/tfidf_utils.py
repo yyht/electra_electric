@@ -177,7 +177,7 @@ def _to_term_frequency(x, vocab_size):
   return sparse_term_freq, sparse_term_count
 
 def _to_sparse(x):
-  tensor_shape = get_shape_list(x, expected_rank=[2])
+  tensor_shape = get_shape_list(x, expected_rank=[1,2])
   idx = tf.where(tf.not_equal(x, 0))
   # Use tf.shape(a_t, out_type=tf.int64) instead of a_t.get_shape() if tensor shape is dynamic
   sparse = tf.SparseTensor(idx, tf.gather_nd(x, idx), tensor_shape)

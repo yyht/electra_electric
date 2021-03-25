@@ -314,8 +314,9 @@ def _decode_record(record, name_to_features, vocab_size):
 
   [term_count, 
   term_binary, 
-  term_freq] = tfidf_utils.tokenid2tf(example["input_ori_ids"], 
-                            vocab_size)
+  term_freq] = tfidf_utils.tokenid2tf(
+                      tf.expand_dims(example["input_ori_ids"], axis=0), 
+                      vocab_size)
 
   example['input_term_count'] = term_count
   example['input_term_binary'] = term_binary

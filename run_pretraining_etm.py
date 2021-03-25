@@ -313,11 +313,6 @@ def _decode_record(record, name_to_features, vocab_size):
 
   # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
   # So cast all int64 to int32.
-  for name in list(example.keys()):
-    t = example[name]
-    if t.dtype == tf.int64:
-      t = tf.to_int32(t)
-    example[name] = t
 
   [term_count, 
   term_binary, 
@@ -328,6 +323,12 @@ def _decode_record(record, name_to_features, vocab_size):
   example['input_term_count'] = tf.squeeze(term_count, axis=0)
   example['input_term_binary'] = tf.squeeze(term_binary, axis=0)
   example['input_term_freq'] = tf.squeeze(term_freq, axis=0)
+
+  for name in list(example.keys()):
+    t = example[name]
+    if t.dtype == tf.int64:
+      t = tf.to_int32(t)
+    example[name] = t
 
   return example
 

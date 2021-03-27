@@ -1094,7 +1094,7 @@ def attention_layer(from_tensor,
       value_position_scores_r_t = tf.transpose(value_position_scores_r, [1, 2, 0, 3])
       # attention_scores = attention_scores + value_position_scores_r_t
       context_layer = context_layer + value_position_scores_r_t
-      tf.logging.info("*** apply nazhe-relative position bias on context_layer ****")
+      tf.logging.info("**** apply nazhe-relative position bias on context_layer ****")
 
   # `context_layer` = [B, F, N, H]
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])

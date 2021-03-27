@@ -880,10 +880,17 @@ def attention_layer(from_tensor,
     cos_pos = tf_utils.repeat(position_embeddings[:, :, :, 1::2], repeats=2, axis=-1)
     sin_pos = tf_utils.repeat(position_embeddings[:, :, :, ::2], repeats=2, axis=-1)
 
-    # [1, F, 1, depth]
+    tf.logging.info(cos_pos)
+    tf.logging.info("*** cos_pos ***")
+
+    tf.logging.info(sin_pos)
+    tf.logging.info("*** sin_pos ***")
+
+    # [B, N, F, depth]
     query_layer2 = tf.stack([-query_layer[:, :, :, 1::2], query_layer[:, :, :, ::2]], axis=-1)
-    
-    # [B, N, F, depth] * [1, F, 1, depth]
+    tf.logging.info(query_layer2)
+    tf.logging.info("*** query_layer2 ***")
+    # [B, N, F, depth] * [1, 1, F, depth]
     query_layer = query_layer * cos_pos + query_layer2 * sin_pos
 
     # [B, N, F, depth] * [1, F, 1, depth]

@@ -27,6 +27,7 @@ import numpy as np
 import six
 import tensorflow as tf
 
+from model.funnel_transformer_utils import tf_utils
 from model import dropout_utils
 stable_dropout = dropout_utils.ReuseDropout()
 
@@ -45,12 +46,7 @@ class BertConfig(object):
                max_position_embeddings=512,
                type_vocab_size=16,
                initializer_range=0.02,
-               use_relative_position=False,
-               max_relative_position=64,
-               bidirectional=True,
-               relative_position_type="relative_normal",
-               relative_position_embedding_type="sinusoidal",
-               num_buckets=32
+               use_relative_position=False
                ):
     """Constructs BertConfig.
     Args:
@@ -87,11 +83,6 @@ class BertConfig(object):
     self.type_vocab_size = type_vocab_size
     self.initializer_range = initializer_range
     self.use_relative_position = use_relative_position
-    self.max_relative_position = max_relative_position
-    self.bidirectional = bidirectional
-    self.relative_position_type = relative_position_type
-    self.relative_position_embedding_type = relative_position_embedding_type
-    self.num_buckets = num_buckets
 
   @classmethod
   def from_dict(cls, json_object):
@@ -210,32 +201,21 @@ class BertModel(object):
         input_shape = get_shape_list(input_ids)
         size_per_head = config.hidden_size // config.num_attention_heads
 
-        if config.relative_position_type == 'relative_normal':
-          depth = size_per_head
-        elif config.relative_position_type == 'relative_t5':
-          depth = config.num_attention_heads
+        [self.position_embeddings,
+        self.position_table] = _generate_sinusodial_position_embedding(
+                        max_position_embeddings=config.max_position_embeddings,
+                        size_per_head,
+                        "sinusodial_position_embeddings",
+                        initializer_range=0.02)
 
-        [self.relative_position_embeddings, 
-        self.relative_position_table] = _generate_relative_positions_embeddings(
-                    input_shape[1], 
-                    depth=size_per_head,
-                    max_relative_position=config.max_relative_position, 
-                    name="encoder_relative_positions_bias",
-                    num_buckets=config.num_buckets,
-                    initializer_range=config.initializer_range,
-                    cache=False,
-                    bidirectional=config.bidirectional,
-                    relative_position_type=config.relative_position_type,
-                    relative_position_embedding_type=config.relative_position_embedding_type)
+        print(self.position_table, "===position_table===")
+        print(self.position_embeddings, "===position_embeddings===")
 
-        print(self.relative_position_table, "===relative_position_table===")
-        print(self.relative_position_embeddings, "===relative_position_embeddings===")
+        tf.logging.info("===position_table===")
+        tf.logging.info(self.position_table)
 
-        tf.logging.info("===relative_position_table===")
-        tf.logging.info(self.relative_position_table)
-
-        tf.logging.info("===relative_position_embeddings===")
-        tf.logging.info(self.relative_position_embeddings)
+        tf.logging.info("===position_embeddings===")
+        tf.logging.info(self.position_embeddings)
 
         # Run the stacked transformer.
         # `sequence_output` shape = [batch_size, seq_length, hidden_size].
@@ -252,9 +232,8 @@ class BertModel(object):
             attention_probs_dropout_prob=config.attention_probs_dropout_prob,
             initializer_range=config.initializer_range,
             do_return_all_layers=True,
-            use_relative_position=config.use_relative_position,
-            relative_position_embeddings=self.relative_position_embeddings,
-            relative_position_type=config.relative_position_type)
+            position_embeddings=self.position_embeddings,
+            use_relative_position=config.use_relative_position)
 
       self.sequence_output = tf.cast(self.all_encoder_layers[-1], tf.float32)
       # The "pooler" converts the encoded sequence tensor of shape
@@ -727,150 +706,31 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
 
   return mask
 
+def _generate_sinusodial_position_embedding( 
+                            max_position_embeddings,
+                            depth,
+                            name,
+                            initializer_range=0.02):
 
-def _generate_relative_positions_matrix(length, max_relative_position,
-                                        num_buckets=32,
-                                        cache=False,
-                                        bidirectional=True):
-  """Generates matrix of relative positions between inputs."""
-  if not cache:
-    range_vec = tf.range(length)
-
-    q_idxs = tf.expand_dims(range_vec, 1)
-    v_idxs = tf.expand_dims(range_vec, 0)
-
-    distance_mat = v_idxs - q_idxs
-    # range_mat = tf.reshape(tf.tile(range_vec, [length]), [length, length])
-    # distance_mat = range_mat - tf.transpose(range_mat)
-  else:
-    distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
-  distance_mat_clipped = tf.clip_by_value(distance_mat, -max_relative_position,
-                                          max_relative_position)
-  # Shift values to be >= 0. Each integer still uniquely identifies a relative
-  # position difference.
-  final_mat = distance_mat_clipped + max_relative_position
-  return final_mat
-
-def _generate_relative_positions_matrix_t5(length, max_relative_position,
-                                        num_buckets=32,
-                                        cache=False,
-                                        bidirectional=True):
-  
-  """
-  https://github.com/bojone/bert4keras/blob/master/bert4keras/layers.py
-  https://github.com/tensorflow/mesh/blob/master/mesh_tensorflow/transformer/transformer_layers.py
-  # _relative_position_bucket
-  """
-
-  if not cache:
-    range_vec = tf.range(length)
-
-    q_idxs = tf.expand_dims(range_vec, 1)
-    v_idxs = tf.expand_dims(range_vec, 0)
-
-    distance_mat = v_idxs - q_idxs
-    # range_mat = tf.reshape(tf.tile(range_vec, [length]), [length, length])
-    # distance_mat = range_mat - tf.transpose(range_mat)
-  else:
-    distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
-
-  num_buckets = num_buckets
-  max_distance = max_relative_position
-  ret = 0
-  n = -distance_mat
-  if bidirectional:
-    num_buckets //= 2
-    ret += tf.cast(tf.less(n, 0), 'int32') * num_buckets
-    n = tf.abs(n)
-  else:
-    n = tf.maximum(n, 0)
-  # now n is in the range [0, inf)
-  max_exact = num_buckets // 2
-  is_small = tf.less(n, max_exact)
-  val_if_large = max_exact + tf.cast(
-      tf.log(tf.cast(n, dtype=tf.float32) / max_exact) /
-      tf.log(max_distance / max_exact) * (num_buckets - max_exact),
-      'int32',
-  )
-  val_if_large = tf.minimum(val_if_large, num_buckets - 1)
-  tf_switch = (tf.cast(is_small, dtype=tf.int32)) * n + (1-tf.cast(is_small, dtype=tf.int32)) * val_if_large
-  ret += tf_switch #tf.switch(is_small, n, val_if_large)
-  # ret += tf.where(is_small, n, val_if_large)
-  return ret
-
-
-def _generate_relative_positions_embeddings(length, depth,
-                            max_relative_position, name,
-                            num_buckets=32,
-                            initializer_range=0.02,
-                            cache=False,
-                            bidirectional=True,
-                            relative_position_type='relative_normal',
-                            relative_position_embedding_type='sinusoidal'):
-  """
-  Generates tensor of size [1 if cache else length, length, depth].
-  example:
-      # `relation_keys` = [F|T, F|T, H]
-         relations_keys = _generate_relative_positions_embeddings(
-      to_seq_length, size_per_head, max_relative_position, "relative_positions_keys",
-      cache=False)
-    relations_keys = tf.saturate_cast(relations_keys, compute_type)
-  # Scalar dimensions referenced here:
-  #   B = batch size (number of sequences)
-  #   F = `from_tensor` sequence length
-  #   T = `to_tensor` sequence length
-  #   N = `num_attention_heads`
-  #   H = `size_per_head`
-    length = to_seq_length
-    depth = size_per_head
-    max_relative_position
-    name = "relative_positions_keys"
-  """
- # '''
-  #with tf.variable_scope(name):
-  if relative_position_type == 'relative_normal':
-    relative_positions_matrix = _generate_relative_positions_matrix(
-        length, max_relative_position, cache=cache,
-        bidirectional=bidirectional)
-    vocab_size = max_relative_position * 2 + 1
-  elif relative_position_type == 'relative_t5':
-    relative_positions_matrix = _generate_relative_positions_matrix_t5(
-        length, max_relative_position, 
-        num_buckets=num_buckets,
-        cache=cache,
-        bidirectional=bidirectional)
-    vocab_size = num_buckets
-    # Generates embedding for each relative position of dimension depth.
+  vocab_size = max_position_embeddings
   embeddings_table = np.zeros([vocab_size, depth]).astype(np.float32)
 
-  if relative_position_embedding_type == 'sinusoidal':
-    for pos in range(vocab_size):
-      for i in range(depth // 2):
-        embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-        embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
-  
-    relative_position_table = tf.get_variable(name="relative_position_bias", 
-                      shape=[vocab_size, depth], 
-                      initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
-                      trainable=False)
-  elif relative_position_embedding_type == 'sinusoidal_trainable':
-    for pos in range(vocab_size):
-      for i in range(depth // 2):
-        embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-        embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
-  
-    relative_position_table = tf.get_variable(name="relative_position_bias", 
-                      shape=[vocab_size, depth], 
-                      initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
-                      trainable=True)
-  elif relative_position_embedding_type == 'trainable':
-    relative_position_table = tf.get_variable(name="relative_position_bias", 
-                      shape=[vocab_size, depth], 
-                      initializer=create_initializer(initializer_range),
-                      trainable=True)
+  for pos in range(vocab_size):
+    for i in range(depth // 2):
+      embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
+      embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
 
-  relative_position_embeddings = tf.gather(relative_position_table, relative_positions_matrix)
-  return relative_position_embeddings, relative_position_table
+  position_table = tf.get_variable(name="sinusodial_position_embeddings", 
+                    shape=[vocab_size, depth], 
+                    initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
+                    trainable=False)
+
+  # [1, max_position_embeddings]
+  positions_ids = tf.range(0, max_position_embeddings, dtype=tf.int32)[None]
+  position_embeddings = tf.gather(position_table, positions_ids)
+
+  # [1, T, depth]
+  return position_embeddings, position_table
 
 def attention_layer(from_tensor,
                     to_tensor,
@@ -886,9 +746,8 @@ def attention_layer(from_tensor,
                     batch_size=None,
                     from_seq_length=None,
                     to_seq_length=None,
+                    position_embeddings=None,
                     use_relative_position=False,
-                    relative_position_embeddings=None,
-                    relative_position_type='normal',
                     dropout_name=None):
   """Performs multi-headed attention from `from_tensor` to `to_tensor`.
   This is an implementation of multi-headed attention based on "Attention
@@ -1012,29 +871,27 @@ def attention_layer(from_tensor,
   # Take the dot product between "query" and "key" to get the raw
   # attention scores.
   # `attention_scores` = [B, N, F, T]
-  attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)
   if use_relative_position:
-    assert from_seq_length == to_seq_length
-    # max_relative_position = 64
-    # `relation_keys` = [F|T, F|T, H]
-    if relative_position_type == 'relative_normal':
-      relations_keys = tf.identity(relative_position_embeddings)
-      # query_layer_t is [F, B, N, H]
-      query_layer_t = tf.transpose(query_layer, [2, 0, 1, 3])
-      # query_layer_r is [F, B * N, H]
-      query_layer_r = tf.reshape(query_layer_t, [from_seq_length, batch_size * num_attention_heads, size_per_head])
-      # key_position_scores is [F, B * N, F|T]
-      key_position_scores = tf.matmul(query_layer_r, relations_keys, transpose_b=True)
-      # key_position_scores_r is [F, B , N, F|T]
-      key_position_scores_r = tf.reshape(key_position_scores, [from_seq_length, batch_size, num_attention_heads, from_seq_length])
-      # key_position_scores_r_t is [B, N, F, F|T]
-      key_position_scores_r_t = tf.transpose(key_position_scores_r, [1, 2, 0, 3])
-      attention_scores = attention_scores + key_position_scores_r_t
-    elif relative_position_type == 'relative_t5':
-      # relative_position_embeddings: [F, T, N]--> [N, F, T]
-      relative_position_embeddings = tf.transpose(relative_position_embeddings, [2,0,1])
-      attention_scores += tf.expand_dims(relative_position_embeddings, axis=0)
+    # [1, T, depth]-->[1, T, 1, depth]
+    position_embeddings = tf.expand_dims(position_embeddings,
+                            axis=2)
+
+    # [1, F, 1, depth//2 * 2]
+    cos_pos = tf_utils.repeat(position_embeddings[:, :, :, 1::2], repeats=2, axis=-1)
+    sin_pos = tf_utils.repeat(position_embeddings[:, :, :, ::2], repeats=2, axis=-1)
+
+    # [1, F, 1, depth]
+    query_layer2 = tf.stack([-query_layer[:, :, :, 1::2], query_layer[:, :, :, 2::]], axis=-1)
     
+    # [B, N, F, depth] * [1, F, 1, depth]
+    query_layer = query_layer * cos_pos + query_layer2 * sin_pos
+
+    # [B, N, F, depth] * [1, F, 1, depth]
+    key_layer2 = tf.stack([-key_layer[:, :, :, 1::2], key_layer[:, :, :, 2::]], axis=-1)
+    key_layer = key_layer * cos_pos + key_layer2 * sin_pos
+
+  attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)
+  
   attention_scores = tf.multiply(attention_scores,
                                  1.0 / math.sqrt(float(size_per_head)))
 
@@ -1070,22 +927,6 @@ def attention_layer(from_tensor,
   # `context_layer` = [B, N, F, H]
   context_layer = tf.matmul(attention_probs, value_layer)
 
-  if use_relative_position:
-    # `relation_values` = [F|T, F|T, H]
-    relations_values = tf.identity(relative_position_embeddings)
-    # attention_probs_t is [F, B, N, T]
-    attention_probs_t = tf.transpose(attention_probs, [2, 0, 1, 3])
-    # attention_probs_r is [F, B * N, T]
-    attention_probs_r = tf.reshape(attention_probs_t, [from_seq_length, batch_size * num_attention_heads, to_seq_length])
-    # key_position_scores is [F, B * N, H]
-    value_position_scores = tf.matmul(attention_probs_r, relations_values, transpose_b=False)
-    # value_position_scores_r is [F, B , N, H]
-    value_position_scores_r = tf.reshape(value_position_scores, [from_seq_length, batch_size, num_attention_heads, size_per_head])
-    # value_position_scores_r_t is [B, N, F, H]
-    value_position_scores_r_t = tf.transpose(value_position_scores_r, [1, 2, 0, 3])
-    # attention_scores = attention_scores + value_position_scores_r_t
-    context_layer = context_layer + value_position_scores_r_t
-
   # `context_layer` = [B, F, N, H]
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
 
@@ -1116,7 +957,8 @@ def transformer_model(input_tensor,
                       do_return_all_layers=False,
                       use_relative_position=False,
                       dropout_name=None,
-                      relative_position_embeddings=None):
+                      position_embeddings=None,
+                      use_relative_position=False):
   """Multi-headed, multi-layer Transformer from "Attention is All You Need".
   This is almost an exact implementation of the original Transformer encoder.
   See the original paper:
@@ -1201,7 +1043,8 @@ def transformer_model(input_tensor,
               to_seq_length=seq_length,
               use_relative_position=use_relative_position,
               dropout_name=attention_dropout_name,
-              relative_position_embeddings=relative_position_embeddings)
+              position_embeddings=position_embeddings,
+              use_relative_position=use_relative_position)
 
           attention_heads.append(attention_head)
           attn_maps.append(probs)

@@ -872,9 +872,9 @@ def attention_layer(from_tensor,
   # attention scores.
   # `attention_scores` = [B, N, F, T]
   if use_relative_position:
-    # [1, T, depth]-->[1, T, 1, depth]
+    # [1, T, depth]-->[1, 1, T, depth]
     position_embeddings = tf.expand_dims(position_embeddings,
-                            axis=2)
+                            axis=1)
 
     # [1, F, 1, depth//2 * 2]
     cos_pos = tf_utils.repeat(position_embeddings[:, :, :, 1::2], repeats=2, axis=-1)

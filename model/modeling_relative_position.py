@@ -1035,12 +1035,12 @@ def attention_layer(from_tensor,
       # key_position_scores_r_t is [B, N, F, F|T]
       key_position_scores_r_t = tf.transpose(key_position_scores_r, [1, 2, 0, 3])
       attention_scores = attention_scores + key_position_scores_r_t
-      tf.logging.info("*** apply nazhe-relative position bias ****")
+      tf.logging.info("*** apply nazhe-relative position bias on attention_scores ****")
     elif relative_position_type == 'relative_t5':
       # relative_position_embeddings: [F, T, N]--> [N, F, T]
       relative_position_embeddings = tf.transpose(relative_position_embeddings, [2,0,1])
       # relative_position_embeddings: [N, F, T] ---> [1, N, F, T]
-      tf.logging.info("**** apply t5-relative position bias ***")
+      tf.logging.info("**** apply t5-relative position bias on attention_scores ***")
       attention_scores += tf.expand_dims(relative_position_embeddings, axis=0)
     
   attention_scores = tf.multiply(attention_scores,
@@ -1080,19 +1080,21 @@ def attention_layer(from_tensor,
 
   if use_relative_position:
     # `relation_values` = [F|T, F|T, H]
-    relations_values = tf.identity(relative_position_embeddings)
-    # attention_probs_t is [F, B, N, T]
-    attention_probs_t = tf.transpose(attention_probs, [2, 0, 1, 3])
-    # attention_probs_r is [F, B * N, T]
-    attention_probs_r = tf.reshape(attention_probs_t, [from_seq_length, batch_size * num_attention_heads, to_seq_length])
-    # key_position_scores is [F, B * N, H]
-    value_position_scores = tf.matmul(attention_probs_r, relations_values, transpose_b=False)
-    # value_position_scores_r is [F, B , N, H]
-    value_position_scores_r = tf.reshape(value_position_scores, [from_seq_length, batch_size, num_attention_heads, size_per_head])
-    # value_position_scores_r_t is [B, N, F, H]
-    value_position_scores_r_t = tf.transpose(value_position_scores_r, [1, 2, 0, 3])
-    # attention_scores = attention_scores + value_position_scores_r_t
-    context_layer = context_layer + value_position_scores_r_t
+    if relative_position_type == 'relative_normal':
+      relations_values = tf.identity(relative_position_embeddings)
+      # attention_probs_t is [F, B, N, T]
+      attention_probs_t = tf.transpose(attention_probs, [2, 0, 1, 3])
+      # attention_probs_r is [F, B * N, T]
+      attention_probs_r = tf.reshape(attention_probs_t, [from_seq_length, batch_size * num_attention_heads, to_seq_length])
+      # key_position_scores is [F, B * N, H]
+      value_position_scores = tf.matmul(attention_probs_r, relations_values, transpose_b=False)
+      # value_position_scores_r is [F, B , N, H]
+      value_position_scores_r = tf.reshape(value_position_scores, [from_seq_length, batch_size, num_attention_heads, size_per_head])
+      # value_position_scores_r_t is [B, N, F, H]
+      value_position_scores_r_t = tf.transpose(value_position_scores_r, [1, 2, 0, 3])
+      # attention_scores = attention_scores + value_position_scores_r_t
+      context_layer = context_layer + value_position_scores_r_t
+      tf.logging.info("*** apply nazhe-relative position bias on context_layer ****")
 
   # `context_layer` = [B, F, N, H]
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])

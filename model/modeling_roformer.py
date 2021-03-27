@@ -1042,7 +1042,6 @@ def transformer_model(input_tensor,
               batch_size=batch_size,
               from_seq_length=seq_length,
               to_seq_length=seq_length,
-              use_relative_position=use_relative_position,
               dropout_name=attention_dropout_name,
               position_embeddings=position_embeddings,
               use_relative_position=use_relative_position)

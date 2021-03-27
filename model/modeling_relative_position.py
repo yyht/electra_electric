@@ -800,6 +800,7 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
   tf_switch = (tf.cast(is_small, dtype=tf.int32)) * n + (1-tf.cast(is_small, dtype=tf.int32)) * val_if_large
   ret += tf_switch #tf.switch(is_small, n, val_if_large)
   # ret += tf.where(is_small, n, val_if_large)
+  
   return ret
 
 

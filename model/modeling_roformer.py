@@ -893,14 +893,14 @@ def attention_layer(from_tensor,
     tf.logging.info(query_layer[:, :, :, ::2])
 
     # [B, N, F, depth]
-    query_layer2 = tf.stack([-query_layer[:, :, :, 1::2], query_layer[:, :, :, ::2]], axis=-1)
+    query_layer2 = tf.concat([-query_layer[:, :, :, 1::2], query_layer[:, :, :, ::2]], axis=-1)
     tf.logging.info(query_layer2)
     tf.logging.info("*** query_layer2 ***")
     # [B, N, F, depth] * [1, 1, F, depth]
     query_layer = query_layer * cos_pos + query_layer2 * sin_pos
 
     # [B, N, F, depth] * [1, F, 1, depth]
-    key_layer2 = tf.stack([-key_layer[:, :, :, 1::2], key_layer[:, :, :, ::2]], axis=-1)
+    key_layer2 = tf.concat([-key_layer[:, :, :, 1::2], key_layer[:, :, :, ::2]], axis=-1)
     key_layer = key_layer * cos_pos + key_layer2 * sin_pos
 
 

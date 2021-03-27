@@ -886,6 +886,9 @@ def attention_layer(from_tensor,
     tf.logging.info(sin_pos)
     tf.logging.info("*** sin_pos ***")
 
+    tf.logging.info(query_layer[:, :, :, 1::2])
+    tf.logging.info(query_layer[:, :, :, ::2])
+
     # [B, N, F, depth]
     query_layer2 = tf.stack([-query_layer[:, :, :, 1::2], query_layer[:, :, :, ::2]], axis=-1)
     tf.logging.info(query_layer2)

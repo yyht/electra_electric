@@ -212,17 +212,13 @@ class BertModel(object):
 
         if config.relative_position_type == 'relative_normal':
           depth = size_per_head
-          tf.logging.info(config.relative_position_type)
-          tf.logging.info("*** depth of relative-embedding:%s ***"%(depth))
         elif config.relative_position_type == 'relative_t5':
           depth = config.num_attention_heads
-          tf.logging.info(config.relative_position_type)
-          tf.logging.info("*** depth of relative-embedding:%s ***"%(depth))
 
         [self.relative_position_embeddings, 
         self.relative_position_table] = _generate_relative_positions_embeddings(
                     input_shape[1], 
-                    depth=depth,
+                    depth=size_per_head,
                     max_relative_position=config.max_relative_position, 
                     name="encoder_relative_positions_bias",
                     num_buckets=config.num_buckets,

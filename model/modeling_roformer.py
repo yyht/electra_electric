@@ -204,8 +204,8 @@ class BertModel(object):
         [self.position_embeddings,
         self.position_table] = _generate_sinusodial_position_embedding(
                         max_position_embeddings=config.max_position_embeddings,
-                        size_per_head,
-                        "sinusodial_position_embeddings",
+                        depth=size_per_head,
+                        name="sinusodial_position_embeddings",
                         initializer_range=0.02)
 
         print(self.position_table, "===position_table===")
@@ -889,6 +889,7 @@ def attention_layer(from_tensor,
     # [B, N, F, depth] * [1, F, 1, depth]
     key_layer2 = tf.stack([-key_layer[:, :, :, 1::2], key_layer[:, :, :, 2::]], axis=-1)
     key_layer = key_layer * cos_pos + key_layer2 * sin_pos
+
 
   attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)
   

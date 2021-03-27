@@ -956,7 +956,6 @@ def transformer_model(input_tensor,
                       attention_probs_dropout_prob=0.1,
                       initializer_range=0.02,
                       do_return_all_layers=False,
-                      use_relative_position=False,
                       dropout_name=None,
                       position_embeddings=None,
                       use_relative_position=False):

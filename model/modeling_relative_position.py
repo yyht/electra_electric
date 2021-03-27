@@ -1120,7 +1120,8 @@ def transformer_model(input_tensor,
                       do_return_all_layers=False,
                       use_relative_position=False,
                       dropout_name=None,
-                      relative_position_embeddings=None):
+                      relative_position_embeddings=None,
+                      relative_position_type='relative_normal'):
   """Multi-headed, multi-layer Transformer from "Attention is All You Need".
   This is almost an exact implementation of the original Transformer encoder.
   See the original paper:
@@ -1205,7 +1206,8 @@ def transformer_model(input_tensor,
               to_seq_length=seq_length,
               use_relative_position=use_relative_position,
               dropout_name=attention_dropout_name,
-              relative_position_embeddings=relative_position_embeddings)
+              relative_position_embeddings=relative_position_embeddings,
+              relative_position_type=relative_position_type)
 
           attention_heads.append(attention_head)
           attn_maps.append(probs)

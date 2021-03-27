@@ -800,7 +800,7 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
   tf_switch = (tf.cast(is_small, dtype=tf.int32)) * n + (1-tf.cast(is_small, dtype=tf.int32)) * val_if_large
   ret += tf_switch #tf.switch(is_small, n, val_if_large)
   # ret += tf.where(is_small, n, val_if_large)
-  
+
   return ret
 
 
@@ -1038,6 +1038,7 @@ def attention_layer(from_tensor,
     elif relative_position_type == 'relative_t5':
       # relative_position_embeddings: [F, T, N]--> [N, F, T]
       relative_position_embeddings = tf.transpose(relative_position_embeddings, [2,0,1])
+      # relative_position_embeddings: [N, F, T] ---> [1, N, F, T]
       attention_scores += tf.expand_dims(relative_position_embeddings, axis=0)
     
   attention_scores = tf.multiply(attention_scores,

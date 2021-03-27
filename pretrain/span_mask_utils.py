@@ -459,15 +459,6 @@ def _decode_record(FLAGS, record, num_predict,
   example["masked_lm_weights"] = example['target_mask']
   example["masked_lm_ids"] = example['target']
 
-  if FLAGS.tfidf:
-    [term_count, 
-    term_binary, 
-    term_freq] = tfidf_utils.tokenid2tf(inputs, FLAGS.vocab_size)
-
-    example['input_term_count'] = term_count
-    example['input_term_binary'] = term_binary
-    example['input_term_freq'] = term_freq
-
   # type cast for example
   convert_example(example, use_bfloat16)
 

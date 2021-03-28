@@ -51,7 +51,8 @@ class BertConfig(object):
                num_landmarks=32,
                use_conv=False,
                conv_kernel_size=33,
-               n_iter=10):
+               n_iter=10,
+               use_relative_position=False):
     """Constructs BertConfig.
 
     Args:
@@ -91,6 +92,7 @@ class BertConfig(object):
     self.use_conv = use_conv
     self.conv_kernel_size = conv_kernel_size
     self.n_iter = n_iter
+    self.use_relative_position = use_relative_position
 
   @classmethod
   def from_dict(cls, json_object):

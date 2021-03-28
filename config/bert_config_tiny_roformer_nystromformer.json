@@ -17,5 +17,6 @@
   "num_landmarks":64,
   "n_iter":6,
   "use_conv":true,
-  "conv_kernel_size":33
+  "conv_kernel_size":33,
+  "use_relative_position":true
 }

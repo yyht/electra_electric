@@ -21,6 +21,7 @@ from __future__ import print_function
 import tensorflow as tf
 tf.disable_v2_behavior()
 
+
 import os
 from model import modeling_etm
 from model import optimization

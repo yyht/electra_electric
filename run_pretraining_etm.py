@@ -29,7 +29,6 @@ from bunch import Bunch
 from model.vqvae_utils import tfidf_utils
 import numpy as np
 
-
 flags = tf.flags
 
 FLAGS = flags.FLAGS
@@ -37,7 +36,7 @@ FLAGS = flags.FLAGS
 ## Required parameters
 flags.DEFINE_string(
     "bert_config_file", None,
-    "The config json file corresponding to the pre-trained BERT model. "
+    "The config json file aa corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
 flags.DEFINE_string(

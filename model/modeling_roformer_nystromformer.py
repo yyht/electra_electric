@@ -123,7 +123,6 @@ class BertConfig(object):
 
 class BertModel(object):
   """BERT model ("Bidirectional Embedding Representations from a Transformer").
-
   Example usage:
 
   ```python

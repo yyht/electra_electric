@@ -29,6 +29,7 @@ import tensorflow as tf
 import numpy as np
 
 from model.attention_nystrom_utils import iterative_inv, iterative_inv_v1
+from model.funnel_transformer_utils import tf_utils
 
 from model import dropout_utils
 

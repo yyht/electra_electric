@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from model.vqvae_utils import tfidf_utils
+# from model.vqvae_utils import tfidf_utils
 import collections
 import copy
 import json

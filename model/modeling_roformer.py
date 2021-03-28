@@ -903,7 +903,6 @@ def attention_layer(from_tensor,
     key_layer2 = tf.concat([-key_layer[:, :, :, 1::2], key_layer[:, :, :, ::2]], axis=-1)
     key_layer = key_layer * cos_pos + key_layer2 * sin_pos
 
-
   attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)
   
   attention_scores = tf.multiply(attention_scores,

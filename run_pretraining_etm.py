@@ -22,7 +22,7 @@ import tensorflow as tf
 tf.disable_v2_behavior()
 
 import os
-from model import modelin_etm
+from model import modeling_etm
 from model import optimization
 from util import utils, log_utils
 from bunch import Bunch
@@ -213,12 +213,15 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op, output_learning_rate = optimization.create_optimizer(
-          total_loss, learning_rate, num_train_steps, 
-          weight_decay_rate=FLAGS.weight_decay_rate,
-          use_tpu=use_tpu,
-          warmup_steps=num_warmup_steps,
-          lr_decay_power=FLAGS.lr_decay_power)
+      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+      print("==update_ops==", update_ops)
+      with tf.control_dependencies(update_ops):
+        train_op, output_learning_rate = optimization.create_optimizer(
+            total_loss, learning_rate, num_train_steps, 
+            weight_decay_rate=FLAGS.weight_decay_rate,
+            use_tpu=use_tpu,
+            warmup_steps=num_warmup_steps,
+            lr_decay_power=FLAGS.lr_decay_power)
 
       monitor_dict['learning_rate'] = output_learning_rate
       if FLAGS.monitoring and monitor_dict:

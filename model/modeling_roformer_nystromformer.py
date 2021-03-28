@@ -802,7 +802,7 @@ def attention_layer(from_tensor,
 
     # [1, F, 1, depth//2 * 2]
     tf.logging.info(cos_pos)
-    tf.logging.info("*** cos_pos ***")
+    tf.logging.info("**** cos_pos ***")
 
     tf.logging.info(sin_pos)
     tf.logging.info("*** sin_pos ****")

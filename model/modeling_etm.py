@@ -338,9 +338,13 @@ def mlp(input_tensor,
                 layer_input,
                 hidden_size,
                 kernel_initializer=create_initializer(initializer_range),
-                activation=intermediate_act_fn)
+                activation=tf.nn.relu)
         prev_output = layer_output
-    final_outputs = prev_output
+    final_outputs = tf.layers.dense(
+                prev_output,
+                hidden_size,
+                kernel_initializer=create_initializer(initializer_range),
+                activation=intermediate_act_fn)
     return final_outputs
 
 def reparameterize(mu_q_theta, sigma_std_q_theta, is_training):

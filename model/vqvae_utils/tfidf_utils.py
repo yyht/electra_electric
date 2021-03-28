@@ -198,6 +198,9 @@ def sparse_idf2dense(sparse_term_freq, sparse_term_count):
   return dense_term_freq, dense_term_count
 
 def tokenid2tf(input_ids, vocab_size, **kargs):
+
+  input_shape = get_shape_list(input_ids, expected_rank=[2,3])
+
   sparse_input_ids = _to_sparse(input_ids)
   cleaned_input = _to_vocab_range(sparse_input_ids, vocab_size)
   [sparse_term_freq, 
@@ -207,6 +210,9 @@ def tokenid2tf(input_ids, vocab_size, **kargs):
   [term_freq,
   term_count] = sparse_idf2dense(sparse_term_freq, 
                     sparse_term_count)
+
+  term_freq.set_shape([input_shape[0], vocab_size])
+  term_count.set_shape([input_shape[0], vocab_size])
 
   term_binary = tf.minimum(term_count, 1)
   term_freq = tf.cast(term_freq, dtype=tf.float32)

@@ -3,7 +3,7 @@ nohup python run_pretraining_roformer_nystromformer.py \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_base_roformer_nystromformer_conv_50g \
 	--input_data_dir gs://yyht_source/pretrain \
-	--max_seq_length 512 \
+	--max_seq_length 256 \
 	--do_train True \
 	--train_batch_size 512 \
 	--learning_rate 1e-4 \

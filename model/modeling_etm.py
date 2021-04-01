@@ -215,6 +215,10 @@ class ETM(object):
 
         tf.logging.info("*** topic_word_align ***")
         tf.logging.info(self.topic_word_align)
+
+        self.topic_word_align = tf.multiply(self.topic_word_align,
+                                 1.0 / math.sqrt(float(etm_config.embedding_size)))
+        
         # [topic_size, vocab_size]
         self.beta = tf.nn.softmax(self.topic_word_align, axis=-1)
         tf.logging.info("*** beta ***")

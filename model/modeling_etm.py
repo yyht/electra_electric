@@ -46,7 +46,7 @@ class ETMConfig(object):
   @classmethod
   def from_json_file(cls, json_file):
     """Constructs a `BertConfig` from a json file of parameters."""
-    with tf.io.gfile.GFile(json_file, "r") as reader:
+    with tf.gfile.GFile(json_file, "r") as reader:
       text = reader.read()
     return cls.from_dict(json.loads(text))
 
@@ -129,7 +129,9 @@ class ETM(object):
                       self.mu_q_theta,
                       training=is_training,
                       scale=False,
-                      center=False
+                      center=False,
+                      epsilon=1e-8,
+                      axis=-1
               )
             self.mu_q_theta = scalar_layer(self.mu_q_theta, tau=0.5, 
               mode='positive', initializer_range=0.02)
@@ -143,7 +145,7 @@ class ETM(object):
                               hidden_size=etm_config.topic_size,
                               is_training=is_training,
                               dropout_prob=etm_config.hidden_dropout_prob,
-                              intermediate_act_fn=tf.nn.softplus,
+                              intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
                               scope="sigma_std_mlp"
                               )
@@ -157,7 +159,9 @@ class ETM(object):
                       self.sigma_std_q_theta,
                       training=is_training,
                       scale=False,
-                      center=False
+                      center=False,
+                      epsilon=1e-8,
+                      axis=-1
               )
             self.sigma_std_q_theta = scalar_layer(self.sigma_std_q_theta, tau=0.5, 
               mode='negative', initializer_range=0.02)
@@ -186,11 +190,12 @@ class ETM(object):
                   shape=[etm_config.vocab_size, etm_config.embedding_size],
                   initializer=create_initializer(initializer_range))
           else:
+            trainable_flag = not is_training
             self.embedding_table = tf.get_variable(
                   name="vocab_word_embeddings",
                   shape=[etm_config.vocab_size, etm_config.embedding_size],
                   initializer=tf.constant_initializer(embedding_matrix, dtype=tf.float32),
-                  trainable=False)
+                  trainable=trainable_flag)
 
           tf.logging.info("*** vocab_word_embeddings ***")
           tf.logging.info(self.embedding_table)
@@ -338,20 +343,16 @@ def mlp(input_tensor,
                 layer_input,
                 hidden_size,
                 kernel_initializer=create_initializer(initializer_range),
-                activation=tf.nn.relu)
-        prev_output = layer_output
-    final_outputs = tf.layers.dense(
-                prev_output,
-                hidden_size,
-                kernel_initializer=create_initializer(initializer_range),
                 activation=intermediate_act_fn)
+        prev_output = layer_output
+    final_outputs = prev_output
     return final_outputs
 
 def reparameterize(mu_q_theta, sigma_std_q_theta, is_training):
   if is_training:
     sigma_q_theta = sigma_std_q_theta
     eps = tf.random.normal(get_shape_list(sigma_q_theta), 
-                            mean=0.0, stddev=1.0, dtype=tf.dtypes.float32)
+                            mean=0.0, stddev=1.0, dtype=tf.float32)
     return eps*sigma_q_theta+mu_q_theta
   else:
     return mu_q_theta

@@ -68,7 +68,8 @@ class ETM(object):
                is_training=False,
                embedding_matrix=None,
                hidden_vector=None,
-               scope=None):
+               scope=None,
+               input_type="term_count"):
     """
     https://github.com/linkstrife/NVDM-GSM/blob/master/GSM.py
     https://github.com/adjidieng/ETM/blob/master/etm.py
@@ -88,10 +89,23 @@ class ETM(object):
        tf.logging.info(self.term_binary)
        tf.logging.info(self.term_freq)
 
+    if input_type == 'term_count':
+      tf.logging.info("*** term_count ***")
+      self.model_input = tf.identity(self.term_count)
+    elif input_type == 'term_binary':
+      tf.logging.info("*** term_binary ***")
+      self.model_input = tf.identity(self.term_binary)
+    elif input_type == 'term_freq':
+      tf.logging.info("*** term_freq ***")
+      self.model_input = tf.identity(self.term_freq)
+    else:
+      tf.logging.info("*** term_freq ***")
+      self.model_input = tf.identity(self.term_freq)
+
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("encoder"):
         # [batch_size, hidden_size]
-        self.q_theta = mlp(input_tensor=self.term_count, 
+        self.q_theta = mlp(input_tensor=self.model_input, 
                           num_hidden_layers=etm_config.num_hidden_layers, 
                           hidden_size=etm_config.hidden_size,
                           is_training=is_training,
@@ -111,6 +125,7 @@ class ETM(object):
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("bridge"):
         # [batch_size, hidden_size]
+        # use bias is false since we will apply bn
         self.mu_q_theta = mlp(
                               input_tensor=self.q_theta, 
                               num_hidden_layers=1,
@@ -119,7 +134,9 @@ class ETM(object):
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
-                              scope="mu_theta_mlp")
+                              scope="mu_theta_mlp",
+                              use_bias=True if not etm_config.apply_bn_vae_mean else False
+                              )
         tf.logging.info("*** mu_q_theta ***")
         tf.logging.info(self.mu_q_theta)
 
@@ -147,7 +164,8 @@ class ETM(object):
                               dropout_prob=etm_config.hidden_dropout_prob,
                               intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
-                              scope="sigma_std_mlp"
+                              scope="sigma_std_mlp",
+                              use_bias=True if not etm_config.apply_bn_vae_var else False
                               )
 
         tf.logging.info("*** sigma_std_q_theta ***")
@@ -190,12 +208,11 @@ class ETM(object):
                   shape=[etm_config.vocab_size, etm_config.embedding_size],
                   initializer=create_initializer(initializer_range))
           else:
-            trainable_flag = not is_training
             self.embedding_table = tf.get_variable(
                   name="vocab_word_embeddings",
                   shape=[etm_config.vocab_size, etm_config.embedding_size],
                   initializer=tf.constant_initializer(embedding_matrix, dtype=tf.float32),
-                  trainable=trainable_flag)
+                  trainable=False)
 
           tf.logging.info("*** vocab_word_embeddings ***")
           tf.logging.info(self.embedding_table)
@@ -209,16 +226,18 @@ class ETM(object):
           tf.logging.info("*** topic_word_embeddings ***")
           tf.logging.info(self.topic_embedding_table)
 
+        # topic_embedding_table: [topic_size, embedding_size]
+        # embedding_table: [vocan_size, embedding_size]
         self.topic_word_align = tf.matmul(self.topic_embedding_table,
                                         self.embedding_table,
                                         transpose_b=True)
 
+        self.topic_word_align = tf.multiply(self.topic_word_align,
+                                 1.0 / math.sqrt(float(etm_config.embedding_size)))
+
         tf.logging.info("*** topic_word_align ***")
         tf.logging.info(self.topic_word_align)
 
-        self.topic_word_align = tf.multiply(self.topic_word_align,
-                                 1.0 / math.sqrt(float(etm_config.embedding_size)))
-        
         # [topic_size, vocab_size]
         self.beta = tf.nn.softmax(self.topic_word_align, axis=-1)
         tf.logging.info("*** beta ***")
@@ -227,6 +246,7 @@ class ETM(object):
         # theta: [batch_size, topic_size]
         # beta : [topic_size, vocab_size]
         # preds: [batch_size, vocab_size]
+        # preds needs to be log-softmax that normalized on vocab-size dims
         self.preds = tf.log(tf.matmul(self.theta, self.beta)+1e-10)
 
         tf.logging.info("*** preds ***")
@@ -242,7 +262,7 @@ class ETM(object):
     return self.topic_embedding_table
 
   def get_recon_loss(self):
-    self.per_example_recon_loss = -tf.reduce_sum(self.preds * self.term_count, axis=-1)
+    self.per_example_recon_loss = -tf.reduce_sum(self.preds * tf.stop_gradient(self.model_input), axis=-1)
     self.recon_loss = tf.reduce_mean(self.per_example_recon_loss)
     return self.recon_loss
 
@@ -336,7 +356,8 @@ def mlp(input_tensor,
         dropout_prob,
         intermediate_act_fn,
         initializer_range,
-        scope=None
+        scope=None,
+        use_bias=True,
         ):
   prev_output = input_tensor
   with tf.variable_scope(scope, default_name="mlp"):
@@ -347,7 +368,8 @@ def mlp(input_tensor,
                 layer_input,
                 hidden_size,
                 kernel_initializer=create_initializer(initializer_range),
-                activation=intermediate_act_fn)
+                activation=intermediate_act_fn,
+                use_bias=use_bias)
         prev_output = layer_output
     final_outputs = prev_output
     return final_outputs

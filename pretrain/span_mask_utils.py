@@ -275,7 +275,7 @@ def _single_token_mask(FLAGS, inputs, tgt_len, num_predict, exclude_mask=None):
   input_mask = tf.cast(tf.not_equal(inputs, FLAGS.pad_id), dtype=tf.int64)
   num_tokens = tf.cast(tf.reduce_sum(input_mask, -1), tf.int64)
 
-  all_indices = tf.range(num_tokens, dtype=tf.int64)
+  all_indices = tf.range(tgt_len, dtype=tf.int64)
   candidate_indices = tf.boolean_mask(all_indices, candidate_mask)
   masked_pos = tf.random.shuffle(candidate_indices)
   if check_tf_version():

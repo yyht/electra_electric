@@ -333,9 +333,9 @@ class PretrainingModel(object):
         "masked_lm_ids": masked_inputs.masked_lm_ids,
         "masked_lm_weights": masked_inputs.masked_lm_weights,
         "input_mask": masked_inputs.input_mask,
-        "sampled_masked_lm_preds":sampled_mlm_output.preds,
-        "sampled_masked_lm_ids":sampled_masked_inputs.masked_lm_ids,
-        "sampled_masked_lm_weights":sampled_masked_inputs.masked_lm_weights
+        "sampled_masked_lm_preds":mlm_output.preds,
+        "sampled_masked_lm_ids":masked_inputs.masked_lm_ids,
+        "sampled_masked_lm_weights":masked_inputs.masked_lm_weights
     }
     if config.electra_objective or config.electric_objective:
       eval_fn_inputs.update({

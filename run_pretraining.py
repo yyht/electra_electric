@@ -299,7 +299,7 @@ class PretrainingModel(object):
                                                 disc_fake)
         print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
         nce_disc_output = self._get_nce_disc_output( 
-                                sampled_mlm_output.pseudo_logprob,
+                                mlm_output.pseudo_logprob,
                                 fake_data.pseudo_logprob,
                                 disc_real_energy,
                                 disc_fake_energy)
@@ -315,7 +315,7 @@ class PretrainingModel(object):
                                                 disc_fake)
         print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
         nce_disc_output = self._get_gan_disc_output( 
-                                sampled_mlm_output.pseudo_logprob,
+                                mlm_output.pseudo_logprob,
                                 fake_data.pseudo_logprob,
                                 disc_real_energy,
                                 disc_fake_energy)

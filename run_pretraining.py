@@ -286,7 +286,7 @@ class PretrainingModel(object):
       self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
       if config.nce_mlm:
         disc_mlm_output = self._get_masked_lm_output(fake_data.inputs, disc_fake, self.discriminator_cls_scope)
-        print(disc_fake, "===disc_fake using for conditional fake data energy function===")
+        print(disc_fake, "===disc_fake using for mlm===")
         self.total_loss += disc_mlm_output.loss
         self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_cls_scope)
 
@@ -324,6 +324,9 @@ class PretrainingModel(object):
       
       self.total_loss += config.disc_weight * nce_disc_output.loss
       self.disc_loss = nce_disc_output.loss
+      if config.nce_mlm:
+        print("==discriminator using mlm loss==")
+        self.disc_loss += disc_mlm_output.loss
 
     # Evaluation
     eval_fn_inputs = {

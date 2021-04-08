@@ -1075,7 +1075,7 @@ def model_fn_builder(config):
       elif config.stage == 'one_stage_merged':
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         global_step = tf.train.get_or_create_global_step()
-        gen_op, pre_learning_rate = optimization.create_optimizer_v1(
+        gen_op, gen_pre_learning_rate = optimization.create_optimizer_v1(
                 model.gen_loss, config.gen_learning_rate, 
                 config.num_train_steps,
                 weight_decay_rate=config.weight_decay_rate,
@@ -1085,7 +1085,7 @@ def model_fn_builder(config):
                 tvars=model.gen_params,
                 global_step_name="gen_step"
               )
-        disc_op, pre_learning_rate = optimization.create_optimizer_v1(
+        disc_op, disc_pre_learning_rate = optimization.create_optimizer_v1(
                 model.disc_loss, config.disc_learning_rate, 
                 config.num_train_steps,
                 weight_decay_rate=config.weight_decay_rate,

@@ -1092,7 +1092,8 @@ def model_fn_builder(config):
                 global_step_name="disc_step"
               )
 
-        with tf.control_dependencies([update_ops, gen_op, disc_op]):
+        all_op = tf.group([update_ops, gen_op, disc_op])
+        with tf.control_dependencies([all_op]):
           train_op = global_step.assign_add(1)
 
       if config.monitoring:

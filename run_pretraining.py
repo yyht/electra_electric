@@ -1071,6 +1071,7 @@ def model_fn_builder(config):
 
       elif config.stage == 'one_stage_merged':
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        global_step = tf.train.get_or_create_global_step()
         gen_op, pre_learning_rate = optimization.create_optimizer_v1(
                 model.gen_loss, config.gen_learning_rate, 
                 config.num_train_steps,

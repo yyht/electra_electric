@@ -98,6 +98,7 @@ class PretrainingModel(object):
       if self._config.use_pretrained_discriminator:
         self.discriminator_scope = 'discriminator/bert'
         self.discriminator_exclude_scope = 'discriminator'
+        self.discriminator_cls_scope = 'discriminator/cls/predictions'
         self.discriminator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
@@ -110,6 +111,7 @@ class PretrainingModel(object):
           config.embedding_size)
         self.discriminator_exclude_scope = ''
         self.untied_discriminator_embeddings = config.untied_generator_embeddings
+        self.discriminator_cls_scope = ''
     else:
       if self._config.use_pretrained_generator or self._config.use_pretrained_discriminator:
         self.generator_scope = 'discriminator/bert'
@@ -117,6 +119,7 @@ class PretrainingModel(object):
         self.generator_cloze_scope = 'discriminator/cls/predictions'
         self.discriminator_scope = 'discriminator/bert'
         self.discriminator_exclude_scope = 'discriminator'
+        self.discriminator_cls_scope = 'discriminator/cls/predictions'
         self.generator_exclude_scope = 'discriminator'
         self.discriminator_embedding_size = (
           self._bert_config.hidden_size if config.embedding_size is None else
@@ -140,7 +143,8 @@ class PretrainingModel(object):
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
         self.discriminator_exclude_scope = ''
-        self.generator_exclude_scope = ''
+        self.discriminator_cls_scope = ''
+        self.generator_exclude_scope = 'electra_predictions'
         self.untied_generator_embeddings = True
         self.untied_discriminator_embeddings = True
 
@@ -168,7 +172,7 @@ class PretrainingModel(object):
               self._bert_config.vocab_size,
               self._config.logprob_avg)
           print("==two_tower_generator==")
-          sampled_mlm_output = mlm_output
+
           self.gen_params = []
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
@@ -186,7 +190,7 @@ class PretrainingModel(object):
               masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
               self._bert_config.vocab_size,
               self._config.logprob_avg)
-          sampled_mlm_output = mlm_output
+
           print("==two_tower_generator==")
           self.gen_params = []
           self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
@@ -200,14 +204,14 @@ class PretrainingModel(object):
             scope=self.generator_scope,
             reuse=tf.AUTO_REUSE)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
-        
-        sampled_generator = build_transformer(
-            config, sampled_masked_inputs, is_training, self._generator_config,
-            embedding_size=self.generator_embedding_size,
-            untied_embeddings=self.untied_generator_embeddings,
-            scope=self.generator_scope,
-            reuse=tf.AUTO_REUSE)
-        sampled_mlm_output = self._get_masked_lm_output(sampled_masked_inputs, sampled_generator, self.generator_cls_scope)
+
+        # sampled_generator = build_transformer(
+        #     config, sampled_masked_inputs, is_training, self._generator_config,
+        #     embedding_size=self.generator_embedding_size,
+        #     untied_embeddings=self.untied_generator_embeddings,
+        #     scope=self.generator_scope,
+        #     reuse=tf.AUTO_REUSE)
+        # sampled_mlm_output = self._get_masked_lm_output(sampled_masked_inputs, sampled_generator, self.generator_cls_scope)
 
         print("==mlm share embeddings==")
         self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
@@ -227,19 +231,19 @@ class PretrainingModel(object):
           scope=self.generator_scope)
       print("==share all params==")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
-      
-      sampled_generator = build_transformer(
-            config, sampled_masked_inputs, is_training, self._bert_config,
-            embedding_size=self.generator_embedding_size,
-            untied_embeddings=self.untied_generator_embeddings,
-            scope=self.generator_scope,
-            reuse=tf.AUTO_REUSE)
-      sampled_mlm_output = self._get_masked_lm_output(sampled_masked_inputs, sampled_generator, self.generator_cls_scope)
 
+      # sampled_generator = build_transformer(
+      #       config, sampled_masked_inputs, is_training, self._bert_config,
+      #       embedding_size=self.generator_embedding_size,
+      #       untied_embeddings=self.untied_generator_embeddings,
+      #       scope=self.generator_scope,
+      #       reuse=tf.AUTO_REUSE)
+      # sampled_mlm_output = self._get_masked_lm_output(sampled_masked_inputs, sampled_generator, self.generator_cls_scope)
+      
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     
-    fake_data = self._get_fake_data(sampled_masked_inputs, sampled_mlm_output.logits)
+    fake_data = self._get_fake_data(masked_inputs, mlm_output.logits)
     self.mlm_output = mlm_output
     self.total_loss = config.gen_weight * (
         cloze_output.loss if config.two_tower_generator else mlm_output.loss)
@@ -270,8 +274,7 @@ class PretrainingModel(object):
           embedding_size=self.discriminator_embedding_size,
           untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope)
-      print(disc_fake, "===disc_fake using for conditional fake data energy function===")
-
+      
       disc_real = build_transformer(
           config, unmasked_inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, 
@@ -281,6 +284,11 @@ class PretrainingModel(object):
       print(disc_real, "===disc_real using for conditional real data energy function===")
 
       self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
+      if config.nce_mlm:
+        disc_mlm_output = self._get_masked_lm_output(fake_data.inputs, disc_fake, self.discriminator_cls_scope)
+        print(disc_fake, "===disc_fake using for conditional fake data energy function===")
+        self.total_loss += disc_mlm_output.loss
+        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_cls_scope)
 
       if config.nce == 'nce':
         disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
@@ -1059,6 +1067,32 @@ def model_fn_builder(config):
               model.monitor_dict[step_name+"_learning_rate"] = pre_learning_rate
         
         with tf.control_dependencies([prev_op]):
+          train_op = global_step.assign_add(1)
+
+      elif config.stage == 'one_stage_merged':
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        gen_op, pre_learning_rate = optimization.create_optimizer_v1(
+                model.gen_loss, config.gen_learning_rate, 
+                config.num_train_steps,
+                weight_decay_rate=config.weight_decay_rate,
+                use_tpu=config.use_tpu,
+                warmup_steps=config.num_warmup_steps,
+                lr_decay_power=config.lr_decay_power,
+                tvars=model.gen_params,
+                global_step_name="gen_step"
+              )
+        disc_op, pre_learning_rate = optimization.create_optimizer_v1(
+                model.disc_loss, config.disc_learning_rate, 
+                config.num_train_steps,
+                weight_decay_rate=config.weight_decay_rate,
+                use_tpu=config.use_tpu,
+                warmup_steps=config.num_warmup_steps,
+                lr_decay_power=config.lr_decay_power,
+                tvars=model.disc_params,
+                global_step_name="disc_step"
+              )
+
+        with tf.control_dependencies([update_ops, gen_op, disc_op]):
           train_op = global_step.assign_add(1)
 
       if config.monitoring:

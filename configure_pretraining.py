@@ -49,6 +49,8 @@ class PretrainingConfig(object):
     self.gen_learning_rate = 5e-5
     self.disc_learning_rate = 1e-4
     self.spectral_regularization = False
+    self.nce_mlm = True
+    
     # optimization
     self.learning_rate = 5e-4
     self.lr_decay_power = 1.0  # linear weight decay by default

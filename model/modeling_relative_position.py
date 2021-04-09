@@ -764,6 +764,7 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
   https://github.com/bojone/bert4keras/blob/master/bert4keras/layers.py
   https://github.com/tensorflow/mesh/blob/master/mesh_tensorflow/transformer/transformer_layers.py
   # _relative_position_bucket
+  https://gist.github.com/huchenxucs/c65524185e8e35c4bcfae4059f896c16
   """
 
   if not cache:

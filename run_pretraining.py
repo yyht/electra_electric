@@ -259,16 +259,16 @@ class PretrainingModel(object):
           untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope)
 
-      input_ids_shape = get_shape_list(unmasked_inputs.input_ids, expected_rank=[2,3])
+      input_ids_shape = modeling.get_shape_list(unmasked_inputs.input_ids, expected_rank=[2,3])
 
       global_step = tf.train.get_or_create_global_step()
 
       random_prob = tf.random.uniform(shape=[input_ids_shape[0]], minval=0.0, maxval=1.0)
       threhold_prob = tf.train.polynomial_decay(
-                    0.0,
+                    0.85,
                     global_step,
                     config.num_train_steps,
-                    end_learning_rate=0.2,
+                    end_learning_rate=0.9,
                     power=1,
                     cycle=True) 
       random_prob_mask = tf.greater_equal(random_prob, threhold_prob)

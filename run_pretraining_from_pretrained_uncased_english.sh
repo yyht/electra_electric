@@ -1,4 +1,4 @@
-nohup python run_pretraining.py \
+nohup python3 run_pretraining.py \
 	--data-dir gs://yyht_source/pretrain \
 	--data-file-list uncased_english_whole_sentence_v3_32/uncased_english_whole_sentence_file.txt \
 	--model-name uncased_en_electric_pretrained_mlm_electra_nce_topk_20 \

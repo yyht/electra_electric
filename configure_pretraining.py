@@ -50,6 +50,9 @@ class PretrainingConfig(object):
     self.disc_learning_rate = 1e-4
     self.spectral_regularization = False
     self.nce_mlm = True
+    self.nce_disc_weight = 10.0
+    self.electra_disc_weight = 10.0
+    self.nce_electra = False
     
     # optimization
     self.learning_rate = 5e-4
@@ -151,8 +154,8 @@ class PretrainingConfig(object):
     self.results_pkl = os.path.join(results_dir, "unsup_results.pkl")
 
     # span-mask-config
-    self.min_tok = 1
-    self.max_tok = 10
+    self.min_tok = 3
+    self.max_tok = 5
     self.sep_id = 102
     self.pad_id = 0
     self.cls_id = 101
@@ -165,6 +168,7 @@ class PretrainingConfig(object):
     self.truncate_seq = False
     self.stride = 1
     self.use_bfloat16 = False
+
 
     # update defaults with passed-in hyperparameters
     self.update(kwargs)

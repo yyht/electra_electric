@@ -205,14 +205,6 @@ class PretrainingModel(object):
             reuse=tf.AUTO_REUSE)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
-        # sampled_generator = build_transformer(
-        #     config, sampled_masked_inputs, is_training, self._generator_config,
-        #     embedding_size=self.generator_embedding_size,
-        #     untied_embeddings=self.untied_generator_embeddings,
-        #     scope=self.generator_scope,
-        #     reuse=tf.AUTO_REUSE)
-        # sampled_mlm_output = self._get_masked_lm_output(sampled_masked_inputs, sampled_generator, self.generator_cls_scope)
-
         print("==mlm share embeddings==")
         self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
@@ -232,14 +224,6 @@ class PretrainingModel(object):
       print("==share all params==")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
-      # sampled_generator = build_transformer(
-      #       config, sampled_masked_inputs, is_training, self._bert_config,
-      #       embedding_size=self.generator_embedding_size,
-      #       untied_embeddings=self.untied_generator_embeddings,
-      #       scope=self.generator_scope,
-      #       reuse=tf.AUTO_REUSE)
-      # sampled_mlm_output = self._get_masked_lm_output(sampled_masked_inputs, sampled_generator, self.generator_cls_scope)
-      
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     
@@ -274,7 +258,25 @@ class PretrainingModel(object):
           embedding_size=self.discriminator_embedding_size,
           untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope)
-      
+
+      input_ids_shape = get_shape_list(unmasked_inputs.input_ids, expected_rank=[2,3])
+
+      global_step = tf.train.get_or_create_global_step()
+
+      random_prob = tf.random.uniform(shape=[input_ids_shape[0]], minval=0.0, maxval=1.0)
+      threhold_prob = tf.train.polynomial_decay(
+                    0.0,
+                    global_step,
+                    config.num_train_steps,
+                    end_learning_rate=0.2,
+                    power=1,
+                    cycle=True) 
+      random_prob_mask = tf.greater_equal(random_prob, threhold_prob)
+      random_prob_mask = tf.cast(random_prob_mask, unmasked_inputs.input_ids.dtype)
+      # [batch_size, 1]
+      random_prob_mask = tf.expand_dims(random_prob_mask, axis=-1)
+      unmasked_inputs.input_ids = random_prob_mask * unmasked_inputs.input_ids + (1-random_prob_mask)*fake_data.inputs.input_ids
+
       disc_real = build_transformer(
           config, unmasked_inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, 
@@ -289,7 +291,13 @@ class PretrainingModel(object):
         print(disc_fake, "===disc_fake using for mlm===")
         self.total_loss += disc_mlm_output.loss
         self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_cls_scope)
+      if config.nce_electra:
 
+        disc_output = self._get_discriminator_output(
+          fake_data.inputs, disc_fake, fake_data.is_fake_tokens,
+          mlm_output)
+        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
+        self.total_loss += config.electra_disc_weight * disc_output.loss
       if config.nce == 'nce':
         disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
                                               disc_real)
@@ -304,7 +312,7 @@ class PretrainingModel(object):
                                 disc_real_energy,
                                 disc_fake_energy)
 
-        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
+        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'nce/discriminator_predictions')
 
       elif config.nce == 'gan':
         disc_real_energy = self._get_gan_output(unmasked_inputs, 
@@ -320,13 +328,17 @@ class PretrainingModel(object):
                                 disc_real_energy,
                                 disc_fake_energy)
         print("==not using mlm as bias==")
-        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
+        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'gan/discriminator_predictions')
       
-      self.total_loss += config.disc_weight * nce_disc_output.loss
+      self.total_loss += config.nce_disc_weight * nce_disc_output.loss
+      
       self.disc_loss = nce_disc_output.loss
       if config.nce_mlm:
         print("==discriminator using mlm loss==")
         self.disc_loss += disc_mlm_output.loss
+      if config.nce_electra:
+        print("==discriminator using electra loss==")
+        self.disc_loss += config.electra_disc_weight * disc_output.loss
 
     # Evaluation
     eval_fn_inputs = {
@@ -588,7 +600,7 @@ class PretrainingModel(object):
       custom_getter = None
       print("==no spectral_regularization==")
     print(discriminator.get_sequence_output(), "==discriminator.get_sequence_output()==")
-    with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE,
+    with tf.variable_scope("nce/discriminator_predictions", reuse=tf.AUTO_REUSE,
           custom_getter=custom_getter):
       hidden = tf.layers.dense(
           discriminator.get_sequence_output(),
@@ -609,7 +621,7 @@ class PretrainingModel(object):
   def _get_gan_output(self, inputs,
                               discriminator):
 
-    with tf.variable_scope("discriminator_predictions", reuse=tf.AUTO_REUSE):
+    with tf.variable_scope("gan/discriminator_predictions", reuse=tf.AUTO_REUSE):
       print(discriminator.get_sequence_output(), "==discriminator.get_sequence_output()==")
       hidden = tf.layers.dense(
           discriminator.get_sequence_output(),

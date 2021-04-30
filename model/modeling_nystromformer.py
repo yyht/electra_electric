@@ -146,7 +146,8 @@ class BertModel(object):
                input_mask=None,
                token_type_ids=None,
                use_one_hot_embeddings=True,
-               scope=None):
+               scope=None,
+               if_reuse_dropout=False):
     """Constructor for BertModel.
 
     Args:
@@ -205,7 +206,7 @@ class BertModel(object):
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
             dropout_prob=config.hidden_dropout_prob,
-            dropout_name=tf.get_variable_scope().name+"/embeddings")
+            dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
 
       with tf.variable_scope("encoder"):
         # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
@@ -230,7 +231,7 @@ class BertModel(object):
             do_return_all_layers=True,
             num_landmarks=config.num_landmarks,
             original_mask=tf.cast(input_mask, dtype=tf.float32),
-            dropout_name=tf.get_variable_scope().name+"/encoder",
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None,
             use_conv=config.use_conv,
             conv_kernel_size=config.conv_kernel_size,
             n_iter=config.n_iter)

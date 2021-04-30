@@ -138,7 +138,8 @@ class BertModel(object):
                input_mask=None,
                token_type_ids=None,
                use_one_hot_embeddings=True,
-               scope=None):
+               scope=None,
+               if_reuse_dropout=False):
     """Constructor for BertModel.
 
     Args:
@@ -197,7 +198,7 @@ class BertModel(object):
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
             dropout_prob=config.hidden_dropout_prob,
-            dropout_name=tf.get_variable_scope().name+"/embeddings")
+            dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
 
       with tf.variable_scope("encoder"):
         # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
@@ -220,7 +221,7 @@ class BertModel(object):
             attention_probs_dropout_prob=config.attention_probs_dropout_prob,
             initializer_range=config.initializer_range,
             do_return_all_layers=True,
-            dropout_name=tf.get_variable_scope().name+"/encoder")
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
 
       self.sequence_output = self.all_encoder_layers[-1]
       # The "pooler" converts the encoded sequence tensor of shape

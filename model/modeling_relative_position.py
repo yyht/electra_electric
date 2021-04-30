@@ -144,7 +144,8 @@ class BertModel(object):
                input_mask=None,
                token_type_ids=None,
                use_one_hot_embeddings=False,
-               scope=None):
+               scope=None,
+               if_reuse_dropout=False):
     """Constructor for BertModel.
     Args:
       config: `BertConfig` instance.
@@ -198,7 +199,8 @@ class BertModel(object):
             position_embedding_name="position_embeddings",
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
-            dropout_prob=config.hidden_dropout_prob)
+            dropout_prob=config.hidden_dropout_prob,
+            dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
 
       with tf.variable_scope("encoder"):
         # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
@@ -258,7 +260,8 @@ class BertModel(object):
             do_return_all_layers=True,
             use_relative_position=config.use_relative_position,
             relative_position_embeddings=self.relative_position_embeddings,
-            relative_position_type=config.relative_position_type)
+            relative_position_type=config.relative_position_type,
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
 
       self.sequence_output = tf.cast(self.all_encoder_layers[-1], tf.float32)
       # The "pooler" converts the encoded sequence tensor of shape
@@ -549,10 +552,10 @@ def layer_norm(input_tensor, name=None):
       inputs=input_tensor, begin_norm_axis=-1, begin_params_axis=-1, scope=name)
 
 
-def layer_norm_and_dropout(input_tensor, dropout_prob, name=None):
+def layer_norm_and_dropout(input_tensor, dropout_prob, name=None, dropout_name=None):
   """Runs layer normalization followed by dropout."""
   output_tensor = layer_norm(input_tensor, name)
-  output_tensor = dropout(output_tensor, dropout_prob)
+  output_tensor = dropout(output_tensor, dropout_prob, dropout_name)
   return output_tensor
 
 
@@ -616,7 +619,8 @@ def embedding_postprocessor(input_tensor,
                             position_embedding_name="position_embeddings",
                             initializer_range=0.02,
                             max_position_embeddings=512,
-                            dropout_prob=0.1):
+                            dropout_prob=0.1,
+                            dropout_name=None):
   """Performs various post-processing on a word embedding tensor.
   Args:
     input_tensor: float Tensor of shape [batch_size, seq_length,
@@ -696,7 +700,7 @@ def embedding_postprocessor(input_tensor,
                                        position_broadcast_shape)
       output += position_embeddings
 
-  output = layer_norm_and_dropout(output, dropout_prob)
+  output = layer_norm_and_dropout(output, dropout_prob, dropout_name)
   return output
 
 

@@ -279,7 +279,12 @@ class PretrainingModel(object):
       tf.logging.info("** fake_data **")
       tf.logging.info(fake_data.inputs.input_ids)
       random_prob_mask = tf.expand_dims(random_prob_mask, axis=-1)
-      unmasked_inputs.input_ids = random_prob_mask * unmasked_inputs.input_ids + (1-random_prob_mask)*fake_data.inputs.input_ids
+      real_fake_mixture = random_prob_mask * unmasked_inputs.input_ids + (1-random_prob_mask)*fake_data.inputs.input_ids
+
+      unmasked_inputs = pretrain_data.get_updated_inputs(
+        unmasked_inputs,
+        input_ids=tf.stop_gradient(real_fake_mixture),
+      )
 
       disc_real = build_transformer(
           config, unmasked_inputs, is_training, self._bert_config,

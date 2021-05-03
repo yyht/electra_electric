@@ -274,9 +274,9 @@ class PretrainingModel(object):
       random_prob_mask = tf.greater_equal(random_prob, threhold_prob)
       random_prob_mask = tf.cast(random_prob_mask, unmasked_inputs.input_ids.dtype)
       # [batch_size, 1]
-      tf.logging.info("** unmasked_inputs **")
+      tf.logging.info("** * unmasked_inputs **")
       tf.logging.info(unmasked_inputs.input_ids)
-      tf.logging.info("** fake_data **")
+      tf.logging.info("** * fake_data **")
       tf.logging.info(fake_data.inputs.input_ids)
       random_prob_mask = tf.expand_dims(random_prob_mask, axis=-1)
       real_fake_mixture = (1-random_prob_mask) * unmasked_inputs.input_ids + (random_prob_mask)*fake_data.inputs.input_ids

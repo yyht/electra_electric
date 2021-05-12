@@ -1047,6 +1047,8 @@ def model_fn_builder(config):
                              mode == tf.estimator.ModeKeys.TRAIN)
     print("Model is built!")
     tvars = tf.trainable_variables()
+    model.gen_params = list(set(model.gen_params))
+    model.disc_params = list(set(model.disc_params))
 
     for tvar in tvars:
       print(tvar, "========tvar========")

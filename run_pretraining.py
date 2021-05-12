@@ -111,7 +111,7 @@ class PretrainingModel(object):
           config.embedding_size)
         self.discriminator_exclude_scope = ''
         self.untied_discriminator_embeddings = config.untied_generator_embeddings
-        self.discriminator_cls_scope = ''
+        self.discriminator_cls_scope = 'electra_predictions'
     else:
       if self._config.use_pretrained_generator or self._config.use_pretrained_discriminator:
         self.generator_scope = 'discriminator/bert'
@@ -143,8 +143,8 @@ class PretrainingModel(object):
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
         self.discriminator_exclude_scope = ''
-        self.discriminator_cls_scope = ''
-        self.generator_exclude_scope = 'electra_predictions'
+        self.discriminator_cls_scope = 'electra_predictions'
+        self.generator_exclude_scope = ''
         self.untied_generator_embeddings = True
         self.untied_discriminator_embeddings = True
 

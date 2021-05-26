@@ -500,6 +500,7 @@ class PretrainingModel(object):
         sampled_tokens_fp32, 
         inputs.masked_lm_positions)
     updated_input_ids_ = tf.argmax(updated_input_ids, axis=-1)
+    updated_input_ids_ = tf.cast(updated_input_ids_, dtype=tf.int32)
     if self._config.electric_objective:
       labels = masked
     else:
@@ -544,7 +545,7 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   oh_labels = tf.one_hot(targets, depth=vocab_size, dtype=tf.float32)
   preds = tf.argmax(logits, axis=-1, output_type=tf.int32)
   probs = tf.nn.softmax(logits)
-  
+
   log_probs = tf.nn.log_softmax(logits)
   label_log_probs = -tf.reduce_sum(log_probs * oh_labels, axis=-1)
 

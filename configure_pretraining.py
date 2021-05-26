@@ -44,6 +44,7 @@ class PretrainingConfig(object):
     self.disc_weight = 50.0  # discriminator loss
     self.mask_prob = 0.15  # percent of input tokens to mask out / replace
     self.nce = 'gan'
+    self.straight_through = True
     self.logprob_avg = False
     self.stage = 'one_stage'
     self.gen_learning_rate = 5e-5

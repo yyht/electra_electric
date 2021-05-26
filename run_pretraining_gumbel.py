@@ -150,7 +150,6 @@ class PretrainingModel(object):
         self.untied_discriminator_embeddings = True
 
     # Generator
-    cloze_output = None
     if config.uniform_generator:
       # simple generator sampling fakes uniformly at random
       # mlm_output = self._get_masked_lm_output(masked_inputs, None)
@@ -228,11 +227,13 @@ class PretrainingModel(object):
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     
-    fake_data = self._get_fake_data(masked_inputs, mlm_output.logits)
+    fake_data = self._get_fake_data(masked_inputs, mlm_output.logits, config.straight_through)
     self.mlm_output = mlm_output
-    self.total_loss = config.gen_weight * (
-        cloze_output.loss if config.two_tower_generator else mlm_output.loss)
-    if config.two_tower_generator:
+    if config.two_tower_generator or config.tta_generator:
+      self.total_loss = config.gen_weight * cloze_output.loss
+    else:
+      self.total_loss = config.gen_weight * mlm_output.loss
+    if config.two_tower_generator or config.tta_generator:
       self.gen_loss = cloze_output.loss
     else:
       self.gen_loss = mlm_output.loss
@@ -247,10 +248,12 @@ class PretrainingModel(object):
           scope=self.discriminator_scope)
       disc_output = self._get_discriminator_output(
           fake_data.inputs, discriminator, fake_data.is_fake_tokens,
-          cloze_output)
+          mlm_output)
+
       self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
       self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
       self.disc_loss = disc_output.loss
+      self.gen_loss -= disc_output.loss
       self.total_loss += config.disc_weight * disc_output.loss
       
     # Evaluation
@@ -450,7 +453,7 @@ class PretrainingModel(object):
           preds=preds, labels=labels,
       )
 
-  def _get_fake_data(self, inputs, mlm_logits):
+  def _get_fake_data(self, inputs, mlm_logits, straight_through=True):
     """Sample from the generator to create corrupted input."""
     masked_lm_weights = inputs.masked_lm_weights
     inputs = pretrain_helpers.unmask(inputs)
@@ -458,38 +461,43 @@ class PretrainingModel(object):
         inputs.masked_lm_ids, depth=self._bert_config.vocab_size,
         dtype=tf.float32) if self._config.disallow_correct else None
     if self._config.fake_data_sample == 'sample_from_softmax':
-      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_softmax(
+      sampled_tokens = (gumbel_softmax_sampling.sample_from_softmax(
         mlm_logits, temperature=self._config.temperature, 
-        disallow=disallow,
-        straight_through=straight_through))
+        straight_through=straight_through,
+        disallow=disallow
+        ))
       tf.logging.info("***** apply sample_from_softmax *****")
     elif self._config.fake_data_sample == 'sample_from_top_k':
-      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_top_k(
+      sampled_tokens = (gumbel_softmax_sampling.sample_from_top_k(
         mlm_logits, temperature=self._config.temperature, 
         disallow=disallow, 
         straight_through=straight_through,
         k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
-      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_top_p(
+      sampled_tokens = (gumbel_softmax_sampling.sample_from_top_p(
         mlm_logits, temperature=self._config.temperature, 
         disallow=disallow, 
         straight_through=straight_through,
         p=self._config.topp))
       tf.logging.info("***** apply sample_from_top_p *****")
     else:
-      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_softmax(
-        mlm_logits, temperature=self._config.temperature, 
+      sampled_tokens = (gumbel_softmax_sampling.sample_from_softmax(
+        mlm_logits, 
+        temperature=self._config.temperature,
+        straight_through=straight_through,
         disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")
 
+    tf.logging.info("** sampled_tokens **")
+    tf.logging.info(sampled_tokens)
     # sampled_tokens: [batch_size, n_pos, n_vocab]
     # mlm_logits: [batch_size, n_pos, n_vocab]
     sampled_tokens_fp32 = tf.cast(sampled_tokens, dtype=tf.float32)
-    
+    onehot_input_ids = tf.one_hot(inputs.input_ids, 
+                  depth=self._bert_config.vocab_size)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
-        tf.one_hot(inputs.input_ids, 
-                  depth=bert_config.vocab_size), 
+        tf.cast(onehot_input_ids, dtype=tf.float32), 
         sampled_tokens_fp32, 
         inputs.masked_lm_positions)
     updated_input_ids_ = tf.argmax(updated_input_ids, axis=-1)
@@ -501,10 +509,9 @@ class PretrainingModel(object):
     updated_inputs = pretrain_data.get_updated_inputs(
         inputs, input_ids=updated_input_ids)
     FakedData = collections.namedtuple("FakedData", [
-        "inputs", "is_fake_tokens", "sampled_tokens", "pseudo_logprob"])
+        "inputs", "is_fake_tokens", "sampled_tokens"])
     return FakedData(inputs=updated_inputs, is_fake_tokens=labels,
-                     sampled_tokens=sampled_tokens,
-                     pseudo_logprob=pseudo_logprob)
+                     sampled_tokens=sampled_tokens)
 
   def _get_cloze_outputs(self, inputs, model, scope=''):
     weights = tf.cast(pretrain_helpers.get_candidates_mask(
@@ -535,37 +542,20 @@ def get_token_logits(input_reprs, embedding_table, bert_config):
   return logits
 
 
-def get_softmax_output(logits, targets, weights, vocab_size, 
-                      logprob_avg=False):
+def get_softmax_output(logits, targets, weights, vocab_size):
   oh_labels = tf.one_hot(targets, depth=vocab_size, dtype=tf.float32)
   preds = tf.argmax(logits, axis=-1, output_type=tf.int32)
   probs = tf.nn.softmax(logits)
-  log_probs = tf.nn.log_softmax(logits)
-  # [batch_size, num_masked]
-  label_log_probs = -tf.reduce_sum(log_probs * oh_labels, axis=-1)
-  print(label_log_probs, "===label_log_probs===")
-  numerator = tf.reduce_sum(weights * label_log_probs, axis=-1)
-  print(numerator, "===numerator===")
-  # [batch_size, num_masked]
-  denominator = tf.reduce_sum(weights, axis=-1)
-  pseudo_logprob = -numerator
-  if logprob_avg:
-    pseudo_logprob /= (denominator + 1e-6)
-    print("==apply averaging on mlm==")
-  # pseudo_logprob = -numerator
-  print("== get_softmax_output ==", pseudo_logprob)
+  
   loss = tf.reduce_sum(numerator) / (tf.reduce_sum(denominator) + 1e-6)
   SoftmaxOutput = collections.namedtuple(
       "SoftmaxOutput", ["logits", "probs", "loss", "per_example_loss", "preds",
-                        "weights", "pseudo_logprob",
-                        "targets"])
+                        "weights", "targets"])
   return SoftmaxOutput(
       logits=logits, probs=probs, per_example_loss=label_log_probs,
       loss=loss, preds=preds, weights=weights,
-      pseudo_logprob=pseudo_logprob,
       targets=targets
       )
-
 
 class TwoTowerClozeTransformer(object):
   """Build a two-tower Transformer used as Electric's generator."""

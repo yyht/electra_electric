@@ -169,8 +169,7 @@ class PretrainingModel(object):
               pretrain_helpers.gather_positions(
                   cloze_output.logits, masked_inputs.masked_lm_positions),
               masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-              self._bert_config.vocab_size,
-              self._config.logprob_avg)
+              self._bert_config.vocab_size)
           print("==two_tower_generator==")
 
           self.gen_params = []
@@ -188,8 +187,7 @@ class PretrainingModel(object):
               pretrain_helpers.gather_positions(
                   cloze_output.logits, masked_inputs.masked_lm_positions),
               masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-              self._bert_config.vocab_size,
-              self._config.logprob_avg)
+              self._bert_config.vocab_size)
 
           print("==two_tower_generator==")
           self.gen_params = []
@@ -412,8 +410,7 @@ class PretrainingModel(object):
             relevant_reprs, model.get_embedding_table(), self._bert_config)
       return get_softmax_output(
           logits, inputs.masked_lm_ids, inputs.masked_lm_weights,
-          self._bert_config.vocab_size,
-          self._config.logprob_avg)
+          self._bert_config.vocab_size)
  
   def _get_discriminator_output(
       self, inputs, discriminator, labels, cloze_output=None):
@@ -521,8 +518,7 @@ class PretrainingModel(object):
       logits = get_token_logits(model.get_sequence_output(),
                                 model.get_embedding_table(), self._bert_config)
       return get_softmax_output(logits, inputs.input_ids, weights,
-                                self._bert_config.vocab_size,
-                                self._config.logprob_avg)
+                                self._bert_config.vocab_size)
 
 def get_token_logits(input_reprs, embedding_table, bert_config):
   with tf.variable_scope("transform"): 

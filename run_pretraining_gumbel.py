@@ -33,6 +33,7 @@ from model import modeling
 from model import modeling_tta
 from model import optimization
 from pretrain import pretrain_data
+from pretrain import gumbel_softmax_sampling
 from pretrain import pretrain_helpers
 from util import training_utils
 from util import utils, log_utils
@@ -836,20 +837,29 @@ class PretrainingModel(object):
         inputs.masked_lm_ids, depth=self._bert_config.vocab_size,
         dtype=tf.float32) if self._config.disallow_correct else None
     if self._config.fake_data_sample == 'sample_from_softmax':
-      sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
-        mlm_logits / self._config.temperature, disallow=disallow))
+      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_softmax(
+        mlm_logits, temperature=self._config.temperature, 
+        disallow=disallow,
+        straight_through=straight_through))
       tf.logging.info("***** apply sample_from_softmax *****")
     elif self._config.fake_data_sample == 'sample_from_top_k':
-      sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_k(
-        mlm_logits / self._config.temperature, disallow=disallow, k=self._config.topk))
+      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_top_k(
+        mlm_logits, temperature=self._config.temperature, 
+        disallow=disallow, 
+        straight_through=straight_through,
+        k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
-      sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_p(
-        mlm_logits / self._config.temperature, disallow=disallow, p=self._config.topp))
+      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_top_p(
+        mlm_logits, temperature=self._config.temperature, 
+        disallow=disallow, 
+        straight_through=straight_through,
+        p=self._config.topp))
       tf.logging.info("***** apply sample_from_top_p *****")
     else:
-      sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
-        mlm_logits / self._config.temperature, disallow=disallow))
+      sampled_tokens = tf.stop_gradient(gumbel_softmax_sampling.sample_from_softmax(
+        mlm_logits, temperature=self._config.temperature, 
+        disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")
 
     # sampled_tokens: [batch_size, n_pos, n_vocab]
@@ -871,14 +881,17 @@ class PretrainingModel(object):
       pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
       print("==apply averaging on fake logprob==")
     print("== _get_fake_data pseudo_logprob ==", pseudo_logprob)
-    sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
-        inputs.input_ids, sampled_tokids, inputs.masked_lm_positions)
+        tf.one_hot(inputs.input_ids, 
+                  depth=bert_config.vocab_size), 
+        sampled_tokens_fp32, 
+        inputs.masked_lm_positions)
+    updated_input_ids_ = tf.argmax(updated_input_ids, axis=-1)
     if self._config.electric_objective:
       labels = masked
     else:
       labels = masked * (1 - tf.cast(
-          tf.equal(updated_input_ids, inputs.input_ids), tf.int32))
+          tf.equal(updated_input_ids_, inputs.input_ids), tf.int32))
     updated_inputs = pretrain_data.get_updated_inputs(
         inputs, input_ids=updated_input_ids)
     FakedData = collections.namedtuple("FakedData", [
@@ -886,16 +899,6 @@ class PretrainingModel(object):
     return FakedData(inputs=updated_inputs, is_fake_tokens=labels,
                      sampled_tokens=sampled_tokens,
                      pseudo_logprob=pseudo_logprob)
-
-  # def _get_cloze_outputs(self, inputs, model):
-  #   """Cloze model softmax layer."""
-  #   weights = tf.cast(pretrain_helpers.get_candidates_mask(
-  #       self._config, inputs), tf.float32)
-  #   with tf.variable_scope("cloze_predictions"):
-  #     logits = get_token_logits(model.get_sequence_output(),
-  #                               model.get_embedding_table(), self._bert_config)
-  #     return get_softmax_output(logits, inputs.input_ids, weights,
-  #                               self._bert_config.vocab_size)
 
   def _get_cloze_outputs(self, inputs, model, scope=''):
     weights = tf.cast(pretrain_helpers.get_candidates_mask(

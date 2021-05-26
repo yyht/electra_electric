@@ -75,6 +75,8 @@ class PretrainingModel(object):
     print("==apply unigram-span_mask random mask strategy==")
 
     self.monitor_dict = {}
+    tf.logging.info("** untied_generator **")
+    tf.logging.info(config.untied_generator)
     if config.untied_generator:
       if self._config.use_pretrained_generator:
         self.generator_scope = 'generator/bert'
@@ -542,6 +544,12 @@ def get_softmax_output(logits, targets, weights, vocab_size):
   oh_labels = tf.one_hot(targets, depth=vocab_size, dtype=tf.float32)
   preds = tf.argmax(logits, axis=-1, output_type=tf.int32)
   probs = tf.nn.softmax(logits)
+  
+  log_probs = tf.nn.log_softmax(logits)
+  label_log_probs = -tf.reduce_sum(log_probs * oh_labels, axis=-1)
+
+  numerator = tf.reduce_sum(weights * label_log_probs)
+  denominator = tf.reduce_sum(weights) + 1e-6
   
   loss = tf.reduce_sum(numerator) / (tf.reduce_sum(denominator) + 1e-6)
   SoftmaxOutput = collections.namedtuple(

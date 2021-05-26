@@ -235,7 +235,7 @@ class PretrainingModel(object):
     else:
       self.total_loss = config.gen_weight * mlm_output.loss
       tf.logging.info("** apply mlm loss **")
-      
+
     if config.two_tower_generator or config.tta_generator:
       self.gen_loss = cloze_output.loss
     else:
@@ -832,7 +832,7 @@ def train_or_eval(config):
 
   if config.do_train:
     # utils.heading("Running training")
-    tf.logging.info("Running training")
+    tf.logging.info("** Running training **")
 
     if config.mask_strategy == 'electra':
       estimator.train(input_fn=pretrain_data.get_input_fn(config, True),

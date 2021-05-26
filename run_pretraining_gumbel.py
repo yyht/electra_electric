@@ -252,104 +252,7 @@ class PretrainingModel(object):
       self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
       self.disc_loss = disc_output.loss
       self.total_loss += config.disc_weight * disc_output.loss
-    elif config.electra_nce_objective:
-      disc_fake = build_transformer(
-          config, fake_data.inputs, is_training, self._bert_config,
-          reuse=tf.AUTO_REUSE, 
-          embedding_size=self.discriminator_embedding_size,
-          untied_embeddings=self.untied_discriminator_embeddings,
-          scope=self.discriminator_scope)
-
-      input_ids_shape = modeling.get_shape_list(unmasked_inputs.input_ids, expected_rank=[2,3])
-
-      global_step = tf.train.get_or_create_global_step()
-
-      random_prob = tf.random.uniform(shape=[input_ids_shape[0]], minval=0.0, maxval=1.0)
-      threhold_prob = tf.train.polynomial_decay(
-                    0.85,
-                    global_step,
-                    config.num_train_steps,
-                    end_learning_rate=0.9,
-                    power=1,
-                    cycle=True) 
-      random_prob_mask = tf.greater_equal(random_prob, threhold_prob)
-      random_prob_mask = tf.cast(random_prob_mask, unmasked_inputs.input_ids.dtype)
-      # [batch_size, 1]
-      tf.logging.info("** * unmasked_inputs **")
-      tf.logging.info(unmasked_inputs.input_ids)
-      tf.logging.info("** * fake_data **")
-      tf.logging.info(fake_data.inputs.input_ids)
-      random_prob_mask = tf.expand_dims(random_prob_mask, axis=-1)
-      real_fake_mixture = (1-random_prob_mask) * unmasked_inputs.input_ids + (random_prob_mask)*fake_data.inputs.input_ids
-
-      unmasked_inputs = pretrain_data.get_updated_inputs(
-        unmasked_inputs,
-        input_ids=tf.stop_gradient(real_fake_mixture),
-      )
-
-      disc_real = build_transformer(
-          config, unmasked_inputs, is_training, self._bert_config,
-          reuse=tf.AUTO_REUSE, 
-          embedding_size=self.discriminator_embedding_size,
-          untied_embeddings=self.untied_discriminator_embeddings,
-          scope=self.discriminator_scope)
-      print(disc_real, "===disc_real using for conditional real data energy function===")
-
-      self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
-      if config.nce_mlm:
-        disc_mlm_output = self._get_masked_lm_output(fake_data.inputs, disc_fake, self.discriminator_cls_scope)
-        print(disc_fake, "===disc_fake using for mlm===")
-        self.total_loss += disc_mlm_output.loss
-        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_cls_scope)
-      if config.nce_electra:
-
-        disc_output = self._get_discriminator_output(
-          fake_data.inputs, disc_fake, fake_data.is_fake_tokens,
-          mlm_output)
-        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
-        self.total_loss += config.electra_disc_weight * disc_output.loss
-      if config.nce == 'nce':
-        disc_real_energy = self._get_nce_disc_energy(unmasked_inputs, 
-                                              disc_real)
-        print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
-
-        disc_fake_energy = self._get_nce_disc_energy(fake_data.inputs, 
-                                                disc_fake)
-        print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
-        nce_disc_output = self._get_nce_disc_output( 
-                                mlm_output.pseudo_logprob,
-                                fake_data.pseudo_logprob,
-                                disc_real_energy,
-                                disc_fake_energy)
-
-        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'nce/discriminator_predictions')
-
-      elif config.nce == 'gan':
-        disc_real_energy = self._get_gan_output(unmasked_inputs, 
-                                              disc_real)
-        print(disc_real_energy, "===disc_real_energy using for conditional real data energy function===")
-
-        disc_fake_energy = self._get_gan_output(fake_data.inputs, 
-                                                disc_fake)
-        print(disc_fake_energy, "===disc_fake_energy using for conditional real data energy function===")
-        nce_disc_output = self._get_gan_disc_output( 
-                                mlm_output.pseudo_logprob,
-                                fake_data.pseudo_logprob,
-                                disc_real_energy,
-                                disc_fake_energy)
-        print("==not using mlm as bias==")
-        self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'gan/discriminator_predictions')
       
-      self.total_loss += config.nce_disc_weight * nce_disc_output.loss
-      
-      self.disc_loss = nce_disc_output.loss
-      if config.nce_mlm:
-        print("==discriminator using mlm loss==")
-        self.disc_loss += disc_mlm_output.loss
-      if config.nce_electra:
-        print("==discriminator using electra loss==")
-        self.disc_loss += config.electra_disc_weight * disc_output.loss
-
     # Evaluation
     eval_fn_inputs = {
         "input_ids": masked_inputs.input_ids,
@@ -371,26 +274,7 @@ class PretrainingModel(object):
           "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
                                       output_type=tf.int32)
       })
-    elif config.electra_nce_objective:
-      eval_fn_inputs.update({
-          "disc_loss": nce_disc_output.per_example_loss,
-          "disc_labels": nce_disc_output.labels,
-          "disc_probs": nce_disc_output.probs,
-          "disc_preds": nce_disc_output.preds,
-          "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
-                                      output_type=tf.int32),
-          "disc_real_loss":nce_disc_output.real_loss,
-          "disc_fake_loss":nce_disc_output.fake_loss,
-          "disc_real_labels":nce_disc_output.real_labels,
-          "disc_real_preds":nce_disc_output.real_preds,
-          "disc_fake_labels":nce_disc_output.fake_labels,
-          "disc_fake_preds":nce_disc_output.fake_preds,
-          'disc_real_energy':nce_disc_output.d_real_energy,
-          'disc_fake_energy':nce_disc_output.d_fake_energy,
-          "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
-          "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob
-
-      })
+    
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
     print(eval_fn_keys, "===eval_fn_keys===")
@@ -467,81 +351,8 @@ class PretrainingModel(object):
       monitor_dict['disriminator_token_recall'] = token_recall
       return monitor_dict
 
-    def electra_nce_monitor_fn(eval_fn_inputs, keys):
-      # d = {k: arg for k, arg in zip(eval_fn_keys, args)}
-      d = {}
-      for key in eval_fn_inputs:
-        if key in keys:
-          d[key] = eval_fn_inputs[key]
-      monitor_dict = dict()
-      masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
-      masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
-      masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
-
-      print(masked_lm_preds, "===masked_lm_preds===")
-      print(masked_lm_ids, "===masked_lm_ids===")
-      print(masked_lm_weights, "===masked_lm_weights===")
-
-      sampled_masked_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
-      sampled_masked_lm_preds = tf.reshape(d["sampled_masked_lm_preds"], [-1])
-      sampled_masked_lm_weights = tf.reshape(d["sampled_masked_lm_weights"], [-1])
-
-      print(sampled_masked_lm_preds, "===sampled_masked_lm_preds===")
-      print(sampled_masked_lm_ids, "===sampled_masked_lm_ids===")
-      print(sampled_masked_lm_weights, "===sampled_masked_lm_weights===")
-
-      # masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
-      #                             output_type=tf.int32)
-      mlm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
-      mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
-      mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
-
-      mlm_loss = tf.reshape(d["mlm_loss"], [-1])
-      mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
-      mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
-
-      monitor_dict['generator_mlm_loss'] = mlm_loss
-      monitor_dict['generator_mlm_acc'] = mlm_acc
-
-      sampled_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
-      sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
-      sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
-      sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
-      sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
-
-      monitor_dict['generator_sampled_mlm_acc'] = sampeld_mlm_acc
-
-      sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
-                                dtype=tf.float32)
-      sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
-
-      monitor_dict['discriminator_sent_nce_pred_acc'] = sent_nce_pred_acc
-      monitor_dict['discriminator_sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
-      monitor_dict['discriminator_sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
-      monitor_dict['discriminator_sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
-
-      sent_nce_real_pred_acc = tf.cast(tf.equal(d["disc_real_preds"], d['disc_real_labels']),
-                                dtype=tf.float32)
-      sent_nce_real_pred_acc = tf.reduce_mean(sent_nce_real_pred_acc)
-      monitor_dict['discriminator_sent_nce_real_pred_acc'] = sent_nce_real_pred_acc
-
-      sent_nce_fake_pred_acc = tf.cast(tf.equal(d["disc_fake_preds"], d['disc_fake_labels']),
-                                dtype=tf.float32)
-      sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
-      monitor_dict['discriminator_sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
-      monitor_dict['discriminator_real_energy'] = d["disc_real_energy"]
-      monitor_dict['discriminator_fake_energy'] = d["disc_fake_energy"]
-      monitor_dict['generator_noise_real_logprob'] = d["disc_noise_real_logprob"]
-      monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
-      return monitor_dict
-
-    if config.electra_objective or config.electric_objective:
-      self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
-      print("==monitor dict construction electra_electric_objective==", self.monitor_dict)
-    elif config.electra_nce_objective:
-      self.monitor_dict = electra_nce_monitor_fn(eval_fn_inputs, eval_fn_keys)
-      print("==monitor dict construction electra_nce_objective==", self.monitor_dict)
-
+    self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
+    
     def metric_fn(*args):
       """Computes the loss and accuracy of the model."""
       d = {k: arg for k, arg in zip(eval_fn_keys, args)}
@@ -600,196 +411,6 @@ class PretrainingModel(object):
           logits, inputs.masked_lm_ids, inputs.masked_lm_weights,
           self._bert_config.vocab_size,
           self._config.logprob_avg)
-
-  def _get_nce_disc_energy(self, inputs,
-                              discriminator):
-    if self._config.spectral_regularization:
-      print("==spectral_regularization==")
-      custom_getter = spectural_utils.spectral_normalization_custom_getter(training=self.is_training)
-    else:
-      custom_getter = None
-      print("==no spectral_regularization==")
-    print(discriminator.get_sequence_output(), "==discriminator.get_sequence_output()==")
-    with tf.variable_scope("nce/discriminator_predictions", reuse=tf.AUTO_REUSE,
-          custom_getter=custom_getter):
-      hidden = tf.layers.dense(
-          discriminator.get_sequence_output(),
-          units=self._bert_config.hidden_size,
-          activation=modeling.get_activation(self._bert_config.hidden_act),
-          kernel_initializer=modeling.create_initializer(
-              self._bert_config.initializer_range))
-      weights = tf.cast(inputs.input_mask, tf.float32)
-      weights = tf.expand_dims(weights, axis=-1)
-      print("==hidden==", hidden, weights)
-      print("==hidden sum==", tf.reduce_sum(hidden*weights, axis=1))
-      energy = tf.reduce_sum(hidden*weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=1))
-      # enrergy:[batch_size, hidden_size]
-      print("==energy output==", energy)
-      energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
-      return energy
-
-  def _get_gan_output(self, inputs,
-                              discriminator):
-
-    with tf.variable_scope("gan/discriminator_predictions", reuse=tf.AUTO_REUSE):
-      print(discriminator.get_sequence_output(), "==discriminator.get_sequence_output()==")
-      hidden = tf.layers.dense(
-          discriminator.get_sequence_output(),
-          units=self._bert_config.hidden_size,
-          activation=modeling.get_activation(self._bert_config.hidden_act),
-          kernel_initializer=modeling.create_initializer(
-              self._bert_config.initializer_range))
-      weights = tf.cast(inputs.input_mask, tf.float32)
-      my_weights = tf.expand_dims(weights, axis=-1)
-      energy = tf.reduce_sum(hidden*my_weights, axis=1) / (1e-10+tf.reduce_sum(weights, axis=-1, keepdims=True))
-      # enrergy:[batch_size, hidden_size]
-      print("==energy output==", energy)
-      energy = tf.squeeze(tf.layers.dense(energy, units=1), -1)
-      return energy
-
-  def _get_gan_disc_output(self, 
-                          noise_real_logprobs,
-                          noise_fake_logprobs,
-                          discriminator_real_energy,
-                          discriminator_fake_energy):
-    d_out_real = tf.identity(discriminator_real_energy)
-    d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=d_out_real, labels=tf.zeros_like(d_out_real)
-      ))
-    d_out_fake = tf.identity(discriminator_fake_energy)
-    d_loss_fake = (tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=d_out_fake, labels=tf.ones_like(d_out_fake)
-    ))
-
-    print(d_out_real, "==d_out_real==")
-    print(d_out_fake, "==d_out_fake==")
-
-    print(d_loss_real, "==d_loss_real==")
-    print(d_loss_fake, "==d_loss_fake==")
-
-    d_real_energy = tf.reduce_mean(d_out_real)
-    d_fake_energy = tf.reduce_mean(d_out_fake)
-
-    d_noise_real_logprob = tf.reduce_mean(discriminator_real_energy)
-    d_noise_fake_logprob = tf.reduce_mean(discriminator_fake_energy)
-
-    per_example_loss = d_loss_real + d_loss_fake
-    d_loss = tf.reduce_mean(per_example_loss)
-
-    print(per_example_loss, "==per_example_loss==")
-    print(d_loss, "==d_loss==")
-
-    d_real_probs = tf.nn.sigmoid(d_out_real)
-    d_fake_probs = tf.nn.sigmoid(d_out_fake)
-
-    print(d_real_probs, "==d_real_probs==")
-    print(d_fake_probs, "==d_fake_probs==")
-
-    d_real_labels = tf.zeros_like(d_out_real)
-    d_fake_labels = tf.ones_like(d_out_fake)
-
-    probs = tf.concat([d_fake_probs, d_real_probs], axis=0)
-    preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
-
-    print(probs, "==probs==")
-    print(preds, "==preds==")
-
-    real_preds = tf.cast(tf.greater(d_real_probs, 0.5), dtype=tf.int32)
-    real_labels = tf.cast(d_real_labels, dtype=tf.int32)
-
-    print(real_preds, "==real_preds==")
-    print(real_labels, "==real_labels==")
-
-    fake_preds = tf.cast(tf.greater(d_fake_probs, 0.5), dtype=tf.int32)
-    fake_labels = tf.cast(d_fake_labels, dtype=tf.int32)
-
-    print(fake_preds, "==fake_preds==")
-    print(fake_labels, "==fake_labels==")
-
-    labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
-    labels = tf.cast(labels, dtype=tf.int32)
-
-    DiscOutput = collections.namedtuple(
-        "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
-                       "labels", "real_loss", 'fake_loss',
-                       'real_preds', 'real_labels',
-                       'fake_preds', 'fake_labels',
-                       'd_real_energy', 'd_fake_energy',
-                       'd_noise_real_logprob', 'd_noise_fake_logprob'])     
-    return DiscOutput(
-        loss=d_loss, per_example_loss=per_example_loss, probs=probs,
-        preds=preds, labels=labels, real_loss=d_loss_real,
-        fake_loss=d_loss_fake,
-        real_preds=real_preds, real_labels=real_labels,
-        fake_preds=fake_preds, fake_labels=fake_labels,
-        d_real_energy=d_real_energy, d_fake_energy=d_fake_energy,
-        d_noise_real_logprob=d_noise_real_logprob, 
-        d_noise_fake_logprob=d_noise_fake_logprob
-    )
-
-  def _get_nce_disc_output(self, 
-                          noise_real_logprobs,
-                          noise_fake_logprobs,
-                          discriminator_real_energy,
-                          discriminator_fake_energy):
-
-    d_out_real = discriminator_real_energy+tf.stop_gradient(noise_real_logprobs)
-    d_out_fake = discriminator_fake_energy+tf.stop_gradient(noise_fake_logprobs)
-
-    print(d_out_real, "==d_out_real==")
-    print(d_out_fake, "==d_out_fake==")
-
-    d_real_energy = tf.reduce_mean(discriminator_real_energy)
-    d_fake_energy = tf.reduce_mean(discriminator_fake_energy)
-
-    d_noise_real_logprob = tf.reduce_mean(noise_real_logprobs)
-    d_noise_fake_logprob = tf.reduce_mean(noise_fake_logprobs)
-
-    d_loss_real = (tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=d_out_real, labels=tf.zeros_like(d_out_real)
-      ))
-    d_loss_fake = (tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=d_out_fake, labels=tf.ones_like(d_out_fake)
-    ))
-
-    per_example_loss = d_loss_real + d_loss_fake
-    d_loss = tf.reduce_mean(per_example_loss)
-
-    d_real_probs = tf.nn.sigmoid(d_out_real)
-    d_fake_probs = tf.nn.sigmoid(d_out_fake)
-
-    d_real_labels = tf.zeros_like(d_out_real)
-    d_fake_labels = tf.ones_like(d_out_fake)
-
-    probs = tf.concat([d_fake_probs, d_real_probs], axis=0)
-    preds = tf.cast(tf.greater(probs, 0.5), dtype=tf.int32)
-
-    real_preds = tf.cast(tf.greater(d_real_probs, 0.5), dtype=tf.int32)
-    real_labels = tf.cast(d_real_labels, dtype=tf.int32)
-
-    fake_preds = tf.cast(tf.greater(d_fake_probs, 0.5), dtype=tf.int32)
-    fake_labels = tf.cast(d_fake_labels, dtype=tf.int32)
-
-    labels = tf.concat([d_fake_labels, d_real_labels], axis=0)
-    labels = tf.cast(labels, dtype=tf.int32)
-
-    DiscOutput = collections.namedtuple(
-        "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
-                       "labels", "real_loss", 'fake_loss',
-                       'real_preds', 'real_labels',
-                       'fake_preds', 'fake_labels',
-                       'd_real_energy', 'd_fake_energy',
-                       'd_noise_real_logprob', 'd_noise_fake_logprob'])
-    return DiscOutput(
-        loss=d_loss, per_example_loss=per_example_loss, probs=probs,
-        preds=preds, labels=labels, real_loss=d_loss_real,
-        fake_loss=d_loss_fake,
-        real_preds=real_preds, real_labels=real_labels,
-        fake_preds=fake_preds, fake_labels=fake_labels,
-        d_real_energy=d_real_energy, d_fake_energy=d_fake_energy,
-        d_noise_real_logprob=d_noise_real_logprob, 
-        d_noise_fake_logprob=d_noise_fake_logprob
-    )
  
   def _get_discriminator_output(
       self, inputs, discriminator, labels, cloze_output=None):
@@ -865,22 +486,7 @@ class PretrainingModel(object):
     # sampled_tokens: [batch_size, n_pos, n_vocab]
     # mlm_logits: [batch_size, n_pos, n_vocab]
     sampled_tokens_fp32 = tf.cast(sampled_tokens, dtype=tf.float32)
-    print(sampled_tokens_fp32, "===sampled_tokens_fp32===")
-    # [batch_size, n_pos]
-    # mlm_logprobs: [batch_size, n_pos. n_vocab]
-    mlm_logprobs = tf.nn.log_softmax(mlm_logits, axis=-1)
-    print(mlm_logprobs, "===mlm_logprobs===")
-    pseudo_logprob = tf.reduce_sum(mlm_logprobs*sampled_tokens_fp32, axis=-1)
-    print(pseudo_logprob, "===pseudo_logprob===")
-    pseudo_logprob *= tf.cast(masked_lm_weights, dtype=tf.float32)
-    print(pseudo_logprob, "===pseudo_logprob===")
-    # [batch_size]
-    pseudo_logprob = tf.reduce_sum(pseudo_logprob, axis=-1)
-    # [batch_size]
-    if self._config.logprob_avg:
-      pseudo_logprob /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32), axis=-1))
-      print("==apply averaging on fake logprob==")
-    print("== _get_fake_data pseudo_logprob ==", pseudo_logprob)
+    
     updated_input_ids, masked = pretrain_helpers.scatter_update(
         tf.one_hot(inputs.input_ids, 
                   depth=bert_config.vocab_size), 
@@ -903,10 +509,7 @@ class PretrainingModel(object):
   def _get_cloze_outputs(self, inputs, model, scope=''):
     weights = tf.cast(pretrain_helpers.get_candidates_mask(
         self._config, inputs), tf.float32)
-    # if scope:
-    #   pretrained_scope = scope + "/cls/predictions"
-    # else:
-    #   pretrained_scope = 'cloze_predictions'
+    
     with tf.variable_scope(scope if scope else 'cloze_predictions'):
       logits = get_token_logits(model.get_sequence_output(),
                                 model.get_embedding_table(), self._bert_config)

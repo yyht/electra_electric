@@ -231,8 +231,11 @@ class PretrainingModel(object):
     self.mlm_output = mlm_output
     if config.two_tower_generator or config.tta_generator:
       self.total_loss = config.gen_weight * cloze_output.loss
+      tf.logging.info("** apply cloze loss **")
     else:
       self.total_loss = config.gen_weight * mlm_output.loss
+      tf.logging.info("** apply mlm loss **")
+      
     if config.two_tower_generator or config.tta_generator:
       self.gen_loss = cloze_output.loss
     else:
@@ -254,8 +257,11 @@ class PretrainingModel(object):
       self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
       self.disc_loss = disc_output.loss
       self.gen_loss -= disc_output.loss
+      tf.logging.info("** gen-disc minus **")
       self.total_loss += config.disc_weight * disc_output.loss
       
+      tf.logging.info("** apply electra **")
+
     # Evaluation
     eval_fn_inputs = {
         "input_ids": masked_inputs.input_ids,

@@ -465,29 +465,35 @@ class PretrainingModel(object):
     disallow = tf.one_hot(
         inputs.masked_lm_ids, depth=self._bert_config.vocab_size,
         dtype=tf.float32) if self._config.disallow_correct else None
+    if self._config.stop_gradient:
+      fn = tf.stop_gradient
+      tf.logging.info("** stop disc gradient **")
+    else:
+      fn = tf.identity
+      tf.logging.info("** enable disc gradient **")
     if self._config.fake_data_sample == 'sample_from_softmax':
-      sampled_tokens = (gumbel_softmax_sampling.sample_from_softmax(
+      sampled_tokens = fn(gumbel_softmax_sampling.sample_from_softmax(
         mlm_logits, temperature=self._config.temperature, 
         straight_through=straight_through,
         disallow=disallow
         ))
       tf.logging.info("***** apply sample_from_softmax *****")
     elif self._config.fake_data_sample == 'sample_from_top_k':
-      sampled_tokens = (gumbel_softmax_sampling.sample_from_top_k(
+      sampled_tokens = fn(gumbel_softmax_sampling.sample_from_top_k(
         mlm_logits, temperature=self._config.temperature, 
         disallow=disallow, 
         straight_through=straight_through,
         k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
-      sampled_tokens = (gumbel_softmax_sampling.sample_from_top_p(
+      sampled_tokens = fn(gumbel_softmax_sampling.sample_from_top_p(
         mlm_logits, temperature=self._config.temperature, 
         disallow=disallow, 
         straight_through=straight_through,
         p=self._config.topp))
       tf.logging.info("***** apply sample_from_top_p *****")
     else:
-      sampled_tokens = (gumbel_softmax_sampling.sample_from_softmax(
+      sampled_tokens = fn(gumbel_softmax_sampling.sample_from_softmax(
         mlm_logits, 
         temperature=self._config.temperature,
         straight_through=straight_through,

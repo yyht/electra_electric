@@ -45,6 +45,7 @@ class PretrainingConfig(object):
     self.mask_prob = 0.15  # percent of input tokens to mask out / replace
     self.nce = 'gan'
     self.straight_through = True
+    self.stop_gradient = False
     self.logprob_avg = False
     self.stage = 'one_stage'
     self.gen_learning_rate = 5e-5

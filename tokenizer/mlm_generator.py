@@ -1,5 +1,6 @@
 
 import numpy as np
+import math
 import tensorflow as tf
 from tokenizer import mask_utils
 from collections import OrderedDict
@@ -142,8 +143,18 @@ class MLMGenerator(object):
       entity_spans = []
     else:
       sentence = input_text
-    repeated_ngram_mining.prepare_ngram(
-                  sentence, self.tokenizer, 
-                  threshold=2)
+    
+    [sentence, 
+    target, 
+    pair_targets] = self.ner_span_mask(
+                sentence,
+                tokenizer, 
+                entity_spans=repeated_spans,
+                return_only_spans=return_only_spans,
+                ner_masking_prob=ner_masking_prob,
+                **kargs)
+
+    return sentence, target, pair_targets
+
 
 

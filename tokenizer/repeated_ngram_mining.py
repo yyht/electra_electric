@@ -42,7 +42,7 @@ def repeated_ngram_mining(input_text, tokenizer,
   http://oa.ee.tsinghua.edu.cn/~ouzhijian/pdf/AudioMotif_accept.pdf
   """
   if not isinstance(input_text, list):
-    sentence = tokenizer.encode(input_text, add_special_tokens=False).tokens
+    sentence = tokenizer.tokenize(input_text)
   else:
     sentence = input_text
   

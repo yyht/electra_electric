@@ -161,6 +161,7 @@ class PretrainingModel(object):
       # generator_config = get_generator_config(config, self._bert_config)
       if config.two_tower_generator:
         # two-tower cloze model generator used for electric
+        tf.logging.info("** apply two-tower generator **")
         generator = TwoTowerClozeTransformer(
             config, self._generator_config, unmasked_inputs, is_training,
             self.generator_embedding_size)
@@ -183,6 +184,7 @@ class PretrainingModel(object):
         """
         tta with MLM-objective
         """
+        tf.logging.info("** apply tta generator **")
         generator = build_tta_transformer(
             config, masked_inputs, is_training, self._generator_config,
             embedding_size=self.generator_embedding_size,
@@ -200,6 +202,7 @@ class PretrainingModel(object):
         print(mlm_output, "===mlm_output using tied embedding mlm generator===")
       else:
         # small masked language model generator
+        tf.logging.info("** apply mlm generator **")
         generator = build_transformer(
             config, masked_inputs, is_training, self._generator_config,
             embedding_size=self.generator_embedding_size,
@@ -219,6 +222,7 @@ class PretrainingModel(object):
     else:
       # full-sized masked language model generator if using BERT objective or if
       # the generator and discriminator have tied weights
+      tf.logging.info("** apply mlm generator shared with discriminator **")
       generator = build_transformer(
           config, masked_inputs, is_training, self._bert_config,
           embedding_size=self.discriminator_embedding_size,
@@ -234,7 +238,8 @@ class PretrainingModel(object):
     greedy_logprob) = self._get_greedy_data(masked_inputs, mlm_output.logits)
     
     (sampled_inputs, 
-    sampled_logprob) = self._get_sampled_data(masked_inputs, mlm_output.logits)
+    sampled_logprob) = self._get_sampled_data(masked_inputs, mlm_output.logits,
+                        disallow=config.disallow_correct)
 
     greedy_energy = self._get_generator_energy(
                           config, 
@@ -619,7 +624,7 @@ class PretrainingModel(object):
 
     return updated_inputs, sampled_logprob
 
-  def _get_sampled_data(self, inputs, mlm_logits):
+  def _get_sampled_data(self, inputs, mlm_logits, disallow):
     masked_lm_weights = inputs.masked_lm_weights
     inputs = pretrain_helpers.unmask(inputs)
     

@@ -676,7 +676,7 @@ class PretrainingModel(object):
       tf.logging.info("***** apply sample_from_softmax *****")
 
     (sampled_tokens, 
-      sampled_logprob) = fn(
+    sampled_logprob) = fn(
       mlm_logits, self._config.logits_temp, 
         self._config.gumbel_temp, disallow=disallow)
 

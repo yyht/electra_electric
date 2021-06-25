@@ -239,7 +239,8 @@ def greedy_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None)
                               output_type=tf.int32), 
                     logits.shape[-1])
   # [batch_size, masked_pos, vocab_size]
-  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob
 
 def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None):
@@ -251,7 +252,8 @@ def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None)
   log_prob = tf.nn.log_softmax(logits/logits_temp, axis=-1)
   onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((logits + gumbel_noise)/gumbel_temp), -1,
                               output_type=tf.int32), logits.shape[-1])
-  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob
 
 def sample_from_top_k(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, k=20):
@@ -283,7 +285,8 @@ def sample_from_top_k(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, k
   topk_logprob = tf.nn.log_softmax(topk_logits, axis=-1)
   onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((topk_logits + gumbel_noise)/gumbel_temp), -1,
                               output_type=tf.int32), topk_logits.shape[-1])
-  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topk_logprob.dtype)*topk_logprob, axis=-1)
+  tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topk_logprob.dtype)*topk_logprob, axis=-1)
+  tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob
 
 def sample_from_top_p(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, p=0.95):
@@ -323,5 +326,6 @@ def sample_from_top_p(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, p
   topp_logprob = tf.nn.softmax(topp_logits, axis=-1)
   onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((topp_logits + gumbel_noise)/gumbel_temp), -1,
                             output_type=tf.int32), topp_logits.shape[-1])
-  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topp_logprob.dtype)*topp_logprob, axis=-1)
+  tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topp_logprob.dtype)*topp_logprob, axis=-1)
+  tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob

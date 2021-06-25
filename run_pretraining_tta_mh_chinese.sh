@@ -1,4 +1,4 @@
-nohup python run_pretraining_tta_mh.py \
+nohup python3 run_pretraining_tta_mh.py \
 	--data-dir gs://yyht_source/pretrain \
 	--data-file-list chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--model-name mlm_electra_energy_chinese \

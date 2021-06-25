@@ -272,7 +272,7 @@ class PretrainingModel(object):
     # exp(-energy)*p_transition
     new_data_logprob = -sampled_energy - sampled_logprob
     greedy_data_logprob = -greedy_energy - greedy_logprob
-    accept_logprob = tf.minumum(0, new_data_logprob - greedy_data_logprob)
+    transition_logprob = tf.minimum(0, new_data_logprob - greedy_data_logprob)
     u = tf.random.uniform(modeling_tta_electra.get_shape_list(new_data_logprob), minval=1e-10, maxval=1)
     log_u = tf.log(u)
 
@@ -280,13 +280,13 @@ class PretrainingModel(object):
     accept_mask = tf.cast(accept_mask, greedy_inputs.input_ids.dtype)
   
     accept_weights = tf.expand_dims(accept_mask, axis=-1)
-    fake_data = (accept_weights) * sampled_inputs.input_ids + (1-accept_weights)*greedy_inputs.input_ids
+    fake_input_ids = (accept_weights) * sampled_inputs.input_ids + (1-accept_weights)*greedy_inputs.input_ids
 
     gen_fake_energy = accept_mask * sampled_energy + (1-accept_mask)*greedy_energy
     
     fake_data_inputs = pretrain_data.get_updated_inputs(
         unmasked_inputs,
-        input_ids=tf.stop_gradient(fake_data),
+        input_ids=tf.stop_gradient(fake_input_ids),
       )
 
     self.mlm_output = mlm_output
@@ -302,7 +302,6 @@ class PretrainingModel(object):
     else:
       self.gen_loss = mlm_output.loss
     # Discriminator
-    disc_output = None
       
     real_disc_energy = self._get_discriminator_energy(
                         config, 

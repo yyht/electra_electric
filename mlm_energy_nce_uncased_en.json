@@ -2,7 +2,7 @@
     "max_seq_length": 512,
     "vocab_size": 30522,
     "model_size": "base",
-    "train_batch_size":128,
+    "train_batch_size":64,
     "embedding_size":768,
     "do_train": true,
     "save_checkpoints_steps": 100000,

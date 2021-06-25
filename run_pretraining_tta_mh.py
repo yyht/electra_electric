@@ -562,8 +562,8 @@ class PretrainingModel(object):
                           discriminator_real_energy,
                           discriminator_fake_energy):
 
-    d_out_real = discriminator_real_energy - tf.stop_gradient(noise_real_logprobs)
-    d_out_fake = discriminator_fake_energy - tf.stop_gradient(noise_fake_logprobs)
+    d_out_real = discriminator_real_energy + tf.stop_gradient(-noise_real_logprobs)
+    d_out_fake = discriminator_fake_energy + tf.stop_gradient(-noise_fake_logprobs)
 
     tf.logging.info("** d_out_real **")
     tf.logging.info(d_out_real)

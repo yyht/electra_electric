@@ -365,10 +365,7 @@ class PretrainingModel(object):
         "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
         "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob,
         "masked_mask": masked_inputs.masked_lm_weights,
-        "mh_mask": accept_mask,
-        "disc_preds": nce_disc_output.preds,
-        "disc_labels": nce_disc_output.labels,
-        "disc_probs": nce_disc_output.probs    
+        "mh_mask": accept_mask
       })
     
     eval_fn_keys = eval_fn_inputs.keys()
@@ -404,30 +401,25 @@ class PretrainingModel(object):
                                 dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
-      token_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+      monitor_dict['discriminator_sent_nce_pred_acc'] = sent_nce_pred_acc
+      monitor_dict['discriminator_sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
+      monitor_dict['discriminator_sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
+      monitor_dict['discriminator_sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
+
+      sent_nce_real_pred_acc = tf.cast(tf.equal(d["disc_real_preds"], d['disc_real_labels']),
                                 dtype=tf.float32)
-      token_acc_mask = tf.cast(d["input_mask"], dtype=tf.float32)
-      token_acc *= token_acc_mask
-      token_acc = tf.reduce_sum(token_acc) / (1e-10+tf.reduce_sum(token_acc_mask))
+      sent_nce_real_pred_acc = tf.reduce_mean(sent_nce_real_pred_acc)
+      monitor_dict['discriminator_sent_nce_real_pred_acc'] = sent_nce_real_pred_acc
 
-      monitor_dict['disriminator_token_acc'] = token_acc
-      monitor_dict['disriminator_token_loss'] = tf.reduce_mean(d['disc_loss'])
-
-      token_precision = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
+      sent_nce_fake_pred_acc = tf.cast(tf.equal(d["disc_fake_preds"], d['disc_fake_labels']),
                                 dtype=tf.float32)
-      token_precision_mask = tf.cast(d["disc_preds"] * d["input_mask"], dtype=tf.float32)
-      token_precision *= token_precision_mask
-      token_precision = tf.reduce_sum(token_precision) / (1e-10+tf.reduce_sum(token_precision_mask))
+      sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
+      monitor_dict['discriminator_sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
+      monitor_dict['discriminator_real_energy'] = d["disc_real_energy"]
+      monitor_dict['discriminator_fake_energy'] = d["disc_fake_energy"]
+      monitor_dict['generator_noise_real_logprob'] = d["disc_noise_real_logprob"]
+      monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
 
-      monitor_dict['disriminator_token_precision'] = token_precision
-
-      token_recall = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
-                                dtype=tf.float32)
-      token_recall_mask = tf.cast(d["disc_labels"] * d["input_mask"], dtype=tf.float32)
-      token_recall *= token_recall_mask
-      token_recall = tf.reduce_sum(token_recall) / (1e-10+tf.reduce_sum(token_recall_mask))
-
-      monitor_dict['disriminator_token_recall'] = token_recall
       monitor_dict['mh_accept_rate'] = tf.reduce_sum(d['mh_mask'])
       return monitor_dict
 
@@ -567,11 +559,14 @@ class PretrainingModel(object):
                           discriminator_real_energy,
                           discriminator_fake_energy):
 
-    d_out_real = -discriminator_real_energy+tf.stop_gradient(-noise_real_logprobs)
-    d_out_fake = -discriminator_fake_energy+tf.stop_gradient(-noise_fake_logprobs)
+    d_out_real = -discriminator_real_energy+(-noise_real_logprobs)
+    d_out_fake = -discriminator_fake_energy+(-noise_fake_logprobs)
 
-    print(d_out_real, "==d_out_real==")
-    print(d_out_fake, "==d_out_fake==")
+    tf.logging.info("** d_out_real **")
+    tf.logging.info(d_out_real)
+
+    tf.logging.info("** d_out_fake **")
+    tf.logging.info(d_out_fake)
 
     d_real_energy = tf.reduce_mean(-discriminator_real_energy)
     d_fake_energy = tf.reduce_mean(-discriminator_fake_energy)

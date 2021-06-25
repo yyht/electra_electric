@@ -231,10 +231,10 @@ class PretrainingModel(object):
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     
     (greedy_inputs, 
-    greedy_logprob) = self._get_greedy_data(masked_inputs, mlm_logits)
+    greedy_logprob) = self._get_greedy_data(masked_inputs, mlm_output.logits)
     
     (sampled_inputs, 
-    sampled_logprob) = self._get_sampled_data(masked_inputs, mlm_logits)
+    sampled_logprob) = self._get_sampled_data(masked_inputs, mlm_output.logits)
 
     greedy_energy = self._get_generator_energy(
                           config, 
@@ -269,7 +269,7 @@ class PretrainingModel(object):
     accept_weights = tf.expand_dims(accept_mask, axis=-1)
     fake_data = (accept_weights) * sampled_inputs.input_ids + (1-accept_weights)*greedy_inputs.input_ids
 
-    fake_energy = accept_mask * sampled_energy + (1-accept_mask)*greedy_energy
+    gen_fake_energy = accept_mask * sampled_energy + (1-accept_mask)*greedy_energy
     
     fake_data_inputs = pretrain_data.get_updated_inputs(
         unmasked_inputs,
@@ -308,7 +308,7 @@ class PretrainingModel(object):
     
     nce_disc_output = self._get_nce_disc_output( 
                               gen_true_energy,
-                              fake_energy,
+                              gen_fake_energy,
                               real_disc_energy,
                               fake_disc_energy)
 
@@ -336,7 +336,8 @@ class PretrainingModel(object):
         'disc_fake_energy':nce_disc_output.d_fake_energy,
         "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
         "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob
-        "masked_mask": masked_inputs.masked_lm_weights
+        "masked_mask": masked_inputs.masked_lm_weights,
+        "mh_mask": accept_mask
     })
     
     eval_fn_keys = eval_fn_inputs.keys()
@@ -413,43 +414,11 @@ class PretrainingModel(object):
       token_recall = tf.reduce_sum(token_recall) / (1e-10+tf.reduce_sum(token_recall_mask))
 
       monitor_dict['disriminator_token_recall'] = token_recall
+      monitor_dict['mh_accept_rate'] = tf.reduce_sum(d['mh_mask'])
       return monitor_dict
 
     self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
     
-    def metric_fn(*args):
-      """Computes the loss and accuracy of the model."""
-      d = {k: arg for k, arg in zip(eval_fn_keys, args)}
-      metrics = dict()
-      metrics["masked_lm_accuracy"] = tf.metrics.accuracy(
-          labels=tf.reshape(d["masked_lm_ids"], [-1]),
-          predictions=tf.reshape(d["masked_lm_preds"], [-1]),
-          weights=tf.reshape(d["masked_lm_weights"], [-1]))
-      metrics["masked_lm_loss"] = tf.metrics.mean(
-          values=tf.reshape(d["mlm_loss"], [-1]),
-          weights=tf.reshape(d["masked_lm_weights"], [-1]))
-      if config.electra_objective or config.electric_objective:
-        metrics["sampled_masked_lm_accuracy"] = tf.metrics.accuracy(
-            labels=tf.reshape(d["masked_lm_ids"], [-1]),
-            predictions=tf.reshape(d["sampled_tokids"], [-1]),
-            weights=tf.reshape(d["masked_lm_weights"], [-1]))
-        if config.disc_weight > 0:
-          metrics["disc_loss"] = tf.metrics.mean(d["disc_loss"])
-          metrics["disc_auc"] = tf.metrics.auc(
-              d["disc_labels"] * d["input_mask"],
-              d["disc_probs"] * tf.cast(d["input_mask"], tf.float32))
-          metrics["disc_accuracy"] = tf.metrics.accuracy(
-              labels=d["disc_labels"], predictions=d["disc_preds"],
-              weights=d["input_mask"])
-          metrics["disc_precision"] = tf.metrics.accuracy(
-              labels=d["disc_labels"], predictions=d["disc_preds"],
-              weights=d["disc_preds"] * d["input_mask"])
-          metrics["disc_recall"] = tf.metrics.accuracy(
-              labels=d["disc_labels"], predictions=d["disc_preds"],
-              weights=d["disc_labels"] * d["input_mask"])
-      return metrics
-    self.eval_metrics = (metric_fn, eval_fn_values)
-
   def _get_masked_lm_output(self, inputs, model, scope='', reuse=None):
     """Masked language modeling softmax layer."""
     # if scope:
@@ -636,8 +605,10 @@ class PretrainingModel(object):
     masked_lm_weights = inputs.masked_lm_weights
     inputs = pretrain_helpers.unmask(inputs)
     (sampled_tokens, 
-    sampled_logprob) = mh_sampling.greedy_from_softmax(mlm_logits, 
-                          self._config.temperature)
+    sampled_logprob) = mh_sampling.greedy_from_softmax(
+                          mlm_logits, 
+                          self._config.logits_temp, 
+                          self._config.gumbel_temp)
 
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
@@ -667,7 +638,8 @@ class PretrainingModel(object):
 
     (sampled_tokens, 
       sampled_logprob) = tf.stop_gradient(fn(
-      mlm_logits, self._config.temperature, disallow=disallow))
+      mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, disallow=disallow))
     
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
@@ -936,16 +908,6 @@ def model_fn_builder(config):
           host_call=host_call if config.monitoring else None,
           scaffold_fn=scaffold_fn
       )
-    elif mode == tf.estimator.ModeKeys.EVAL:
-      output_spec = tf.estimator.tpu.TPUEstimatorSpec(
-          mode=mode,
-          loss=model.total_loss,
-          eval_metrics=model.eval_metrics,
-          # evaluation_hooks=[training_utils.ETAHook(
-          #     {} if config.use_tpu else dict(loss=model.total_loss),
-          #     config.num_eval_steps, config.iterations_per_loop,
-          #     config.use_tpu, is_training=False)]
-          )
     else:
       raise ValueError("Only TRAIN and EVAL modes are supported")
     return output_spec

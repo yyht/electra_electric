@@ -220,10 +220,14 @@ class BertModel(object):
     with tf.variable_scope(
         (scope if untied_embeddings else "electra") + "/embeddings",
         reuse=tf.AUTO_REUSE):
+
+      if embedding_size is None:
+        embedding_size = bert_config.hidden_size
+
       (self.dummy_embeddings, _) = embedding_lookup(
           input_ids=dummy_ids,
           vocab_size=bert_config.vocab_size,
-          embedding_size=bert_config.hidden_size,
+          embedding_size=embedding_size,
           initializer_range=bert_config.initializer_range,
           word_embedding_name="word_embeddings",
           use_one_hot_embeddings=use_one_hot_embeddings)

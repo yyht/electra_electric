@@ -482,7 +482,7 @@ class PretrainingModel(object):
     tf.logging.info("** global normalized energy **")
 
     weights = tf.cast(inputs.input_mask, tf.float32)
-    final_energy = tf.reduce_sum(log_energy*tf.expand_dims(weights, axis=-1))
+    final_energy = tf.reduce_sum(log_energy*weights)
     return final_energy
 
   def _get_discriminator_energy(self, config, inputs, is_training,
@@ -509,7 +509,7 @@ class PretrainingModel(object):
                 dtype=tf.float32), -1)
 
     weights = tf.cast(inputs.input_mask, tf.float32)
-    final_energy = tf.reduce_sum(log_energy*tf.expand_dims(weights, axis=-1))
+    final_energy = tf.reduce_sum(log_energy*weights)
     return final_energy
 
   def _get_discriminator_output(

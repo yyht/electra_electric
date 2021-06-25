@@ -47,5 +47,6 @@
     "nce_electra":true,
     "spectral_regularization":false,
     "fake_data_sample":"sample_from_softmax",
-    "topk":20
+    "topk":20,
+    "generator_embedding_size": 768
 }

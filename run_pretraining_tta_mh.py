@@ -349,7 +349,8 @@ class PretrainingModel(object):
         "mlm_loss": mlm_output.per_example_loss,
         "masked_lm_ids": masked_inputs.masked_lm_ids,
         "masked_lm_weights": masked_inputs.masked_lm_weights,
-        "input_mask": masked_inputs.input_mask
+        "input_mask": masked_inputs.input_mask,
+        "masked_lm_preds":mlm_output.preds
     }
     
     eval_fn_inputs.update({
@@ -364,8 +365,11 @@ class PretrainingModel(object):
         "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
         "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob,
         "masked_mask": masked_inputs.masked_lm_weights,
-        "mh_mask": accept_mask
-    })
+        "mh_mask": accept_mask,
+        "disc_preds": nce_disc_output.preds,
+        "disc_labels": nce_disc_output.labels,
+        "disc_probs": nce_disc_output.probs    
+      })
     
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
@@ -386,14 +390,6 @@ class PretrainingModel(object):
       print(masked_lm_ids, "===masked_lm_ids===")
       print(masked_lm_weights, "===masked_lm_weights===")
 
-      sampled_masked_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
-      sampled_masked_lm_preds = tf.reshape(d["sampled_masked_lm_preds"], [-1])
-      sampled_masked_lm_weights = tf.reshape(d["sampled_masked_lm_weights"], [-1])
-
-      print(sampled_masked_lm_preds, "===sampled_masked_lm_preds===")
-      print(sampled_masked_lm_ids, "===sampled_masked_lm_ids===")
-      print(sampled_masked_lm_weights, "===sampled_masked_lm_weights===")
-
       mlm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
       mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
@@ -404,18 +400,9 @@ class PretrainingModel(object):
 
       monitor_dict['generator_mlm_loss'] = mlm_loss
       monitor_dict['generator_mlm_acc'] = mlm_acc
-
-      sampled_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
-      sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
-      sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
-      sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(sampled_masked_lm_weights, dtype=tf.float32))
-      sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(sampled_masked_lm_weights, dtype=tf.float32)))
-
       sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
-
-      monitor_dict['generator_sampled_mlm_acc'] = sampeld_mlm_acc
 
       token_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)

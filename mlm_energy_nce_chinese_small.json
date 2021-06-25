@@ -3,7 +3,7 @@
     "vocab_size": 21128,
     "model_size": "small",
     "model_size_generator": "tiny",
-    "train_batch_size":256,
+    "train_batch_size":128,
     "embedding_size":256,
     "do_train": true,
     "save_checkpoints_steps": 100000,

@@ -424,7 +424,7 @@ class PretrainingModel(object):
       monitor_dict['generator_noise_real_logprob'] = d["disc_noise_real_logprob"]
       monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
 
-      monitor_dict['mh_accept_rate'] = tf.reduce_sum(d['mh_mask'])
+      monitor_dict['mh_accept_rate'] = tf.reduce_mean(d['mh_mask'])
       return monitor_dict
 
     self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)

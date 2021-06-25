@@ -272,7 +272,7 @@ class PretrainingModel(object):
     # exp(-energy)*p_transition
     new_data_logprob = -sampled_energy - sampled_logprob
     greedy_data_logprob = -greedy_energy - greedy_logprob
-    transition_logprob = tf.minimum(0, new_data_logprob - greedy_data_logprob)
+    transition_logprob = tf.minimum(0., new_data_logprob - greedy_data_logprob)
     u = tf.random.uniform(modeling_tta_electra.get_shape_list(new_data_logprob), minval=1e-10, maxval=1)
     log_u = tf.log(u)
 

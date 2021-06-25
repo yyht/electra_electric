@@ -335,7 +335,7 @@ class PretrainingModel(object):
         'disc_real_energy':nce_disc_output.d_real_energy,
         'disc_fake_energy':nce_disc_output.d_fake_energy,
         "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
-        "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob
+        "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob,
         "masked_mask": masked_inputs.masked_lm_weights,
         "mh_mask": accept_mask
     })

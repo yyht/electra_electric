@@ -171,15 +171,17 @@ class PretrainingModel(object):
                 cloze_output.logits, masked_inputs.masked_lm_positions),
             masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
             self._bert_config.vocab_size)
-        print("==two_tower_generator==")
 
         self.gen_params = []
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
         if not config.untied_generator_embeddings:
-          print("==add shared embeddings==")
+          tf.logging.info("** add shared embeddings **")
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
+        else:
+          tf.logging.info("** without shared embeddings **")
+        tf.logging.info(mlm_output)
       elif config.tta_generator:
         """
         tta with MLM-objective
@@ -192,14 +194,15 @@ class PretrainingModel(object):
             scope=self.generator_scope)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
-        print("==tta_generator==")
         self.gen_params = []
         self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
         if not config.untied_generator_embeddings:
-          print("==add shared embeddings==")
+          tf.logging.info("** add shared embeddings **")
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
-        print(mlm_output, "===mlm_output using tied embedding mlm generator===")
+        else:
+          tf.logging.info("** without shared embeddings **")
+        tf.logging.info(mlm_output)
       else:
         # small masked language model generator
         tf.logging.info("** apply mlm generator **")
@@ -211,14 +214,14 @@ class PretrainingModel(object):
             reuse=tf.AUTO_REUSE)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
-        print("==mlm share embeddings==")
         self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
-        print("==untied_generator_embeddings==", config.untied_generator_embeddings)
         if not config.untied_generator_embeddings:
-          print("==add shared embeddings==")
+          tf.logging.info("** add shared embeddings **")
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
-        print(mlm_output, "===mlm_output using tied embedding mlm generator===")
+        else:
+          tf.logging.info("** without shared embeddings **")
+        tf.logging.info(mlm_output)
     else:
       # full-sized masked language model generator if using BERT objective or if
       # the generator and discriminator have tied weights
@@ -228,9 +231,10 @@ class PretrainingModel(object):
           embedding_size=self.discriminator_embedding_size,
           untied_embeddings=self.untied_generator_embeddings,
           scope=self.generator_scope)
-      print("==share all params==")
+      tf.logging.info("** share all parameters **")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
-
+      tf.logging.info(mlm_output)
+      
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     

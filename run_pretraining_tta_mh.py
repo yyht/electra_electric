@@ -242,12 +242,16 @@ class PretrainingModel(object):
     greedy_logprob) = self._get_greedy_data(masked_inputs, mlm_output.logits)
     
     tf.logging.info("** get tta greedy decoding **")
+    tf.logging.info(greedy_inputs)
+    tf.logging.info(greedy_logprob)
 
     (sampled_inputs, 
     sampled_logprob) = self._get_sampled_data(masked_inputs, mlm_output.logits,
                         disallow=config.disallow_correct)
 
     tf.logging.info("** get tta sampled decoding **")
+    tf.logging.info(sampled_inputs)
+    tf.logging.info(sampled_logprob)
 
     greedy_energy = self._get_generator_energy(
                           config, 
@@ -267,6 +271,11 @@ class PretrainingModel(object):
                           is_training,
                           self.generator_cls_scope)
 
+    tf.logging.info("** get tta generator energy **")
+    tf.logging.info(greedy_energy)
+    tf.logging.info(sampled_energy)
+    tf.logging.info(gen_true_energy)
+
     # MH-sampling
     # greedy-to-MH transition
     # exp(-energy)*p_transition
@@ -280,6 +289,12 @@ class PretrainingModel(object):
     accept_mask = tf.cast(accept_mask, greedy_inputs.input_ids.dtype)
   
     accept_weights = tf.expand_dims(accept_mask, axis=-1)
+    
+    tf.logging.info("** get mh accept_weights **")
+    tf.logging.info(accept_weights)
+    tf.logging.info(sampled_inputs)
+    tf.logging.info(greedy_inputs)
+
     fake_input_ids = (accept_weights) * sampled_inputs.input_ids + (1-accept_weights)*greedy_inputs.input_ids
 
     gen_fake_energy = accept_mask * sampled_energy + (1-accept_mask)*greedy_energy
@@ -478,10 +493,14 @@ class PretrainingModel(object):
                 depth=self._bert_config.vocab_size,
                 dtype=tf.float32), -1)
 
-    tf.logging.info("** global normalized energy **")
+    tf.logging.info("** generator_energy **")
+    tf.logging.info(log_energy)
 
     weights = tf.cast(inputs.input_mask, tf.float32)
-    final_energy = tf.reduce_sum(log_energy*weights)
+    final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
+    
+    tf.logging.info(final_energy)
+
     return final_energy
 
   def _get_discriminator_energy(self, config, inputs, is_training,
@@ -507,8 +526,14 @@ class PretrainingModel(object):
                 depth=self._bert_config.vocab_size,
                 dtype=tf.float32), -1)
 
+    tf.logging.info("** discriminator_energy **")
+    tf.logging.info(log_energy)
+
     weights = tf.cast(inputs.input_mask, tf.float32)
-    final_energy = tf.reduce_sum(log_energy*weights)
+    final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
+    
+    tf.logging.info(final_energy)
+
     return final_energy
 
   def _get_discriminator_output(

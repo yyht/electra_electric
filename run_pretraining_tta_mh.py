@@ -234,16 +234,20 @@ class PretrainingModel(object):
       tf.logging.info("** share all parameters **")
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
       tf.logging.info(mlm_output)
-      
+
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
       self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
     
     (greedy_inputs, 
     greedy_logprob) = self._get_greedy_data(masked_inputs, mlm_output.logits)
     
+    tf.logging.info("** get tta greedy decoding **")
+
     (sampled_inputs, 
     sampled_logprob) = self._get_sampled_data(masked_inputs, mlm_output.logits,
                         disallow=config.disallow_correct)
+
+    tf.logging.info("** get tta sampled decoding **")
 
     greedy_energy = self._get_generator_energy(
                           config, 
@@ -650,6 +654,10 @@ class PretrainingModel(object):
       mlm_logits, self._config.logits_temp, 
         self._config.gumbel_temp, disallow=disallow))
     
+    tf.logging.info("** sampled from mlm logits ***")
+    tf.logging.info(sampled_tokens)
+    tf.logging.info(sampled_logprob)
+
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
         inputs.input_ids, sampled_tokids, inputs.masked_lm_positions)

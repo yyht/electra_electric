@@ -835,19 +835,23 @@ class PretrainingModel(object):
         dtype=tf.float32) if self._config.disallow_correct else None
     if self._config.fake_data_sample == 'sample_from_softmax':
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
-        mlm_logits, self._config.temperature, disallow=disallow))
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")
     elif self._config.fake_data_sample == 'sample_from_top_k':
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_k(
-        mlm_logits, self._config.temperature, disallow=disallow, k=self._config.topk))
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, disallow=disallow, k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_p(
-        mlm_logits, self._config.temperature, disallow=disallow, p=self._config.topp))
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, disallow=disallow, p=self._config.topp))
       tf.logging.info("***** apply sample_from_top_p *****")
     else:
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
-        mlm_logits, self._config.temperature, disallow=disallow))
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")
 
     # sampled_tokens: [batch_size, n_pos, n_vocab]

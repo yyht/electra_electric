@@ -160,41 +160,40 @@ class PretrainingModel(object):
     elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
       # generator_config = get_generator_config(config, self._bert_config)
-      if config.two_tower_generator or config.tta_generator:
+      if config.two_tower_generator:
         # two-tower cloze model generator used for electric
-        if config.two_tower_generator:
-          generator = TwoTowerClozeTransformer(
-              config, self._generator_config, unmasked_inputs, is_training,
-              self.generator_embedding_size)
-          cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
-          mlm_output = get_softmax_output(
-              pretrain_helpers.gather_positions(
-                  cloze_output.logits, masked_inputs.masked_lm_positions),
-              masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-              self._bert_config.vocab_size)
-          print("==two_tower_generator==")
+        generator = TwoTowerClozeTransformer(
+            config, self._generator_config, unmasked_inputs, is_training,
+            self.generator_embedding_size)
+        cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
+        mlm_output = get_softmax_output(
+            pretrain_helpers.gather_positions(
+                cloze_output.logits, masked_inputs.masked_lm_positions),
+            masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
+            self._bert_config.vocab_size)
+        print("==two_tower_generator==")
 
-          self.gen_params = []
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
-        elif config.tta_generator:
-          generator = build_tta_transformer(
-              config, unmasked_inputs, is_training, self._generator_config,
-              embedding_size=self.generator_embedding_size,
-              untied_embeddings=self.untied_generator_embeddings,
-              scope=self.generator_scope)
-          cloze_output = self._get_cloze_outputs(unmasked_inputs, generator, self.generator_cls_scope)
-          mlm_output = get_softmax_output(
-              pretrain_helpers.gather_positions(
-                  cloze_output.logits, masked_inputs.masked_lm_positions),
-              masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-              self._bert_config.vocab_size)
-
-          print("==two_tower_generator==")
-          self.gen_params = []
-          self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cloze_scope)
+        self.gen_params = []
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
+        if not config.untied_generator_embeddings:
+          print("==add shared embeddings==")
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
+      elif config.tta_generator:
+        generator = build_tta_transformer(
+            config, unmasked_inputs, is_training, self._generator_config,
+            embedding_size=self.generator_embedding_size,
+            untied_embeddings=self.untied_generator_embeddings,
+            scope=self.generator_scope)
+        mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
+        print("==tta_generator==")
+        self.gen_params = []
+        self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
+        if not config.untied_generator_embeddings:
+          print("==add shared embeddings==")
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
       else:
         # small masked language model generator
         generator = build_transformer(
@@ -229,14 +228,14 @@ class PretrainingModel(object):
     
     fake_data = self._get_fake_data(masked_inputs, mlm_output.logits, config.straight_through)
     self.mlm_output = mlm_output
-    if config.two_tower_generator or config.tta_generator:
+    if config.two_tower_generator:
       self.total_loss = config.gen_weight * cloze_output.loss
       tf.logging.info("** apply cloze loss **")
     else:
       self.total_loss = config.gen_weight * mlm_output.loss
       tf.logging.info("** apply mlm loss **")
 
-    if config.two_tower_generator or config.tta_generator:
+    if config.two_tower_generator:
       self.gen_loss = cloze_output.loss
     else:
       self.gen_loss = mlm_output.loss
@@ -473,21 +472,24 @@ class PretrainingModel(object):
       tf.logging.info("** enable disc gradient **")
     if self._config.fake_data_sample == 'sample_from_softmax':
       sampled_tokens = fn(gumbel_softmax_sampling.sample_from_softmax(
-        mlm_logits, temperature=self._config.temperature, 
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, 
         straight_through=straight_through,
         disallow=disallow
         ))
       tf.logging.info("***** apply sample_from_softmax *****")
     elif self._config.fake_data_sample == 'sample_from_top_k':
       sampled_tokens = fn(gumbel_softmax_sampling.sample_from_top_k(
-        mlm_logits, temperature=self._config.temperature, 
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, 
         disallow=disallow, 
         straight_through=straight_through,
         k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
       sampled_tokens = fn(gumbel_softmax_sampling.sample_from_top_p(
-        mlm_logits, temperature=self._config.temperature, 
+        mlm_logits, self._config.logits_temp, 
+        self._config.gumbel_temp, 
         disallow=disallow, 
         straight_through=straight_through,
         p=self._config.topp))
@@ -495,7 +497,8 @@ class PretrainingModel(object):
     else:
       sampled_tokens = fn(gumbel_softmax_sampling.sample_from_softmax(
         mlm_logits, 
-        temperature=self._config.temperature,
+        self._config.logits_temp, 
+        self._config.gumbel_temp, 
         straight_through=straight_through,
         disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")

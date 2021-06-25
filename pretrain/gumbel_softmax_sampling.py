@@ -93,13 +93,14 @@ def scatter_update(sequence, updates, positions):
 
   return updated_sequence, updates_mask
 
-def sample_from_softmax(logits, temperature, disallow=None, straight_through=False):
+def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, straight_through=False):
   if disallow is not None:
     logits -= 1000.0 * disallow
   uniform_noise = tf.random.uniform(
       modeling.get_shape_list(logits), minval=0, maxval=1)
+  logits /= logits_temp
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  gumbel_logits = (logits + gumbel_noise) / temperature
+  gumbel_logits = (logits + gumbel_noise) / gumbel_temp
   gumbel_probs = tf.nn.softmax(gumbel_logits)
   hard_token_ids = tf.one_hot(tf.argmax(gumbel_probs, axis=-1, output_type=tf.int32),
                     logits.shape[-1])
@@ -109,7 +110,8 @@ def sample_from_softmax(logits, temperature, disallow=None, straight_through=Fal
     gumbel_dense = gumbel_probs
   return gumbel_dense
 
-def sample_from_top_k(logits, temperature, 
+def sample_from_top_k(logits, logits_temp=1.0, 
+                  gumbel_temp=0.1, 
                   disallow=None, 
                   straight_through=False, 
                   k=20):
@@ -137,8 +139,8 @@ def sample_from_top_k(logits, temperature,
     topk_logits -= 1e10 * disallow
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topk_logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-
-  gumbel_logits = (topk_logits + gumbel_noise) / temperature
+  topk_logits /= logits_temp
+  gumbel_logits = (topk_logits + gumbel_noise) / gumbel_temp
   gumbel_probs = tf.nn.softmax(gumbel_logits)
   hard_token_ids = tf.one_hot(tf.argmax(gumbel_probs, axis=-1, output_type=tf.int32),
                     topk_logits.shape[-1])
@@ -149,7 +151,8 @@ def sample_from_top_k(logits, temperature,
     gumbel_dense = gumbel_probs
   return gumbel_dense
 
-def sample_from_top_p(logits, temperature, 
+def sample_from_top_p(logits, logits_temp=1.0, 
+                  gumbel_temp=0.1, 
                   disallow=None, 
                   straight_through=False,
                   p=0.95):
@@ -185,8 +188,8 @@ def sample_from_top_p(logits, temperature,
     topp_logits -= 1e10 * disallow
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topp_logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  
-  gumbel_logits = (topp_logits + gumbel_noise) / temperature
+  topp_logits /= logits_temp
+  gumbel_logits = (topp_logits + gumbel_noise) / gumbel_temp
   gumbel_probs = tf.nn.softmax(gumbel_logits)
   hard_token_ids = tf.one_hot(tf.argmax(gumbel_probs, axis=-1, output_type=tf.int32),
                     topp_logits.shape[-1])

@@ -230,23 +230,24 @@ def unmask(inputs):
       inputs.input_ids, inputs.masked_lm_ids, inputs.masked_lm_positions)
   return pretrain_data.get_updated_inputs(inputs, input_ids=unmasked_input_ids)
 
-def greedy_from_softmax(logits, temperature=1.0, disallow=None):
+def greedy_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None):
   if disallow is not None:
     logits -= 1000.0 * disallow
-  return tf.one_hot(tf.argmax(logits/temperature, -1,
+  return tf.one_hot(tf.argmax(logits/logits_temp, -1,
                               output_type=tf.int32), 
                     logits.shape[-1])
 
-def sample_from_softmax(logits, temperature=1.0, disallow=None):
+def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None):
   if disallow is not None:
     logits -= 1000.0 * disallow
   uniform_noise = tf.random.uniform(
       modeling.get_shape_list(logits), minval=0, maxval=1)
+  logits /= logits_temp
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  return tf.one_hot(tf.argmax(tf.nn.softmax((logits + gumbel_noise)/temperature), -1,
+  return tf.one_hot(tf.argmax(tf.nn.softmax((logits + gumbel_noise)/gumbel_temp), -1,
                               output_type=tf.int32), logits.shape[-1])
 
-def sample_from_top_k(logits, temperature=1.0, disallow=None, k=20):
+def sample_from_top_k(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, k=20):
   print(logits, '===========')
   logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
   depth_dimension = (len(logits_shape) == 3)
@@ -269,12 +270,13 @@ def sample_from_top_k(logits, temperature=1.0, disallow=None, k=20):
   topk_logits = tf.reshape(reshape_topk_logits, logits_shape)
   if disallow is not None:
     topk_logits -= 1e10 * disallow
+  topk_logits /= logits_temp
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topk_logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  return tf.one_hot(tf.argmax(tf.nn.softmax((topk_logits + gumbel_noise)/temperature), -1,
+  return tf.one_hot(tf.argmax(tf.nn.softmax((topk_logits + gumbel_noise)/gumbel_temp), -1,
                               output_type=tf.int32), topk_logits.shape[-1])
 
-def sample_from_top_p(logits, temperature=1.0, disallow=None, p=0.95):
+def sample_from_top_p(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, p=0.95):
   """Nucleus sampling
   https://github.com/wouterkool/ancestral-gumbel-top-k-sampling
   """
@@ -305,8 +307,9 @@ def sample_from_top_p(logits, temperature=1.0, disallow=None, p=0.95):
   print(topp_logits, '====topp_logits====')
   if disallow is not None:
     topp_logits -= 1e10 * disallow
+  topp_logits /= logits_temp
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topp_logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  return tf.one_hot(tf.argmax(tf.nn.softmax((topp_logits + gumbel_noise)/temperature), -1,
+  return tf.one_hot(tf.argmax(tf.nn.softmax((topp_logits + gumbel_noise)/gumbel_temp), -1,
                             output_type=tf.int32), topp_logits.shape[-1])
   

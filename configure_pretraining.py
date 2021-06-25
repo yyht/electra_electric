@@ -114,7 +114,8 @@ class PretrainingConfig(object):
     self.disallow_correct = False  # force the generator to sample incorrect
                                    # tokens (so 15% of tokens are always
                                    # fake)
-    self.temperature = 1.0  # temperature for sampling from generator
+    self.logits_temp = 1.0  # logits_temp for sampling from generator
+    self.gumbel_temp = 0.1
     self.tta_generator = False
 
     # batch sizes

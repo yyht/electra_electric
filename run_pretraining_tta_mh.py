@@ -33,7 +33,6 @@ from model import modeling
 from model import modeling_tta_electra
 from model import optimization
 from pretrain import pretrain_data
-from pretrain import gumbel_softmax_sampling
 from pretrain import pretrain_helpers, mh_sampling
 from util import training_utils
 from util import utils, log_utils

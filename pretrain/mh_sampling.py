@@ -233,9 +233,14 @@ def unmask(inputs):
 def greedy_from_softmax(logits, temperature=1.0, disallow=None):
   if disallow is not None:
     logits -= 1000.0 * disallow
-  return tf.one_hot(tf.argmax(logits/temperature, -1,
+  logits /= temperature
+  log_prob = tf.nn.log_softmax(logits)
+  onehot_tokenids = tf.one_hot(tf.argmax(logits/temperature, -1,
                               output_type=tf.int32), 
                     logits.shape[-1])
+  # [batch_size, masked_pos, vocab_size]
+  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  return onehot_tokenids, tokenids_logprob
 
 def sample_from_softmax(logits, temperature=1.0, disallow=None):
   if disallow is not None:
@@ -243,8 +248,12 @@ def sample_from_softmax(logits, temperature=1.0, disallow=None):
   uniform_noise = tf.random.uniform(
       modeling.get_shape_list(logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  return tf.one_hot(tf.argmax(tf.nn.softmax((logits + gumbel_noise)/temperature), -1,
+  logits /= temperature
+  log_prob = tf.nn.log_softmax(logits)
+  onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((logits + gumbel_noise)/temperature), -1,
                               output_type=tf.int32), logits.shape[-1])
+  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  return onehot_tokenids, tokenids_logprob
 
 def sample_from_top_k(logits, temperature=1.0, disallow=None, k=20):
   print(logits, '===========')
@@ -271,8 +280,11 @@ def sample_from_top_k(logits, temperature=1.0, disallow=None, k=20):
     topk_logits -= 1e10 * disallow
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topk_logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  return tf.one_hot(tf.argmax(tf.nn.softmax((topk_logits + gumbel_noise)/temperature), -1,
+  log_prob = topk_logits / temperature
+  onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((topk_logits + gumbel_noise)/temperature), -1,
                               output_type=tf.int32), topk_logits.shape[-1])
+  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  return onehot_tokenids, tokenids_logprob
 
 def sample_from_top_p(logits, temperature=1.0, disallow=None, p=0.95):
   """Nucleus sampling
@@ -307,6 +319,8 @@ def sample_from_top_p(logits, temperature=1.0, disallow=None, p=0.95):
     topp_logits -= 1e10 * disallow
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topp_logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  return tf.one_hot(tf.argmax(tf.nn.softmax((topp_logits + gumbel_noise)/temperature), -1,
+  log_prob = topp_logits / temperature
+  onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((topp_logits + gumbel_noise)/temperature), -1,
                             output_type=tf.int32), topp_logits.shape[-1])
-  
+  tokenids_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
+  return onehot_tokenids, tokenids_logprob

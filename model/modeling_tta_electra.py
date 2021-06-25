@@ -122,55 +122,81 @@ class BertModel(object):
   """
 
   def __init__(self,
-               config,
+               bert_config,
                is_training,
                input_ids,
                input_mask=None,
                token_type_ids=None,
-               use_one_hot_embeddings=False,
-               scope='bert',
+               use_one_hot_embeddings=True,
+               scope=None,
+               embedding_size=None,
+               input_embeddings=None,
+               input_reprs=None,
+               update_embeddings=True,
+               untied_embeddings=False,
+               spectral_regularization=False,
                **kargs):
     """Constructor for BertModel.
+
     Args:
-      config: `BertConfig` instance.
+      bert_config: `BertConfig` instance.
       is_training: bool. true for training model, false for eval model. Controls
         whether dropout will be applied.
       input_ids: int32 Tensor of shape [batch_size, seq_length].
       input_mask: (optional) int32 Tensor of shape [batch_size, seq_length].
+      token_type_ids: (optional) int32 Tensor of shape [batch_size, seq_length].
       use_one_hot_embeddings: (optional) bool. Whether to use one-hot word
         embeddings or tf.embedding_lookup() for the word embeddings. On the TPU,
         it is much faster if this is True, on the CPU or GPU, it is faster if
         this is False.
-      scope: (optional) variable scope. Defaults to "bert".
+      scope: (optional) variable scope. Defaults to "electra".
+
     Raises:
       ValueError: The config is invalid or one of the input tensor shapes
         is invalid.
     """
-    config = copy.deepcopy(config)
+    bert_config = copy.deepcopy(bert_config)
     if not is_training:
-      config.hidden_dropout_prob = 0.0
-      config.attention_probs_dropout_prob = 0.0
-    self.scope = scope
+      bert_config.hidden_dropout_prob = 0.0
+      bert_config.attention_probs_dropout_prob = 0.0
 
-    input_shape = get_shape_list(input_ids, expected_rank=2)
+    if spectral_regularization:
+      print("==spectral_regularization==")
+      custom_getter = spectural_utils.spectral_normalization_custom_getter(training=is_training)
+    else:
+      custom_getter = None
+      print("==none spectral_regularization==")
+
+    input_shape = get_shape_list(token_type_ids, expected_rank=2)
     batch_size = input_shape[0]
     seq_length = input_shape[1]
 
     if input_mask is None:
       input_mask = tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
-    dummy_ids = input_mask * 4 * tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
-    
-    with tf.variable_scope(scope, default_name="bert", reuse=tf.AUTO_REUSE):
-      with tf.variable_scope("embeddings"):
-        # Perform embedding lookup on the word ids.
-        (self.token_embeddings, self.embedding_table) = embedding_lookup(
-            input_ids=input_ids,
-            vocab_size=config.vocab_size,
-            embedding_size=config.hidden_size,
-            initializer_range=config.initializer_range,
-            word_embedding_name="word_embeddings",
-            use_one_hot_embeddings=use_one_hot_embeddings)
-        
+
+    assert token_type_ids is not None
+
+    if input_reprs is None:
+      if input_embeddings is None:
+        with tf.variable_scope(
+            (scope if untied_embeddings else "electra") + "/embeddings",
+            reuse=tf.AUTO_REUSE):
+          # Perform embedding lookup on the word ids
+          if embedding_size is None:
+            embedding_size = bert_config.hidden_size
+          (self.token_embeddings, self.embedding_table) = embedding_lookup(
+              input_ids=input_ids,
+              vocab_size=bert_config.vocab_size,
+              embedding_size=embedding_size,
+              initializer_range=bert_config.initializer_range,
+              word_embedding_name="word_embeddings",
+              use_one_hot_embeddings=use_one_hot_embeddings)
+      else:
+        self.token_embeddings = input_embeddings
+
+      with tf.variable_scope(
+          (scope if untied_embeddings else "electra") + "/embeddings",
+          reuse=tf.AUTO_REUSE):
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.
         self.embedding_output = embedding_postprocessor(
@@ -179,35 +205,55 @@ class BertModel(object):
             use_token_type=True,
             token_type_ids=token_type_ids,
             token_type_embedding_name="token_type_embeddings",
-            token_type_vocab_size=config.type_vocab_size,
+            token_type_vocab_size=bert_config.type_vocab_size,
             position_embedding_name="position_embeddings",
-            initializer_range=config.initializer_range,
-            max_position_embeddings=config.max_position_embeddings,
-            dropout_prob=config.hidden_dropout_prob)
-        
-        (self.dummy_embeddings, _) = embedding_lookup(
-            input_ids=dummy_ids,
-            vocab_size=config.vocab_size,
-            embedding_size=config.hidden_size,
-            initializer_range=config.initializer_range,
-            word_embedding_name="word_embeddings",
-            use_one_hot_embeddings=use_one_hot_embeddings)
+            initializer_range=bert_config.initializer_range,
+            max_position_embeddings=bert_config.max_position_embeddings,
+            dropout_prob=bert_config.hidden_dropout_prob)
+    else:
+      self.embedding_output = input_reprs
+    if not update_embeddings:
+      self.embedding_output = tf.stop_gradient(self.embedding_output)
 
-        # self.dummy_embeddings = tf.stop_gradient(self.dummy_embeddings)
-        
-        # Add positional embeddings and token type embeddings, then layer
-        # normalize and perform dropout.
-        self.position_embeddings = embedding_postprocessor(
-            input_tensor=self.dummy_embeddings,
-            use_position_embeddings=True,
-            use_token_type=True,
-            token_type_ids=token_type_ids,
-            token_type_vocab_size=config.type_vocab_size,
-            position_embedding_name="position_embeddings",
-            token_type_embedding_name="token_type_embeddings",
-            initializer_range=config.initializer_range,
-            max_position_embeddings=config.max_position_embeddings,
-            dropout_prob=config.hidden_dropout_prob)
+    dummy_ids = input_mask * 4 * tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
+
+    with tf.variable_scope(
+        (scope if untied_embeddings else "electra") + "/embeddings",
+        reuse=tf.AUTO_REUSE):
+      (self.dummy_embeddings, _) = embedding_lookup(
+          input_ids=dummy_ids,
+          vocab_size=bert_config.vocab_size,
+          embedding_size=bert_config.hidden_size,
+          initializer_range=bert_config.initializer_range,
+          word_embedding_name="word_embeddings",
+          use_one_hot_embeddings=use_one_hot_embeddings)
+
+      # self.dummy_embeddings = tf.stop_gradient(self.dummy_embeddings)
+      
+      # Add positional embeddings and token type embeddings, then layer
+      # normalize and perform dropout.
+      self.position_embeddings = embedding_postprocessor(
+          input_tensor=self.dummy_embeddings,
+          use_position_embeddings=True,
+          use_token_type=True,
+          token_type_ids=token_type_ids,
+          token_type_vocab_size=bert_config.type_vocab_size,
+          position_embedding_name="position_embeddings",
+          token_type_embedding_name="token_type_embeddings",
+          initializer_range=bert_config.initializer_range,
+          max_position_embeddings=bert_config.max_position_embeddings,
+          dropout_prob=bert_config.hidden_dropout_prob)
+
+      if self.position_embeddings.shape[-1] != bert_config.hidden_size:
+        self.position_embeddings = tf.layers.dense(
+            self.position_embeddings, bert_config.hidden_size,
+            name="position_embeddings_project")
+
+    with tf.variable_scope(scope, default_name="electra", reuse=tf.AUTO_REUSE):
+      if self.embedding_output.shape[-1] != bert_config.hidden_size:
+        self.embedding_output = tf.layers.dense(
+            self.embedding_output, bert_config.hidden_size,
+            name="embeddings_project")
 
       with tf.variable_scope("encoder", reuse=tf.AUTO_REUSE):
         # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
@@ -215,7 +261,7 @@ class BertModel(object):
         # for the attention scores.
         attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
-        if config.if_pretraining:
+        if bert_config.if_pretraining:
           print("==remove self-attention mask==")
           attention_mask = attention_mask - tf.linalg.band_part(attention_mask, 0, 0) ## for self-blind
         
@@ -225,14 +271,14 @@ class BertModel(object):
             input_tensor_q=self.position_embeddings,
             input_tensor_kv=self.embedding_output,
             attention_mask=attention_mask,
-            hidden_size=config.hidden_size,
-            num_hidden_layers=config.num_hidden_layers,
-            num_attention_heads=config.num_attention_heads,
-            intermediate_size=config.intermediate_size,
-            intermediate_act_fn=get_activation(config.hidden_act),
-            hidden_dropout_prob=config.hidden_dropout_prob,
-            attention_probs_dropout_prob=config.attention_probs_dropout_prob,
-            initializer_range=config.initializer_range,
+            hidden_size=bert_config.hidden_size,
+            num_hidden_layers=bert_config.num_hidden_layers,
+            num_attention_heads=bert_config.num_attention_heads,
+            intermediate_size=bert_config.intermediate_size,
+            intermediate_act_fn=get_activation(bert_config.hidden_act),
+            hidden_dropout_prob=bert_config.hidden_dropout_prob,
+            attention_probs_dropout_prob=bert_config.attention_probs_dropout_prob,
+            initializer_range=bert_config.initializer_range,
             do_return_all_layers=True)
 
       self.sequence_output = self.all_encoder_layers[-1]
@@ -247,9 +293,9 @@ class BertModel(object):
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
         self.pooled_output = tf.layers.dense(
             first_token_tensor,
-            config.hidden_size,
+            bert_config.hidden_size,
             activation=tf.tanh,
-            kernel_initializer=create_initializer(config.initializer_range))
+            kernel_initializer=create_initializer(bert_config.initializer_range))
 
   def get_pooled_output(self):
     return self.pooled_output

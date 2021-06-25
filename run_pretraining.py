@@ -30,7 +30,7 @@ tf.disable_v2_behavior()
 
 import configure_pretraining
 from model import modeling
-from model import modeling_tta
+from model import modeling_tta_electra
 from model import optimization
 from pretrain import pretrain_data
 from pretrain import pretrain_helpers
@@ -158,43 +158,41 @@ class PretrainingModel(object):
     elif ((config.electra_objective or config.electric_objective or config.electra_nce_objective)
           and config.untied_generator):
       # generator_config = get_generator_config(config, self._bert_config)
-      if config.two_tower_generator or config.tta_generator:
+      if config.two_tower_generator:
         # two-tower cloze model generator used for electric
-        if config.two_tower_generator:
-          generator = TwoTowerClozeTransformer(
-              config, self._generator_config, unmasked_inputs, is_training,
-              self.generator_embedding_size)
-          cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
-          mlm_output = get_softmax_output(
-              pretrain_helpers.gather_positions(
-                  cloze_output.logits, masked_inputs.masked_lm_positions),
-              masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-              self._bert_config.vocab_size,
-              self._config.logprob_avg)
-          print("==two_tower_generator==")
+        generator = TwoTowerClozeTransformer(
+            config, self._generator_config, unmasked_inputs, is_training,
+            self.generator_embedding_size)
+        cloze_output = self._get_cloze_outputs(unmasked_inputs, generator)
+        mlm_output = get_softmax_output(
+            pretrain_helpers.gather_positions(
+                cloze_output.logits, masked_inputs.masked_lm_positions),
+            masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
+            self._bert_config.vocab_size,
+            self._config.logprob_avg)
+        print("==two_tower_generator==")
 
-          self.gen_params = []
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
-        elif config.tta_generator:
-          generator = build_tta_transformer(
-              config, unmasked_inputs, is_training, self._generator_config,
-              embedding_size=self.generator_embedding_size,
-              untied_embeddings=self.untied_generator_embeddings,
-              scope=self.generator_scope)
-          cloze_output = self._get_cloze_outputs(unmasked_inputs, generator, self.generator_cls_scope)
-          mlm_output = get_softmax_output(
-              pretrain_helpers.gather_positions(
-                  cloze_output.logits, masked_inputs.masked_lm_positions),
-              masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
-              self._bert_config.vocab_size,
-              self._config.logprob_avg)
-
-          print("==two_tower_generator==")
-          self.gen_params = []
-          self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cloze_scope)
+        self.gen_params = []
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
+        if not config.untied_generator_embeddings:
+          print("==add shared embeddings==")
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
+      elif config.tta_generator:
+        generator = build_tta_transformer(
+            config, unmasked_inputs, is_training, self._generator_config,
+            embedding_size=self.generator_embedding_size,
+            untied_embeddings=self.untied_generator_embeddings,
+            scope=self.generator_scope)
+        mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
+        print("==tta_generator==")
+        self.gen_params = []
+        self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
+        if not config.untied_generator_embeddings:
+          print("==add shared embeddings==")
+          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
       else:
         # small masked language model generator
         generator = build_transformer(
@@ -837,19 +835,19 @@ class PretrainingModel(object):
         dtype=tf.float32) if self._config.disallow_correct else None
     if self._config.fake_data_sample == 'sample_from_softmax':
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
-        mlm_logits / self._config.temperature, disallow=disallow))
+        mlm_logits, self._config.temperature, disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")
     elif self._config.fake_data_sample == 'sample_from_top_k':
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_k(
-        mlm_logits / self._config.temperature, disallow=disallow, k=self._config.topk))
+        mlm_logits, self._config.temperature, disallow=disallow, k=self._config.topk))
       tf.logging.info("***** apply sample_from_top_k *****")
     elif self._config.fake_data_sample == 'sample_from_top_p':
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_top_p(
-        mlm_logits / self._config.temperature, disallow=disallow, p=self._config.topp))
+        mlm_logits, self._config.temperature, disallow=disallow, p=self._config.topp))
       tf.logging.info("***** apply sample_from_top_p *****")
     else:
       sampled_tokens = tf.stop_gradient(pretrain_helpers.sample_from_softmax(
-        mlm_logits / self._config.temperature, disallow=disallow))
+        mlm_logits, self._config.temperature, disallow=disallow))
       tf.logging.info("***** apply sample_from_softmax *****")
 
     # sampled_tokens: [batch_size, n_pos, n_vocab]
@@ -1010,7 +1008,7 @@ def build_tta_transformer(config,
                       bert_config, reuse=False, **kwargs):
   """Build a transformer encoder network."""
   with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
-    return modeling_tta.BertModel(
+    return modeling_tta_electra.BertModel(
         bert_config=bert_config,
         is_training=is_training,
         input_ids=inputs.input_ids,

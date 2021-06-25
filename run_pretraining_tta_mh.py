@@ -286,9 +286,9 @@ class PretrainingModel(object):
     log_u = tf.log(u)
 
     accept_mask = tf.less(log_u, transition_logprob)
-    accept_mask = tf.cast(accept_mask, greedy_inputs.input_ids.dtype)
+    accept_mask = tf.cast(accept_mask, tf.float32)
   
-    accept_weights = tf.expand_dims(accept_mask, axis=-1)
+    accept_weights = tf.expand_dims(tf.cast(accept_mask, greedy_inputs.input_ids.dtype), axis=-1)
     
     tf.logging.info("** get mh accept_weights **")
     tf.logging.info(accept_weights)
@@ -297,7 +297,7 @@ class PretrainingModel(object):
 
     fake_input_ids = (accept_weights) * sampled_inputs.input_ids + (1-accept_weights)*greedy_inputs.input_ids
 
-    gen_fake_energy = accept_mask * sampled_energy + (1-accept_mask)*greedy_energy
+    gen_fake_energy = accept_mask * sampled_energy + (1.0-accept_mask)*greedy_energy
     
     fake_data_inputs = pretrain_data.get_updated_inputs(
         unmasked_inputs,

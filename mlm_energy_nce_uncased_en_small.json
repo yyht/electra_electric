@@ -2,8 +2,8 @@
     "max_seq_length": 512,
     "vocab_size": 30522,
     "model_size": "small",
-    "train_batch_size":64,
-    "embedding_size":768,
+    "train_batch_size":128,
+    "embedding_size":256,
     "do_train": true,
     "save_checkpoints_steps": 100000,
     "electric_objective": false,
@@ -48,5 +48,5 @@
     "spectral_regularization":false,
     "fake_data_sample":"sample_from_softmax",
     "topk":20,
-    "generator_embedding_size": 768
+    "generator_embedding_size": 256
 }

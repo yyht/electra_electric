@@ -623,6 +623,8 @@ class PretrainingModel(object):
                           self._config.logits_temp, 
                           self._config.gumbel_temp)
 
+    sampled_tokens = tf.stop_gradient(sampled_tokens)
+
     sampled_tokids = tf.argmax(sampled_tokens, -1, output_type=tf.int32)
     updated_input_ids, masked = pretrain_helpers.scatter_update(
         inputs.input_ids, sampled_tokids, inputs.masked_lm_positions)
@@ -650,10 +652,12 @@ class PretrainingModel(object):
       tf.logging.info("***** apply sample_from_softmax *****")
 
     (sampled_tokens, 
-      sampled_logprob) = tf.stop_gradient(fn(
+      sampled_logprob) = fn(
       mlm_logits, self._config.logits_temp, 
-        self._config.gumbel_temp, disallow=disallow))
-    
+        self._config.gumbel_temp, disallow=disallow)
+
+    sampled_tokens = tf.stop_gradient(sampled_tokens)
+
     tf.logging.info("** sampled from mlm logits ***")
     tf.logging.info(sampled_tokens)
     tf.logging.info(sampled_logprob)

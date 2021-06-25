@@ -354,6 +354,10 @@ class PretrainingModel(object):
     }
     
     eval_fn_inputs.update({
+        "disc_loss": nce_disc_output.per_example_loss,
+        "disc_labels": nce_disc_output.labels,
+        "disc_probs": nce_disc_output.probs,
+        "disc_preds": nce_disc_output.preds,
         "disc_real_loss":nce_disc_output.real_loss,
         "disc_fake_loss":nce_disc_output.fake_loss,
         "disc_real_labels":nce_disc_output.real_labels,

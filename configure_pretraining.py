@@ -189,8 +189,8 @@ class PretrainingConfig(object):
       self.num_eval_steps = 2
 
     # defaults for different-sized model
-    if self.model_size == "small":
-      self.embedding_size = 128
+    # if self.model_size == "small":
+    #   self.embedding_size = 128
     # Here are the hyperparameters we used for larger models; see Table 6 in the
     # paper for the full hyperparameters
     # else:

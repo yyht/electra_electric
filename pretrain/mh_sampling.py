@@ -250,7 +250,8 @@ def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None)
   uniform_noise = tf.random.uniform(
       modeling.get_shape_list(logits), minval=0, maxval=1)
   gumbel_noise = -tf.log(-tf.log(uniform_noise + 1e-9) + 1e-9)
-  log_prob = tf.nn.log_softmax(logits/logits_temp, axis=-1)
+  logits /= logits_temp
+  log_prob = tf.nn.log_softmax(logits, axis=-1)
   onehot_tokenids = tf.one_hot(tf.argmax(tf.nn.softmax((logits + gumbel_noise)/gumbel_temp), -1,
                               output_type=tf.int32), logits.shape[-1])
   # [batch_size, masked_pos]

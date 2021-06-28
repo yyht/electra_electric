@@ -1,11 +1,11 @@
 nohup python3 run_pretraining_tta.py \
-	--bert_config_file ./config/bert_config.json \
+	--bert_config_file ./config/bert_config_uncased_en.json \
 	--input_file uncased_english_whole_sentence_v3_32/uncased_english_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/tta/bert_base_tta_span_mask_uncased_en \
 	--input_data_dir gs://yyht_source/pretrain \
 	--max_seq_length 512 \
 	--do_train True \
-	--train_batch_size 256 \
+	--train_batch_size 224 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \

@@ -19,4 +19,5 @@ nohup python3 run_pretraining_tta.py \
 	--monitoring True \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \
-	--mask_strategy "span_mask"
+	--mask_strategy "span_mask" \
+	--lm_mode "tta"

@@ -127,6 +127,7 @@ tf.flags.DEFINE_string(
 
 tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
 tf.flags.DEFINE_string("mask_strategy", 'span_mask', "[Optional] TensorFlow master URL.")
+tf.flags.DEFINE_string("lm_mode", 'span_mask', "[Optional] TensorFlow master URL.")
 
 flags.DEFINE_integer(
     "num_tpu_cores", 8,
@@ -152,6 +153,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       target_ids = features["target_ids"]
       target_mask = features["target_mask"]
       input_mask = features["input_mask"]
+      FLAGS.lm_mode = "tta"
     elif FLAGS.mask_strategy == 'span_mask':
       input_ids = features['masked_input']
       target_ids = features["origin_input"]
@@ -175,33 +177,72 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings)
 
-    (lm_loss, lm_example_loss, lm_log_probs) = get_lm_output(
-         bert_config, 
-         model.get_sequence_output(), 
-         model.get_embedding_table(),
-         target_ids, 
-         target_mask)
+    if FLAGS.lm_mode == 'tta':
+      (lm_loss, lm_example_loss, lm_log_probs) = get_lm_output(
+           bert_config, 
+           model.get_sequence_output(), 
+           model.get_embedding_table(),
+           target_ids, 
+           target_mask)
 
-    lm_preds = tf.argmax(lm_log_probs, axis=-1, output_type=tf.int32)
+      lm_preds = tf.argmax(lm_log_probs, axis=-1, output_type=tf.int32)
+      total_loss = lm_loss
 
-    total_loss = lm_loss
+      tf.logging.info("** apply tta objective for all tokens in sequence **")
+
+    elif FLAGS.lm_mode == 'mlm':
+      masked_lm_positions = features["masked_lm_positions"]
+      masked_lm_ids = features["masked_lm_ids"]
+      masked_lm_weights = features["masked_lm_weights"]
+     
+      (masked_lm_loss,
+      masked_lm_example_loss, 
+      masked_lm_log_probs) = get_masked_lm_output(
+           bert_config, 
+           model.get_sequence_output(), 
+           model.get_embedding_table(),
+           masked_lm_positions, 
+           masked_lm_ids, 
+           masked_lm_weights)
+
+      lm_preds = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
+      total_loss = masked_lm_loss
+
+      tf.logging.info("** apply MLM objective for masked tokens in sequence **")
+
     monitor_dict = {}
 
     tvars = tf.trainable_variables()
     for tvar in tvars:
       print(tvar, "=====tvar=====")
 
-    eval_fn_inputs = {
-        "lm_preds": lm_preds,
-        "lm_loss": lm_example_loss,
-        "lm_target_mask": target_mask,
-        "lm_target_ids": target_ids
-    }
+    if FLAGS.lm_mode == 'tta':
+      eval_fn_inputs = {
+          "lm_preds": lm_preds,
+          "lm_loss": lm_example_loss,
+          "lm_target_mask": target_mask,
+          "lm_target_ids": target_ids
+      }
 
-    eval_fn_keys = eval_fn_inputs.keys()
-    eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
+      eval_fn_keys = eval_fn_inputs.keys()
+      eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
 
-    def monitor_fn(eval_fn_inputs, keys):
+      tf.logging.info("** apply tta evaluation on all tokens in sequence **")
+
+    elif FLAGS.lm_mode == 'mlm':
+      eval_fn_inputs = {
+        "masked_lm_preds": masked_lm_preds,
+        "masked_lm_loss": masked_lm_example_loss,
+        "masked_lm_weights": masked_lm_weights,
+        "masked_lm_ids": masked_lm_ids
+      }
+
+      eval_fn_keys = eval_fn_inputs.keys()
+      eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
+
+      tf.logging.info("** apply mlm evaluation on masked tokens in sequence **")
+
+    def monitor_tta_fn(eval_fn_inputs, keys):
       # d = {k: arg for k, arg in zip(eval_fn_keys, args)}
       d = {}
       for key in eval_fn_inputs:
@@ -229,7 +270,40 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
       return monitor_dict
 
-    monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
+    def monitor_mlm_fn(eval_fn_inputs, keys):
+      # d = {k: arg for k, arg in zip(eval_fn_keys, args)}
+      d = {}
+      for key in eval_fn_inputs:
+        if key in keys:
+          d[key] = eval_fn_inputs[key]
+      monitor_dict = dict()
+      masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
+      masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
+      print(masked_lm_preds, "===masked_lm_preds===")
+      print(masked_lm_ids, "===masked_lm_ids===")
+      print(masked_lm_weights, "===masked_lm_weights===")
+      # masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
+      #                             output_type=tf.int32)
+      masked_lm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
+      masked_lm_acc = tf.reduce_sum(masked_lm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      masked_lm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      masked_lm_loss = tf.reshape(d["masked_lm_loss"], [-1])
+      masked_lm_loss = tf.reduce_sum(masked_lm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      masked_lm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      monitor_dict['masked_lm_loss'] = masked_lm_loss
+      monitor_dict['masked_lm_acc'] = masked_lm_acc
+
+      return monitor_dict
+
+    if FLAGS.lm_mode == 'tta':
+      monitor_dict = monitor_tta_fn(eval_fn_inputs, eval_fn_keys)
+      tf.logging.info("** apply tta monitoring on all tokens in sequence **")
+    elif FLAGS.lm_mode == 'mlm':
+      monitor_dict = monitor_mlm_fn(eval_fn_inputs, eval_fn_keys)
+      tf.logging.info("** apply mlm monitoring on masked tokens in sequence **")
 
     initialized_variable_names = {}
     scaffold_fn = None
@@ -447,7 +521,7 @@ data_config.cls_id = 101
 data_config.mask_id = 103
 data_config.leak_ratio = 0.1
 data_config.rand_ratio = 0.8
-data_config.mask_prob = 0.15
+data_config.mask_prob = 0.3
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
 data_config.stride = 1

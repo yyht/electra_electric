@@ -1,7 +1,7 @@
 
-# import tensorflow as tf
-
 import tensorflow as tf
+tf.disable_v2_behavior()
+
 def check_tf_version():
   version = tf.__version__
   print("==tf version==", version)
@@ -9,9 +9,9 @@ def check_tf_version():
     return True
   else:
     return False
-if check_tf_version():
-  import tensorflow.compat.v1 as tf
-  tf.disable_v2_behavior()
+# if check_tf_version():
+#   import tensorflow.compat.v1 as tf
+#   tf.disable_v2_behavior()
 
 # from model.vqvae_utils import tfidf_utils
 import collections

@@ -22,6 +22,7 @@ from __future__ import print_function
 import os
 import random
 import tensorflow as tf
+tf.disable_v2_behavior()
 
 class PretrainingConfig(object):
   """Defines pre-training hyperparameters."""

@@ -21,7 +21,8 @@ from __future__ import print_function
 
 import os
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
+tf.disable_v2_behavior()
 
 
 class FinetuningConfig(object):

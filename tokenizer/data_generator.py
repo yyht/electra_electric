@@ -2,6 +2,7 @@
 from tokenizer.snippets import is_string, is_py2
 import numpy as np
 import tensorflow as tf
+tf.disable_v2_behavior()
 
 class DataGenerator(object):
   """template for DataGenerator

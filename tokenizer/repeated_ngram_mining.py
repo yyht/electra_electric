@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+tf.disable_v2_behavior()
 from collections import OrderedDict, Counter
 
 import re

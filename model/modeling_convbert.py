@@ -18,9 +18,10 @@ import re
 
 import numpy as np
 import six
-# import tensorflow as tf
-
 import tensorflow as tf
+tf.disable_v2_behavior()
+
+# import tensorflow as tf
 def check_tf_version():
   version = tf.__version__
   print("==tf version==", version)
@@ -28,9 +29,9 @@ def check_tf_version():
     return True
   else:
     return False
-if check_tf_version():
-  import tensorflow.compat.v1 as tf
-  tf.disable_v2_behavior()
+# if check_tf_version():
+#   import tensorflow.compat.v1 as tf
+#   tf.disable_v2_behavior()
 
 from tensorflow.contrib import layers as contrib_layers
 

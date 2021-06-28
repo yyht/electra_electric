@@ -4,7 +4,19 @@ try:
 except:
 	tf2 = None
 
+# import tensorflow as tf
+
 import tensorflow as tf
+def check_tf_version():
+  version = tf.__version__
+  print("==tf version==", version)
+  if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+    return True
+  else:
+    return False
+if check_tf_version():
+  import tensorflow.compat.v1 as tf
+  tf.disable_v2_behavior()
 
 def construct_scalar_host_call_v1(monitor_dict,
     							model_dir, prefix=""):

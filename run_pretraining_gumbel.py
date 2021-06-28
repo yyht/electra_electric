@@ -25,8 +25,20 @@ import json
 from model import model_io as model_io_fn
 
 # import tensorflow.compat.v1 as tf
+# import tensorflow as tf
+# tf.disable_v2_behavior()
+
 import tensorflow as tf
-tf.disable_v2_behavior()
+def check_tf_version():
+  version = tf.__version__
+  print("==tf version==", version)
+  if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+    return True
+  else:
+    return False
+if check_tf_version():
+  import tensorflow.compat.v1 as tf
+  tf.disable_v2_behavior()
 
 import configure_pretraining
 from model import modeling

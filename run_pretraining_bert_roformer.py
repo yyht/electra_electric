@@ -18,8 +18,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# import tensorflow as tf
+# tf.disable_v2_behavior()
+
 import tensorflow as tf
-tf.disable_v2_behavior()
+def check_tf_version():
+  version = tf.__version__
+  print("==tf version==", version)
+  if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+    return True
+  else:
+    return False
+if check_tf_version():
+  import tensorflow.compat.v1 as tf
+  tf.disable_v2_behavior()
 
 import os
 from model import modeling_roformer

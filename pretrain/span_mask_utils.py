@@ -9,7 +9,20 @@ import os
 import collections
 
 import numpy as np
+# import tensorflow as tf
+
 import tensorflow as tf
+def check_tf_version():
+  version = tf.__version__
+  print("==tf version==", version)
+  if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+    return True
+  else:
+    return False
+if check_tf_version():
+  import tensorflow.compat.v1 as tf
+  tf.disable_v2_behavior()
+
 from pretrain import pretrain_data
 from pretrain import pretrain_helpers
 from model.vqvae_utils import tfidf_utils

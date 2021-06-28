@@ -30,7 +30,19 @@ import re
 import numpy as np
 import six
 # import tensorflow.compat.v1 as tf
+# import tensorflow as tf
+
 import tensorflow as tf
+def check_tf_version():
+  version = tf.__version__
+  print("==tf version==", version)
+  if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+    return True
+  else:
+    return False
+if check_tf_version():
+  import tensorflow.compat.v1 as tf
+  tf.disable_v2_behavior()
 
 from tensorflow.contrib import layers as contrib_layers
 from model import spectural_utils
@@ -90,7 +102,7 @@ class BertConfig(object):
     self.type_vocab_size = type_vocab_size
     self.initializer_range = initializer_range
     self.if_pretraining = if_pretraining
-    
+
   @classmethod
   def from_dict(cls, json_object):
     """Constructs a `BertConfig` from a Python dictionary of parameters."""

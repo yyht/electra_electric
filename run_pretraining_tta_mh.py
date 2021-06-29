@@ -351,7 +351,9 @@ class PretrainingModel(object):
                               gen_true_energy,
                               gen_fake_energy,
                               real_disc_energy,
-                              fake_disc_energy)
+                              fake_disc_energy,
+                              scope="nce_logz")
+    self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'nce_logz')
 
     self.disc_loss = nce_disc_output.loss
     self.total_loss += config.disc_weight * nce_disc_output.loss
@@ -383,7 +385,12 @@ class PretrainingModel(object):
         "disc_noise_real_logprob":nce_disc_output.d_noise_real_logprob,
         "disc_noise_fake_logprob":nce_disc_output.d_noise_fake_logprob,
         "masked_mask": masked_inputs.masked_lm_weights,
-        "mh_mask": accept_mask
+        "mh_mask": accept_mask,
+        "transition_logprob": transition_logprob,
+        "sampled_energy": sampled_energy,
+        "greedy_energy": greedy_energy,
+        "sampled_logprob": sampled_logprob,
+        "greedy_logprob": greedy_logprob
       })
     
     eval_fn_keys = eval_fn_inputs.keys()
@@ -439,6 +446,10 @@ class PretrainingModel(object):
       monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
 
       monitor_dict['mh_accept_rate'] = tf.reduce_mean(d['mh_mask'])
+      monitor_dict['gen_sampled_energy'] = tf.reduce_mean(d['sampled_energy'])
+      monitor_dict['gen_greedy_energy'] = tf.reduce_mean(d['greedy_energy'])
+      monitor_dict['gen_sampled_logprob'] = tf.reduce_mean(d['sampled_logprob'])
+      monitor_dict['gen_greedy_logprob'] = tf.reduce_mean(d['greedy_logprob'])
       return monitor_dict
 
     self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -528,7 +539,7 @@ class PretrainingModel(object):
 
     weights = tf.cast(inputs.input_mask, tf.float32)
     final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
-    
+
     tf.logging.info(final_energy)
 
     return final_energy
@@ -574,10 +585,17 @@ class PretrainingModel(object):
                           noise_real_logprobs,
                           noise_fake_logprobs,
                           discriminator_real_energy,
-                          discriminator_fake_energy):
+                          discriminator_fake_energy,
+                          scope):
 
-    d_out_real = discriminator_real_energy + tf.stop_gradient(-noise_real_logprobs)
-    d_out_fake = discriminator_fake_energy + tf.stop_gradient(-noise_fake_logprobs)
+    with tf.variable_scope(scope if scope else "nce_logz_delta"):  
+      logZ_delta = tf.get_variable(
+          "logZ_delta",
+          shape=[1],
+          initializer=tf.zeros_initializer())
+
+    d_out_real = discriminator_real_energy + tf.stop_gradient(-noise_real_logprobs) + logZ_delta
+    d_out_fake = discriminator_fake_energy + tf.stop_gradient(-noise_fake_logprobs) + logZ_delta
 
     tf.logging.info("** d_out_real **")
     tf.logging.info(d_out_real)

@@ -327,7 +327,7 @@ class PretrainingModel(object):
       self.total_loss = config.gen_weight * mlm_output.loss
       tf.logging.info("** apply mlm loss **")
 
-    if config.two_tower_generator or config.tta_generator::
+    if config.two_tower_generator or config.tta_generator:
       self.gen_loss = cloze_output.loss
     else:
       self.gen_loss = mlm_output.loss
@@ -545,7 +545,7 @@ class PretrainingModel(object):
     # weights = tf.cast(inputs.input_mask, tf.float32)
     weights = tf.cast(pretrain_helpers.get_candidates_mask(
         self._config, inputs), tf.float32)
-    
+
     final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
 
     tf.logging.info(final_energy)

@@ -206,6 +206,7 @@ class PretrainingModel(object):
             embedding_size=self.generator_embedding_size,
             untied_embeddings=self.untied_generator_embeddings,
             scope=self.generator_scope)
+        cloze_output = self._get_cloze_outputs(masked_inputs, generator, self.generator_cls_scope)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
         self.gen_params = []
@@ -319,14 +320,14 @@ class PretrainingModel(object):
       )
 
     self.mlm_output = mlm_output
-    if config.two_tower_generator:
+    if config.two_tower_generator or config.tta_generator:
       self.total_loss = config.gen_weight * cloze_output.loss
       tf.logging.info("** apply cloze loss **")
     else:
       self.total_loss = config.gen_weight * mlm_output.loss
       tf.logging.info("** apply mlm loss **")
 
-    if config.two_tower_generator:
+    if config.two_tower_generator or config.tta_generator::
       self.gen_loss = cloze_output.loss
     else:
       self.gen_loss = mlm_output.loss
@@ -504,7 +505,11 @@ class PretrainingModel(object):
     tf.logging.info("** generator_energy **")
     tf.logging.info(log_energy)
 
-    weights = tf.cast(inputs.input_mask, tf.float32)
+    # weights = tf.cast(inputs.input_mask, tf.float32)
+    
+    weights = tf.cast(pretrain_helpers.get_candidates_mask(
+        self._config, inputs), tf.float32)
+
     final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
     
     tf.logging.info(final_energy)
@@ -537,7 +542,10 @@ class PretrainingModel(object):
     tf.logging.info("** discriminator_energy **")
     tf.logging.info(log_energy)
 
-    weights = tf.cast(inputs.input_mask, tf.float32)
+    # weights = tf.cast(inputs.input_mask, tf.float32)
+    weights = tf.cast(pretrain_helpers.get_candidates_mask(
+        self._config, inputs), tf.float32)
+    
     final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
 
     tf.logging.info(final_energy)

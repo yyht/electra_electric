@@ -159,7 +159,7 @@ class PretrainingConfig(object):
 
     # span-mask-config
     self.min_tok = 3
-    self.max_tok = 5
+    self.max_tok = 10
     self.sep_id = 102
     self.pad_id = 0
     self.cls_id = 101

@@ -510,7 +510,7 @@ class PretrainingModel(object):
     weights = tf.cast(pretrain_helpers.get_candidates_mask(
         self._config, inputs), tf.float32)
 
-    final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
+    final_energy = -tf.reduce_sum(log_energy*weights, axis=-1)
     
     tf.logging.info(final_energy)
 
@@ -546,7 +546,7 @@ class PretrainingModel(object):
     weights = tf.cast(pretrain_helpers.get_candidates_mask(
         self._config, inputs), tf.float32)
 
-    final_energy = tf.reduce_sum(log_energy*weights, axis=-1)
+    final_energy = -tf.reduce_sum(log_energy*weights, axis=-1)
 
     tf.logging.info(final_energy)
 

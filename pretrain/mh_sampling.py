@@ -313,7 +313,7 @@ def sample_from_top_k(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, k
   tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topk_logprob.dtype)*topk_logprob, axis=-1)
   # [batch_size]
 
-  tf.logging.info("** sample_from_softmax **")
+  tf.logging.info("** sample_from_top_k **")
   tf.logging.info(tokenids_seq_logprob)
 
   tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)

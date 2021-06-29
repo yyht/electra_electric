@@ -206,7 +206,7 @@ class PretrainingModel(object):
             embedding_size=self.generator_embedding_size,
             untied_embeddings=self.untied_generator_embeddings,
             scope=self.generator_scope)
-        cloze_output = self._get_cloze_outputs(masked_inputs, generator, self.generator_cls_scope)
+        cloze_output = self._get_cloze_outputs(unmasked_inputs, generator, self.generator_cls_scope)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
         self.gen_params = []
@@ -723,7 +723,7 @@ class PretrainingModel(object):
     return updated_inputs, sampled_logprob
 
   def _get_cloze_outputs(self, inputs, model, scope=''):
-    weights = tf.cast(pretrain_helpers.get_candidates_cloze_mask(
+    weights = tf.cast(pretrain_helpers.get_candidates_mask(
         self._config, inputs), tf.float32)
     
     with tf.variable_scope(scope if scope else 'cloze_predictions'):

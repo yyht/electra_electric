@@ -157,20 +157,6 @@ def get_candidates_mask(config,
     candidates_mask &= ~disallow_from_mask
   return candidates_mask
 
-def get_candidates_cloze_mask(config,
-                        inputs,
-                        disallow_from_mask=None):
-  """Returns a mask tensor of positions in the input that can be masked out."""
-  vocab = get_vocab(config)
-  ignore_ids = [vocab["[SEP]"], vocab["[CLS]"], vocab["[UNK]"]]
-  candidates_mask = tf.ones_like(inputs.input_ids, tf.bool)
-  for ignore_id in ignore_ids:
-    candidates_mask &= tf.not_equal(inputs.input_ids, ignore_id)
-  candidates_mask &= tf.cast(inputs.input_mask, tf.bool)
-  if disallow_from_mask is not None:
-    candidates_mask &= ~disallow_from_mask
-  return candidates_mask
-
 
 def mask(config,
          inputs, mask_prob, proposal_distribution=1.0,

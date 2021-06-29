@@ -254,6 +254,9 @@ def greedy_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None)
   # [batch_size, masked_pos]
   tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
   # [batch_size]
+  tf.logging.info("** greedy_from_softmax **")
+  tf.logging.info(tokenids_seq_logprob)
+
   tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob
 
@@ -270,6 +273,10 @@ def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None)
   # [batch_size, masked_pos]
   tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=log_prob.dtype)*log_prob, axis=-1)
   # [batch_size]
+
+  tf.logging.info("** sample_from_top_k **")
+  tf.logging.info(tokenids_seq_logprob)
+
   tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob
 
@@ -305,6 +312,10 @@ def sample_from_top_k(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, k
   # [batch_size, seq_length]
   tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topk_logprob.dtype)*topk_logprob, axis=-1)
   # [batch_size]
+
+  tf.logging.info("** sample_from_softmax **")
+  tf.logging.info(tokenids_seq_logprob)
+
   tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob
 
@@ -348,5 +359,9 @@ def sample_from_top_p(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, p
   # [batch_size, masked_pos]
   tokenids_seq_logprob = tf.reduce_sum(tf.cast(onehot_tokenids, dtype=topp_logprob.dtype)*topp_logprob, axis=-1)
   # [batch_size]
+
+  tf.logging.info("** sample_from_top_p **")
+  tf.logging.info(tokenids_seq_logprob)
+  
   tokenids_logprob = tf.reduce_sum(tokenids_seq_logprob, axis=-1)
   return onehot_tokenids, tokenids_logprob

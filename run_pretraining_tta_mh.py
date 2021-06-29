@@ -296,7 +296,8 @@ class PretrainingModel(object):
     # exp(-energy)*p_transition
     new_data_logprob = -sampled_energy - sampled_logprob
     greedy_data_logprob = -greedy_energy - greedy_logprob
-    transition_logprob = tf.minimum(0., new_data_logprob - greedy_data_logprob)
+    transition_energy = new_data_logprob - greedy_data_logprob
+    transition_logprob = tf.minimum(0., transition_energy)
     u = tf.random.uniform(modeling_tta_electra.get_shape_list(new_data_logprob), minval=1e-10, maxval=1)
     log_u = tf.log(u)
 
@@ -391,7 +392,8 @@ class PretrainingModel(object):
         "sampled_energy": sampled_energy,
         "greedy_energy": greedy_energy,
         "sampled_logprob": sampled_logprob,
-        "greedy_logprob": greedy_logprob
+        "greedy_logprob": greedy_logprob,
+        "transition_energy": transition_energy
       })
     
     eval_fn_keys = eval_fn_inputs.keys()
@@ -451,6 +453,7 @@ class PretrainingModel(object):
       monitor_dict['gen_greedy_energy'] = tf.reduce_mean(d['greedy_energy'])
       monitor_dict['gen_sampled_logprob'] = tf.reduce_mean(d['sampled_logprob'])
       monitor_dict['gen_greedy_logprob'] = tf.reduce_mean(d['greedy_logprob'])
+      monitor_dict['transition_energy'] = tf.reduce_mean(d['transition_energy'])
       return monitor_dict
 
     self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -720,7 +723,7 @@ class PretrainingModel(object):
     return updated_inputs, sampled_logprob
 
   def _get_cloze_outputs(self, inputs, model, scope=''):
-    weights = tf.cast(pretrain_helpers.get_candidates_mask(
+    weights = tf.cast(pretrain_helpers.get_candidates_cloze_mask(
         self._config, inputs), tf.float32)
     
     with tf.variable_scope(scope if scope else 'cloze_predictions'):

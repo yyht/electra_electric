@@ -355,7 +355,6 @@ class PretrainingModel(object):
                               real_disc_energy,
                               fake_disc_energy,
                               scope="nce_logz")
-    self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'nce_logz')
 
     self.disc_loss = nce_disc_output.loss
     self.total_loss += config.disc_weight * nce_disc_output.loss
@@ -599,14 +598,8 @@ class PretrainingModel(object):
                           discriminator_fake_energy,
                           scope):
 
-    with tf.variable_scope(scope if scope else "nce_logz_delta"):  
-      logZ_delta = tf.get_variable(
-          "logZ_delta",
-          shape=[1],
-          initializer=tf.zeros_initializer())
-
-    d_out_real = discriminator_real_energy + tf.stop_gradient(-noise_real_logprobs) + logZ_delta
-    d_out_fake = discriminator_fake_energy + tf.stop_gradient(-noise_fake_logprobs) + logZ_delta
+    d_out_real = discriminator_real_energy + tf.stop_gradient(-noise_real_logprobs)
+    d_out_fake = discriminator_fake_energy + tf.stop_gradient(-noise_fake_logprobs)
 
     tf.logging.info("** d_out_real **")
     tf.logging.info(d_out_real)

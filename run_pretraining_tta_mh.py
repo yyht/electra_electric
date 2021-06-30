@@ -423,30 +423,30 @@ class PretrainingModel(object):
       mlm_loss = tf.reduce_sum(mlm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
-      monitor_dict['generator_mlm_loss'] = mlm_loss
-      monitor_dict['generator_mlm_acc'] = mlm_acc
+      monitor_dict['gen_mlm_loss'] = mlm_loss
+      monitor_dict['gen_mlm_acc'] = mlm_acc
       sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
       sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
-      monitor_dict['discriminator_sent_nce_pred_acc'] = sent_nce_pred_acc
-      monitor_dict['discriminator_sent_nce_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
-      monitor_dict['discriminator_sent_nce_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
-      monitor_dict['discriminator_sent_nce_loss'] = tf.reduce_mean(d['disc_loss'])
+      monitor_dict['disc_sent_pred_acc'] = sent_nce_pred_acc
+      monitor_dict['disc_real_loss'] = tf.reduce_mean(d['disc_real_loss'])
+      monitor_dict['disc_fake_loss'] = tf.reduce_mean(d['disc_fake_loss'])
+      monitor_dict['disc_loss'] = tf.reduce_mean(d['disc_loss'])
 
       sent_nce_real_pred_acc = tf.cast(tf.equal(d["disc_real_preds"], d['disc_real_labels']),
                                 dtype=tf.float32)
       sent_nce_real_pred_acc = tf.reduce_mean(sent_nce_real_pred_acc)
-      monitor_dict['discriminator_sent_nce_real_pred_acc'] = sent_nce_real_pred_acc
+      monitor_dict['disc_sent_real_pred_acc'] = sent_nce_real_pred_acc
 
       sent_nce_fake_pred_acc = tf.cast(tf.equal(d["disc_fake_preds"], d['disc_fake_labels']),
                                 dtype=tf.float32)
       sent_nce_fake_pred_acc = tf.reduce_mean(sent_nce_fake_pred_acc)
-      monitor_dict['discriminator_sent_nce_fake_pred_acc'] = sent_nce_fake_pred_acc
-      monitor_dict['discriminator_real_energy'] = d["disc_real_energy"]
-      monitor_dict['discriminator_fake_energy'] = d["disc_fake_energy"]
-      monitor_dict['generator_noise_real_logprob'] = d["disc_noise_real_logprob"]
-      monitor_dict['generator_noise_fake_logprob'] = d["disc_noise_fake_logprob"]
+      monitor_dict['disc_sent_fake_pred_acc'] = sent_nce_fake_pred_acc
+      monitor_dict['disc_real_energy'] = d["disc_real_energy"]
+      monitor_dict['disc_fake_energy'] = d["disc_fake_energy"]
+      monitor_dict['gen_real_logprob'] = d["disc_noise_real_logprob"]
+      monitor_dict['gen_fake_logprob'] = d["disc_noise_fake_logprob"]
 
       monitor_dict['mh_accept_rate'] = tf.reduce_mean(d['mh_mask'])
       monitor_dict['gen_sampled_energy'] = tf.reduce_mean(d['sampled_energy'])

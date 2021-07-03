@@ -167,7 +167,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,
                      use_one_hot_embeddings):
   def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
-    """The `model_fn` for TPUEstimator."""
+    """ The `model_fn` for TPUEstimator."""
 
     tf.logging.info("*** Features ***")
     for name in sorted(features.keys()):

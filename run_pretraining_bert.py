@@ -223,7 +223,8 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
                                 transpose_b=True)
 
       sim_matrix_shape = modeling_bert.get_shape_list(sim_matrix, expected_rank=[2,3])
-      pos_true_mask = tf.eye(sim_matrix_shape)
+      pos_true_mask = tf.eye(sim_matrix_shape[0])
+      pos_true_mask = tf.cast(pos_true_mask, dtype=tf.float32)
       neg_true_mask = tf.ones_like(pos_true_mask) - pos_true_mask
 
       sim_per_example_loss = circle_loss_utils.circle_loss(

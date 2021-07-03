@@ -250,7 +250,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
                               gamma=32)
       tf.logging.info("** sim_per_example_loss **")
       tf.logging.info(sim_per_example_loss)
-      
+
       sim_loss = tf.reduce_mean(sim_per_example_loss)
 
     masked_lm_preds = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
@@ -311,7 +311,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
       print(masked_lm_preds, "===masked_lm_preds===")
       print(masked_lm_ids, "===masked_lm_ids===")
       print(masked_lm_weights, "===masked_lm_weights===")
-      # masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
+      #  masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
       #                             output_type=tf.int32)
       masked_lm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
       masked_lm_acc = tf.reduce_sum(masked_lm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))

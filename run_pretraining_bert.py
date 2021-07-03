@@ -144,7 +144,7 @@ def kld(x_logprobs, y_logprobs, mask_weights=None):
   tf.logging.info("** x_prob **")
   tf.logging.info(x_prob)
   tf.logging.info("** y_prob **")
-  tf.logging.info(y_prob)
+  tf.logging.info(y_logprobs)
 
   kl_per_example_div = x_prob * (x_logprobs - y_logprobs)
   kl_per_example_div = tf.reduce_sum(kl_per_example_div, axis=-1)

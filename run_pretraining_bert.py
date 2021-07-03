@@ -211,12 +211,12 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
          masked_lm_weights)
 
     if FLAGS.if_simcse:
+      """
+      add masked-input simcse loss
+      """
       tf.logging.info("** apply simcse loss **")
-      output_repres = model.get_pooled_output()
-      rdropout_output_repres = rdropout_model.get_pooled_output()
-
-      output_repres = tf.nn.l2_normalize(output_repres, axis=-1)
-      rdropout_output_repres = tf.nn.l2_normalize(rdropout_output_repres, axis=-1)
+      output_repres = tf.nn.l2_normalize(model.get_pooled_output(), axis=-1)
+      rdropout_output_repres = tf.nn.l2_normalize(rdropout_model.get_pooled_output(), axis=-1)
 
       sim_matrix = tf.matmul(output_repres, 
                                 rdropout_output_repres, 

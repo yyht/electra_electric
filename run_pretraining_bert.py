@@ -570,7 +570,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   input_shape = modeling_bert.get_shape_list(input_tensor, expected_rank=3)
   input_tensor = tf.reshape(input_tensor, [input_shape[0]*input_shape[1], input_shape[2]])
   
-  with tf.variable_scope("cls/predictions"):
+  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
     with tf.variable_scope("transform"):
@@ -630,7 +630,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
   """Get loss and log probs for the masked LM."""
   input_tensor = gather_indexes(input_tensor, positions)
 
-  with tf.variable_scope("cls/predictions"):
+  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
     with tf.variable_scope("transform"):

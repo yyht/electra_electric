@@ -173,7 +173,8 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_reuse_dropout=False)
+        if_reuse_dropout=False,
+        scope='bert')
 
     (masked_lm_loss,
     masked_lm_example_loss, 
@@ -191,7 +192,8 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_reuse_dropout=False)
+        if_reuse_dropout=False,
+        scope='bert')
 
     tf.logging.info("** apply rdropout forward **")
 

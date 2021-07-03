@@ -12,7 +12,7 @@
     "two_tower_generator": false,
     "tta_generator": true,
     "electra_nce_objective":true,
-    "untied_generator_embeddings":true,
+    "untied_generator_embeddings":false,
     "untied_generator":true,
     "use_pretrained_generator":false,
     "use_pretrained_discriminator":false,

@@ -136,10 +136,10 @@ flags.DEFINE_integer(
 flags.DEFINE_float("kld_ratio", 4.0, "The initial learning rate for Adam.")
 flags.DEFINE_string("model_fn_type", 'normal', "[Optional] TensorFlow master URL.")
 
-def kld(x_logits, y_logits, mask_weights=None):
-  x_prob = tf.nn.softmax(x_logits, axis=-1)
-  kl_div = x_prob * (x_logits - y_logits)
-  kl_per_example_div = tf.reduce_sum(kl_div, axis=-1)
+def kld(x_logprobs, y_logprobs, mask_weights=None):
+  x_prob = tf.nn.softmax(x_logprobs, axis=-1)
+  kl_per_example_div = x_prob * (x_logprobs - y_logprobs)
+  kl_per_example_div = tf.reduce_sum(kl_per_example_div, axis=-1)
   if mask_weights is not None:
     kl_div = tf.reduce_mean(kl_per_example_div*mask_weights, axis=0)
   else:

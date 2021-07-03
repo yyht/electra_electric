@@ -41,6 +41,7 @@ from model import optimization
 from util import utils, log_utils
 from pretrain.span_mask_utils import _decode_record as span_decode_record
 from bunch import Bunch
+from model import circle_loss_utils
 
 flags = tf.flags
 
@@ -133,8 +134,10 @@ flags.DEFINE_integer(
     "num_tpu_cores", 8,
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
-flags.DEFINE_float("kld_ratio", 4.0, "The initial learning rate for Adam.")
+flags.DEFINE_float("simcse_ratio", 1.0, "The initial learning rate for Adam.")
+flags.DEFINE_float("kld_ratio", 1.0, "The initial learning rate for Adam.")
 flags.DEFINE_string("model_fn_type", 'normal', "[Optional] TensorFlow master URL.")
+flags.DEFINE_bool("if_simcse", False, "[Optional] TensorFlow master URL.")
 
 def kld(x_logprobs, y_logprobs, mask_weights=None):
   x_prob = tf.nn.softmax(x_logprobs, axis=-1)
@@ -207,6 +210,30 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
          masked_lm_ids, 
          masked_lm_weights)
 
+    if FLAGS.if_simcse:
+      tf.logging.info("** apply simcse loss **")
+      output_repres = model.get_pooled_output()
+      rdropout_output_repres = rdropout_model.get_pooled_output()
+
+      output_repres = tf.nn.l2_normalize(output_repres, axis=-1)
+      rdropout_output_repres = tf.nn.l2_normalize(rdropout_output_repres, axis=-1)
+
+      sim_matrix = tf.matmul(output_repres, 
+                                rdropout_output_repres, 
+                                transpose_b=True)
+
+      sim_matrix_shape = modeling_bert.get_shape_list(sim_matrix, expected_rank=[2,3])
+      pos_true_mask = tf.eye(sim_matrix_shape)
+      neg_true_mask = tf.ones_like(pos_true_mask) - pos_true_mask
+
+      sim_per_example_loss = circle_loss_utils.circle_loss(
+                              sim_matrix, 
+                              pos_true_mask, 
+                              neg_true_mask,
+                              margin=0.25,
+                              gamma=32)
+      sim_loss = tf.reduce_mean(sim_per_example_loss)
+
     masked_lm_preds = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
     rdropout_masked_lm_preds = tf.argmax(rdropout_masked_lm_log_probs, axis=-1, output_type=tf.int32)
 
@@ -225,6 +252,11 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
     kl_loss = (kl_inclusive_loss+kl_exclusive_loss) * FLAGS.kld_ratio / 2.0
 
     total_loss = masked_lm_loss + rdropout_masked_lm_loss + kl_loss
+    if FLAGS.if_simcse:
+      tf.logging.info("** apply simcse loss **")
+      tf.logging.info("** simcse ratio **")
+      tf.logging.info(FLAGS.simcse_ratio)
+      total_loss += FLAGS.simcse_ratio * sim_loss
     monitor_dict = {}
 
     tvars = tf.trainable_variables()
@@ -240,6 +272,9 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "kl_inclusive_loss": kl_inclusive_per_example_loss,
         "kl_exclusive_loss": kl_exclusive_per_example_loss
     }
+    if FLAGS.if_simcse:
+      tf.logging.info("** add simcse_loss for monitoring **")
+      eval_fn_inputs['simcse_loss'] = sim_per_example_loss
 
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
@@ -284,6 +319,9 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
       monitor_dict['rdropout_masked_lm_loss'] = rdropout_masked_lm_loss
       monitor_dict['kl_inclusive_loss'] = kl_inclusive_loss
       monitor_dict['kl_exclusive_loss'] = kl_exclusive_loss
+      if FLAGS.if_simcse:
+        tf.logging.info("** monitoring simcse loss")
+        monitor_dict['simcse_loss'] = tf.reduce_mean(d['simcse_loss'])
 
       return monitor_dict
 

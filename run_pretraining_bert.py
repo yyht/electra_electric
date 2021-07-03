@@ -213,6 +213,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
     if FLAGS.if_simcse:
       """
       add masked-input simcse loss
+      since ori-input simcse loss could work, this could also be work
       """
       tf.logging.info("** apply simcse loss **")
       output_repres = tf.nn.l2_normalize(model.get_pooled_output(), axis=-1)

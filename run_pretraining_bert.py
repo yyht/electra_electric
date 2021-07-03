@@ -141,13 +141,26 @@ flags.DEFINE_bool("if_simcse", False, "[Optional] TensorFlow master URL.")
 
 def kld(x_logprobs, y_logprobs, mask_weights=None):
   x_prob = tf.nn.softmax(x_logprobs, axis=-1)
+  tf.logging.info("** x_prob **")
+  tf.logging.info(x_prob)
+  tf.logging.info("** y_prob **")
+  tf.logging.info(y_prob)
+
   kl_per_example_div = x_prob * (x_logprobs - y_logprobs)
   kl_per_example_div = tf.reduce_sum(kl_per_example_div, axis=-1)
+  
+  tf.logging.info("** kl_per_example_div **")
+  tf.logging.info(kl_per_example_div)
+
   if mask_weights is not None:
     mask_weights = tf.reshape(mask_weights, [-1])
     kl_div = tf.reduce_mean(kl_per_example_div*mask_weights, axis=0)
   else:
     kl_div = tf.reduce_mean(kl_per_example_div)
+  
+  tf.logging.info("** kl_div **")
+  tf.logging.info(kl_div)
+
   return kl_per_example_div, kl_div
 
 def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
@@ -212,7 +225,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     if FLAGS.if_simcse:
       """
-      
+
       add masked-input simcse loss
       since ori-input simcse loss could work, this could also be work
       """

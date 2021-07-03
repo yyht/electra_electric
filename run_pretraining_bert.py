@@ -193,6 +193,8 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
         use_one_hot_embeddings=use_one_hot_embeddings,
         if_reuse_dropout=False)
 
+    tf.logging.info("** apply rdropout forward **")
+
     (rdropout_masked_lm_loss,
     rdropout_masked_lm_example_loss, 
     rdropout_masked_lm_log_probs) = get_masked_lm_output(
@@ -215,6 +217,8 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
                       rdropout_masked_lm_log_probs,
                       masked_lm_weights)
 
+    tf.logging.info("** kl ratio **")
+    tf.logging.info(FLAGS.kld_ratio)
     kl_loss = (kl_inclusive_loss+kl_exclusive_loss) * FLAGS.kld_ratio / 2.0
 
     total_loss = masked_lm_loss + rdropout_masked_lm_loss + kl_loss

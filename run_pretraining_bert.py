@@ -143,7 +143,7 @@ def kld(x_logits, y_logits, mask_weights=None):
   if mask_weights is not None:
     kl_div = tf.reduce_mean(kl_per_example_div*mask_weights, axis=0)
   else:
-    kl_div = tf.reduce_mean(kl_per_example_div, axis=-1)
+    kl_div = tf.reduce_mean(kl_per_example_div)
   return kl_per_example_div, kl_div
 
 def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,

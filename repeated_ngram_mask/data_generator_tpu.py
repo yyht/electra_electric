@@ -326,23 +326,6 @@ class PretrainGenerator(data_generator.DataGenerator):
     dataset = StreamingFilesDataset(
         source_dataset, filetype=gen_dataset)
 
-    dataset = dataset.map(lambda origin_input, 
-                masked_input,
-                input_mask,
-                segment_ids,
-                masked_lm_positions,
-                masked_lm_weights,
-                masked_lm_ids,
-                sent_rel_label_ids: 
-                self._map_to_dict(origin_input, 
-                masked_input,
-                input_mask,
-                segment_ids,
-                masked_lm_positions,
-                masked_lm_weights,
-                masked_lm_ids,
-                sent_rel_label_ids))
-
     return dataset
 
   def to_dataset(self, data_path_dict, types, shapes, names=None, padded_batch=False,
@@ -389,4 +372,22 @@ class PretrainGenerator(data_generator.DataGenerator):
         combined_dataset = combined_dataset.shard(worker_count, task_index)
         tf.logging.info("** shard dataset for collective reduce **")
     tf.logging.info("** succeeded in building multiple-dataset **")
+    
+    combined_dataset = combined_dataset.map(
+              lambda origin_input, 
+              masked_input,
+              input_mask,
+              segment_ids,
+              masked_lm_positions,
+              masked_lm_weights,
+              masked_lm_ids,
+              sent_rel_label_ids: 
+              self._map_to_dict(origin_input, 
+              masked_input,
+              input_mask,
+              segment_ids,
+              masked_lm_positions,
+              masked_lm_weights,
+              masked_lm_ids,
+              sent_rel_label_ids))
     return combined_dataset

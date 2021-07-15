@@ -26,7 +26,7 @@ from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import function
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import functional_ops
-
+import tensorflow as tf
 tf.disable_v2_behavior()
 
 def _TextLineDataset(filename):

@@ -84,7 +84,7 @@ def get_sentence_order_output(bert_config, input_tensor, labels,
     output_weights = tf.get_variable(
         "output_weights",
         shape=[number_of_classes, bert_config.hidden_size],
-        initializer=modeling.create_initializer(bert_config.initializer_range))
+        initializer=modeling_bert.create_initializer(bert_config.initializer_range))
     output_bias = tf.get_variable(
         "output_bias", shape=[number_of_classes], initializer=tf.zeros_initializer())
 

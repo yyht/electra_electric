@@ -100,7 +100,7 @@ class PretrainGenerator(data_generator.DataGenerator):
 
     tf.logging.info("** succeeded in initializing MLMGenerator and BlockPairDataset **")
 
-  def iteration(self, data_path_dict, data_key):
+  def iteration(self, data_path_dict, data_key, use_tpu=False):
     doc_lst = []
     count = 0
     with tf.gfile.GFile(data_path_dict['data_path'][data_key]['data'], "r") as frobj:
@@ -109,7 +109,7 @@ class PretrainGenerator(data_generator.DataGenerator):
         if count == self.doc_num:
           for data_dict in self.preprocess(doc_lst):
             if data_dict:
-              data_dict = self.postprocess(data_dict)
+              data_dict = self.postprocess(data_dict, use_tpu)
               yield data_dict
           doc_lst = []
           count = 0
@@ -121,7 +121,7 @@ class PretrainGenerator(data_generator.DataGenerator):
           if doc_lst:
             for data_dict in self.preprocess(doc_lst):
               if data_dict:
-                data_dict = self.postprocess(data_dict)
+                data_dict = self.postprocess(data_dict, use_tpu)
                 yield data_dict
             doc_lst = []
             count = 0
@@ -252,7 +252,7 @@ class PretrainGenerator(data_generator.DataGenerator):
 
       yield mlm_dict
 
-  def postprocess(self, tmp_dict):
+  def postprocess(self, tmp_dict, use_tpu=False):
     keys = list(tmp_dict.keys())
     for key in ['origin_input', 
                 'masked_input', 
@@ -267,7 +267,21 @@ class PretrainGenerator(data_generator.DataGenerator):
                 ]:
       tmp_dict[key] += [0]*(self.max_predictions_per_seq-len(tmp_dict[key]))
     
-    return tmp_dict
+    if not use_tpu:
+      return tmp_dict
+    else:
+      outputs = []
+      for key in ['origin_input', 
+                'masked_input', 
+                'input_mask',
+                'segment_ids',
+                'masked_lm_positions', 
+                'masked_lm_weights', 
+                'masked_lm_ids',
+                'sent_rel_label_ids'
+                ]:
+        outputs.append(tmp_dict[key])
+      return outputs
 
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
               is_training=False,
@@ -276,7 +290,7 @@ class PretrainGenerator(data_generator.DataGenerator):
     """
     if names is None:
       def generator():
-        for d in self.iteration(data_path_dict, data_key):
+        for d in self.iteration(data_path_dict, data_key, use_tpu):
           yield d
     else:
 
@@ -287,12 +301,18 @@ class PretrainGenerator(data_generator.DataGenerator):
         return output_dict
 
       def generator():
-        for d in self.iteration(data_path_dict, data_key):
+        for d in self.iteration(data_path_dict, data_key, use_tpu):
           yield d
 
-      types = warps(names, types)
-      
-      shapes = warps(names, shapes)
+      if not use_tpu:
+        types = warps(names, types)
+        
+        shapes = warps(names, shapes)
+
+      tf.logging.info("** shapes **")
+      tf.logging.info(shapes)
+      tf.logging.info("** types **")
+      tf.logging.info(types)
 
     if not use_tpu:
       if padded_batch:
@@ -340,7 +360,8 @@ class PretrainGenerator(data_generator.DataGenerator):
           dataset = dataset.shuffle(self.buffer_size)
         return dataset
       dataset = StreamingFilesDataset(
-        dataset_ops.Dataset.range(1000000000000), filetype=gen_dataset)
+        dataset_ops.Dataset.range(100000000000000), 
+        filetype=gen_dataset)
     return dataset
 
   def to_dataset(self, data_path_dict, types, shapes, names=None, padded_batch=False,

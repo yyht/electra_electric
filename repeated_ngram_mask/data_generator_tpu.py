@@ -295,7 +295,7 @@ class PretrainGenerator(data_generator.DataGenerator):
 
     def gen_dataset(dummy):
       dataset = tf.data.Dataset.from_generator(
-                generator, types, shapes)
+                generator, output_types=types, output_shapes=shapes)
       if is_training:
         dataset = dataset.repeat()
         dataset = dataset.shuffle(self.buffer_size)

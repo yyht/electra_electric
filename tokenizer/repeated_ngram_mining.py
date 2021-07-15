@@ -4,7 +4,7 @@ tf.disable_v2_behavior()
 from collections import OrderedDict, Counter
 
 import re
-CH_PUNCTUATION = u"['\\\\,\\!#$%&\'()*+-/:￥;<=>.?\\。n@[\\]^▽_`{|}~'－＂＃＄％＆＇，：；＠［＼］＾＿｀｛｜｝～｟｠｢｣、〃〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·！？｡]"
+CH_PUNCTUATION = u"['【】\\\\,\\!#$%&\'()*+-/:￥;<=>.?\\。n@[\\]^▽_`{|}~'－＂＃＄％＆＇，：；＠［＼］＾＿｀｛｜｝～｟｠｢｣、〃〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·！？｡]"
 
 def compresoneadjtuple(s):
   """useful to compress adjacent entries"""
@@ -22,7 +22,7 @@ def compresoneadjtuple(s):
   finals.append(s[-1])
   return finals, True
 
-def merge_intervals(intervals):
+def merge_intervals_v1(intervals):
   s = sorted(intervals, key=lambda t: t[0])
   m = 0
   for  t in s:
@@ -36,6 +36,21 @@ def merge_intervals(intervals):
   while(not done):
     s, done = compresoneadjtuple(s)
   return s
+
+def merge_intervals(intervals):
+  intervals = sorted(intervals, key=lambda x : x[0])
+  merged = []
+  for interval in intervals:
+    # if the list of merged intervals is empty or if the current
+    # interval does not overlap with the previous, simply append it.
+    if not merged or merged[-1][1] + 1 < interval[0]:
+      merged.append(interval)
+    else:
+    # otherwise, there is overlap, so we merge the current and previous
+    # intervals.
+      merged[-1][1] = max(merged[-1][1], interval[1])
+
+  return merged
 
 def repeated_ngram_mining(input_text, tokenizer, 
                   threshold=2):
@@ -91,10 +106,77 @@ def repeated_ngram_mining(input_text, tokenizer,
       continue
     if item[-1][0] - item[0][0] >= 1:
       if (item[0][0], item[-1][0]) not in ngram:
-        ngram.append((item[0][0], item[-1][0]))
+        ngram.append([item[0][0], item[-1][0]])
     if item[-1][1] - item[0][1] >= 1:
       if (item[0][1], item[-1][1]) not in ngram:
-        ngram.append((item[0][1], item[-1][1]))
+        ngram.append([item[0][1], item[-1][1]])
                 
   merged_ngram = merge_intervals(ngram)
   return merged_ngram
+
+from collections import OrderedDict
+def repeated_ngram_mining_v1(input_text, tokenizer, 
+                  threshold=2):
+  """
+  http://oa.ee.tsinghua.edu.cn/~ouzhijian/pdf/AudioMotif_accept.pdf
+  """
+  if not isinstance(input_text, list):
+    sentence = tokenizer.tokenize(input_text)
+  else:
+    sentence = input_text
+  
+  hash_table = OrderedDict({})
+  for index, token in enumerate(sentence):
+    a = re.search(CH_PUNCTUATION,  token)
+    if a:
+      continue
+    if token in hash_table:
+      hash_table[token].append(index)
+    else:
+      hash_table[token] = [index]
+
+  delta_table = OrderedDict({})
+  for token in hash_table:
+    for i, _ in enumerate(hash_table[token]):
+      for j, _ in enumerate(hash_table[token]):
+        if j > i:
+          tmp = hash_table[token][j] - hash_table[token][i]
+          if tmp in delta_table:
+            delta_table[tmp].append((hash_table[token][i], hash_table[token][j], token))
+          else:
+            delta_table[tmp] = [(hash_table[token][i], hash_table[token][j], token)]
+                
+  histogram = [OrderedDict({})]
+ 
+  for key in delta_table:
+    if len(delta_table[key]) >= 1 and key not in [0]:
+      delta_table[key] = sorted(delta_table[key], key=lambda item:item[1])
+      for prev_index  in range(len(delta_table[key])-1):
+        cur_index = prev_index + 1
+        if delta_table[key][cur_index][0]  - delta_table[key][prev_index][0] <= threshold:
+          histogram[-1][delta_table[key][prev_index]] = 0
+        else:
+          if delta_table[key][prev_index] not in histogram[-1]:
+            histogram[-1][delta_table[key][prev_index]] = 0
+          histogram.append(OrderedDict({}))
+      if histogram[-1]:
+        if delta_table[key][cur_index] not in histogram[-1]:
+          histogram[-1][delta_table[key][cur_index]] = 0
+        histogram.append(OrderedDict({}))
+
+  print(histogram)
+  ngram = {}
+  for item in histogram:
+    if not item:
+      continue
+    key_lst = list(item.keys())
+    if key_lst[-1][0] - key_lst[0][0] >= 1:
+      if (key_lst[0][0], key_lst[-1][0]) not in ngram:
+        ngram[(key_lst[0][0], key_lst[-1][0])] = 0
+    if key_lst[-1][1] - key_lst[0][1] >= 1:
+      if (key_lst[0][1], key_lst[-1][1]) not in ngram:
+        ngram[(key_lst[0][1], key_lst[-1][1])] = 0
+                
+  ngram_lst = [list(key) for key in ngram]
+  merged_ngram = merge_intervals(ngram_lst)
+  return ngram_lst

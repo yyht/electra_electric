@@ -1,0 +1,12 @@
+{
+	"data_path":{
+		"cc_100_00":{
+			"data":"cc_100/en.txt.part.00",
+			"ratio":0.5
+		},
+		"cc_100_01":{
+			"data":"cc_100/en.txt.part.01",
+			"ratio":0.5
+		}
+	}
+}

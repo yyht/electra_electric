@@ -137,7 +137,7 @@ class MLMGenerator(object):
       pair_targets = None
     return sentence, target, pair_targets
 
-  def prepare_ngram(self, input_text, ngram=8):
+  def repeated_span_mask(self, input_text, ngram=8):
     if not isinstance(input_text, list):
       sentence = tokenizer.encode(input_text, add_special_tokens=False)
       entity_spans = []

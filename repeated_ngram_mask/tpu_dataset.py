@@ -110,25 +110,15 @@ def StreamingFilesDataset(files,
   else:
     raise ValueError('filetype should be a string or a callable')
 
-  file_reader_job = file_reader_job or 'coordinator'
-
-  worker_job = worker_job or 'worker'
-
   if filename_shuffle_buffer_size is None:
     filename_shuffle_buffer_size = 4096
 
   num_parallel_reads = num_parallel_reads or 8
 
-  # if batch_transfer_size is None:
-  #   batch_transfer_size = 256
-
   if sloppy is None:
     sloppy = True
 
-  if file_reader_job == 'coordinator':
-    file_reader_device = '/job:coordinator/task:0'
-  else:
-    file_reader_device = '/job:%s' % file_reader_job
+  file_reader_device = '/job:worker/replica:0/task:0/device:cpu:0'
 
   with ops.device(file_reader_device):
     if isinstance(files, str):
@@ -148,9 +138,6 @@ def StreamingFilesDataset(files,
 
     source_dataset = source_dataset.repeat(num_epochs)
 
-    # if batch_transfer_size:
-    #   source_dataset = source_dataset.batch(batch_transfer_size)
-
     source_dataset = source_dataset.prefetch(1)
 
     source_iterator = dataset_ops.make_one_shot_iterator(source_dataset)
@@ -163,7 +150,7 @@ def StreamingFilesDataset(files,
         dataset_ops.get_legacy_output_shapes(source_dataset))
     return remote_iterator.get_next()
 
-  def MapFn(unused_input):
+  def MapFn(device_id):
     source_dataset_output_types = dataset_ops.get_legacy_output_types(
         source_dataset)
     if isinstance(source_dataset_output_types, dtypes.DType):
@@ -176,15 +163,16 @@ def StreamingFilesDataset(files,
         args=[source_handle],
         Tout=output_types,
         f=LoadingFunc,
-        target='/job:%s/replica:0/task:0/cpu:0' % file_reader_job)
+        target='/job:worker/replica:0/task:0/device:tpu:%s' % device_id)
     if len(remote_calls) == 1:
       return remote_calls[0]
     else:
       return remote_calls
 
-  with ops.device('/job:%s' % worker_job):
-    output_dataset = dataset_ops.Dataset.range(2).repeat().map(
-        MapFn, num_parallel_calls=4 if sloppy else None)
+  with ops.device(file_reader_device):
+    output_dataset = dataset_ops.Dataset.range(8).repeat().map(
+      lambda device_id:MapFn(device_id), 
+      num_parallel_calls=4 if sloppy else None)
     output_dataset = output_dataset.prefetch(1)
 
     # if batch_transfer_size:

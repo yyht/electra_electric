@@ -688,6 +688,8 @@ def main(_):
   with tf.gfile.Open(FLAGS.data_path_dict, "r") as frobj:
     data_path_dict = json.load(frobj)
 
+  import os
+
   for key in data_path_dict['data_path']:
     data_path_dict['data_path'][key]['data'] = os.path.join(FLAGS.buckets, data_path_dict['data_path'][key]['data'])
     tf.logging.info("** data path **")

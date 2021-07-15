@@ -164,6 +164,7 @@ def StreamingFilesDataset(files,
         Tout=output_types,
         f=LoadingFunc,
         target='/job:worker/replica:0/task:0/device:TPU:%s' % device_id)
+    
     if len(remote_calls) == 1:
       return remote_calls[0]
     else:

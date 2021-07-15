@@ -659,6 +659,7 @@ def input_fn_builder(data_generator,
             task_index=task_index)
     # Since we evaluate for a fixed number of steps we don't want to encounter
     # out-of-range exceptions.
+    d = d.map(lambda a0,a1,a2,a3,a4,a5,a6,a7:self._map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
     return d
 
   return input_fn

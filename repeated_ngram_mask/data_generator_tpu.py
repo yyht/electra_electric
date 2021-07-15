@@ -284,26 +284,6 @@ class PretrainGenerator(data_generator.DataGenerator):
       tmp_list.append(tmp_dict[key])
     return tuple(tmp_list)
 
-  def _map_to_dict(self, 
-                origin_input, 
-                masked_input,
-                input_mask,
-                segment_ids,
-                masked_lm_positions,
-                masked_lm_weights,
-                masked_lm_ids,
-                sent_rel_label_ids):
-    record_dict = {}
-    record_dict['origin_input'] = origin_input
-    record_dict['masked_input'] = masked_input
-    record_dict['input_mask'] = input_mask
-    record_dict['segment_ids'] = segment_ids
-    record_dict['masked_lm_positions'] = masked_lm_positions
-    record_dict['masked_lm_weights'] = masked_lm_weights
-    record_dict['masked_lm_ids'] = masked_lm_ids
-    record_dict['sent_rel_label_ids'] = sent_rel_label_ids
-    return record_dict
-
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
               is_training=False):
     def generator():
@@ -373,6 +353,5 @@ class PretrainGenerator(data_generator.DataGenerator):
         tf.logging.info("** shard dataset for collective reduce **")
     tf.logging.info("** succeeded in building multiple-dataset **")
     
-    combined_dataset = combined_dataset.map(
-              lambda a0,a1,a2,a3,a4,a5,a6,a7:self._map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
+    
     return combined_dataset

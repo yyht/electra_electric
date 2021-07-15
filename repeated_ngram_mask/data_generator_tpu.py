@@ -290,6 +290,26 @@ class PretrainGenerator(data_generator.DataGenerator):
       for d in self.iteration(data_path_dict, data_key):
         yield d
 
+    def _map_to_dict(
+                origin_input, 
+                masked_input,
+                input_mask,
+                segment_ids,
+                masked_lm_positions,
+                masked_lm_weights,
+                masked_lm_ids,
+                sent_rel_label_ids):
+      record_dict = {}
+      record_dict['origin_input'] = origin_input
+      record_dict['masked_input'] = masked_input
+      record_dict['input_mask'] = input_mask
+      record_dict['segment_ids'] = segment_ids
+      record_dict['masked_lm_positions'] = masked_lm_positions
+      record_dict['masked_lm_weights'] = masked_lm_weights
+      record_dict['masked_lm_ids'] = masked_lm_ids
+      record_dict['sent_rel_label_ids'] = sent_rel_label_ids
+      return record_dict
+
     def gen_dataset(dummy):
       dataset = tf.data.Dataset.from_generator(
                 generator, output_types=types, output_shapes=shapes)

@@ -290,6 +290,9 @@ class PretrainGenerator(data_generator.DataGenerator):
       for d in self.iteration(data_path_dict, data_key):
         yield d
 
+    print(types, "===types===")
+    print(shapes, "===shapes===")
+
     def gen_dataset(dummy):
       dataset = tf.data.Dataset.from_generator(
                 generator, types, shapes)

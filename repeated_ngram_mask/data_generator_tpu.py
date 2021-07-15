@@ -293,6 +293,11 @@ class PretrainGenerator(data_generator.DataGenerator):
     def gen_dataset(dummy):
       dataset = tf.data.Dataset.from_generator(
                 generator, output_types=types, output_shapes=shapes)
+      
+      dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
+        dataset)
+      print(dataset_output_shapes)
+
       if is_training:
         dataset = dataset.repeat()
         dataset = dataset.shuffle(self.buffer_size)

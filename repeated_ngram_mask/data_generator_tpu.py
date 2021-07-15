@@ -352,6 +352,4 @@ class PretrainGenerator(data_generator.DataGenerator):
         combined_dataset = combined_dataset.shard(worker_count, task_index)
         tf.logging.info("** shard dataset for collective reduce **")
     tf.logging.info("** succeeded in building multiple-dataset **")
-    
-    
     return combined_dataset

@@ -10,6 +10,7 @@ except:
 
 from tokenizer.snippets import is_string, is_py2
 import unicodedata, re
+import tensorflow as tf
 
 class Tokenizer(object):
   def __init__(self, vocab_path, do_lower_case=True):

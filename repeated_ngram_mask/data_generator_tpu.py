@@ -380,8 +380,8 @@ class PretrainGenerator(data_generator.DataGenerator):
       tf.logging.info("** sample_from_datasets **")
     elif dataset_merge_method == 'concat':
       combined_dataset = dataset_list[0]
-      # for i in range(1, len(dataset_list)):
-      #   combined_dataset = combined_dataset.concatenate(dataset_list[i])
+      for i in range(1, len(dataset_list)):
+        combined_dataset = combined_dataset.concatenate(dataset_list[i])
     tf.logging.info("** batch_size **")
     tf.logging.info(self.batch_size*len(dataset_list))
     combined_dataset = combined_dataset.batch(self.batch_size, drop_remainder=True)

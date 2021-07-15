@@ -35,7 +35,7 @@ def check_tf_version():
 #   import tensorflow.compat.v1 as tf
 #   tf.disable_v2_behavior()
 
-import os
+import os, json
 from model import modeling_bert
 from model import optimization
 from repeated_ngram_mask import data_generator, model_fn_utils

@@ -374,6 +374,5 @@ class PretrainGenerator(data_generator.DataGenerator):
     tf.logging.info("** succeeded in building multiple-dataset **")
     
     combined_dataset = combined_dataset.map(
-              lambda a0,a1,a2,a3,a4,a5,a6,a7:
-              self._map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
+              lambda a0,a1,a2,a3,a4,a5,a6,a7:self._map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
     return combined_dataset

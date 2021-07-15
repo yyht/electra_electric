@@ -53,6 +53,11 @@ flags.DEFINE_string(
     "This specifies the model architecture.")
 
 flags.DEFINE_string(
+    "vocab_path", None,
+    "vocab path. "
+    "This specifies the model architecture.")
+
+flags.DEFINE_string(
     "input_file", None,
     "Input TF example files (can be a glob or comma separated).")
 
@@ -708,7 +713,8 @@ def main(_):
       ]
 
   import os
-  vocab_path = os.path.join(FLAGS.buckets, FLAGS.vocab_path)
+  # vocab_path = os.path.join(FLAGS.buckets, FLAGS.vocab_path)
+  vocab_path = FLAGS.vocab_path
   data_gen = data_generator.PretrainGenerator(
       vocab_path=vocab_path,
       batch_size=FLAGS.train_batch_size, 

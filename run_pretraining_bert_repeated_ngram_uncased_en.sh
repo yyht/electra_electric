@@ -1,9 +1,9 @@
 nohup python3 ./run_pretraining_bert_repeated_ngram.py \
-	--bert_config_file ./config/bert_config.json \
-	--data_path_dict ./config/chinese_data_path.json \
-	--output_dir gs://yyht_source/pretrain/models/roberta_base_repeated_ngram_sop_chinese \
+	--bert_config_file ./config/bert_config_uncased_en.json \
+	--data_path_dict ./config/uncased_english_data_config.json \
+	--output_dir gs://yyht_source/pretrain/models/roberta_base_repeated_ngram_sop_uncased_en \
 	--input_data_dir gs://yyht_source/pretrain \
-	--vocab_path ./vocab/vocab_ch_all.txt \
+	--vocab_path ./vocab/vocab_uncased_en.txt \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 512 \

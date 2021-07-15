@@ -760,8 +760,8 @@ def main(_):
   input_fn = input_fn_builder(
           data_generator=data_gen,
           data_path_dict=data_path_dict,
-          types=types,
-          shapes=shapes,
+          types=tuple(types),
+          shapes=tuple(shapes),
           names=names,
           is_training=True,
           dataset_merge_method='sample',

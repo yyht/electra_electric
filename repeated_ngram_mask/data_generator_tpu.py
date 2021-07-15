@@ -282,7 +282,7 @@ class PretrainGenerator(data_generator.DataGenerator):
               ]:
     
       tmp_list.append(tmp_dict[key])
-    return tmp_list
+    return tuple(tmp_list)
 
   def _fixup_shape_lst(self, record, shapes):
     for index, _ in enumerate(record):
@@ -290,13 +290,10 @@ class PretrainGenerator(data_generator.DataGenerator):
     return record
 
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
-              is_training=False, data_size=1000):
+              is_training=False):
     def generator():
       for d in self.iteration(data_path_dict, data_key):
         yield d
-
-    print(types, "===types===")
-    print(shapes, "===shapes===")
 
     def gen_dataset(dummy):
       dataset = tf.data.Dataset.from_generator(
@@ -311,9 +308,7 @@ class PretrainGenerator(data_generator.DataGenerator):
         dataset = dataset.prefetch(self.batch_size*100)
       return dataset
 
-    source_dataset = dataset_ops.Dataset.range(data_size)
-    if is_training:
-      source_dataset = source_dataset.repeat()
+    source_dataset = dataset_ops.Dataset.range(10)
     dataset = StreamingFilesDataset(
         source_dataset, filetype=gen_dataset)
 

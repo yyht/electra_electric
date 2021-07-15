@@ -268,7 +268,8 @@ class PretrainGenerator(data_generator.DataGenerator):
     return tmp_dict
 
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
-              is_training=False):
+              is_training=False,
+              use_tpu=False):
     """
     """
     if names is None:
@@ -291,36 +292,53 @@ class PretrainGenerator(data_generator.DataGenerator):
       
       shapes = warps(names, shapes)
 
-    if padded_batch:
-      dataset = tf.data.Dataset.from_generator(
-        generator, output_types=types
-      )
-      if is_training:
-        dataset = dataset.repeat()
-        dataset = dataset.shuffle(self.buffer_size)
-      dataset = dataset.map(lambda record: self._fixup_shape(record, shapes))
-      dataset = dataset.padded_batch(1, 
-                              padded_shapes=shapes,
-                              drop_remainder=True)
-      tf.logging.info("** padded_batch **")
+    if not use_tpu:
+      if padded_batch:
+        dataset = tf.data.Dataset.from_generator(
+          generator, output_types=types
+        )
+        if is_training:
+          dataset = dataset.repeat()
+          dataset = dataset.shuffle(self.buffer_size)
+        dataset = dataset.map(lambda record: self._fixup_shape(record, shapes))
+        dataset = dataset.padded_batch(1, 
+                                padded_shapes=shapes,
+                                drop_remainder=True)
+        tf.logging.info("** padded_batch **")
+      else:
+        dataset = tf.data.Dataset.from_generator(
+          generator, output_types=types, output_shapes=shapes
+        )
+        if is_training:
+          dataset = dataset.repeat()
+          dataset = dataset.shuffle(self.buffer_size)
+          tf.logging.info("** apply repeat **")
+        dataset = dataset.map(lambda record: self._fixup_shape(record, shapes))
+  #       dataset = dataset.batch(self.batch_size, drop_remainder=True)
+        tf.logging.info("** not padded_batch **")
+      try:
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+      except:
+        dataset = dataset.prefetch(self.batch_size*100)
+      # dataset = dataset.apply(tf.data.experimental.ignore_errors())
+      tf.logging.info("** succeeded in building dataset **")
+      tf.logging.info(data_key)
     else:
-      dataset = tf.data.Dataset.from_generator(
-        generator, output_types=types, output_shapes=shapes
-      )
-      if is_training:
-        dataset = dataset.repeat()
-        dataset = dataset.shuffle(self.buffer_size)
-        tf.logging.info("** apply repeat **")
-      dataset = dataset.map(lambda record: self._fixup_shape(record, shapes))
-#       dataset = dataset.batch(self.batch_size, drop_remainder=True)
-      tf.logging.info("** not padded_batch **")
-    try:
-      dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    except:
-      dataset = dataset.prefetch(self.batch_size*100)
-    # dataset = dataset.apply(tf.data.experimental.ignore_errors())
-    tf.logging.info("** succeeded in building dataset **")
-    tf.logging.info(data_key)
+      tf.logging.info("** use tpu for dataset generator **")
+      from repeated_ngram_mask.tpu_dataset import StreamingFilesDataset
+      from tensorflow.python.data.ops import dataset_ops
+      def get_dataset(dummy):
+        dataset = dataset_ops.Dataset.from_generator(
+            generator, 
+            output_types=types,
+            output_shapes=shapes
+          )
+        if is_training:
+          dataset = dataset.repeat()
+          dataset = dataset.shuffle(self.buffer_size)
+        return dataset
+      dataset = StreamingFilesDataset(
+        dataset_ops.Dataset.range(1000000000000), filetype=gen_dataset)
     return dataset
 
   def to_dataset(self, data_path_dict, types, shapes, names=None, padded_batch=False,
@@ -328,7 +346,8 @@ class PretrainGenerator(data_generator.DataGenerator):
               dataset_merge_method='sample',
               distributed_mode=None,
               worker_count=None,
-              task_index=0):
+              task_index=0,
+              use_tpu=False):
 
     dataset_list = []
     data_prior = []

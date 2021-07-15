@@ -302,7 +302,7 @@ class PretrainGenerator(data_generator.DataGenerator):
     record_dict['masked_lm_weights'] = masked_lm_weights
     record_dict['masked_lm_ids'] = masked_lm_ids
     record_dict['sent_rel_label_ids'] = sent_rel_label_ids
-    return record
+    return record_dict
 
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
               is_training=False):

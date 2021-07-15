@@ -633,7 +633,8 @@ def input_fn_builder(data_generator,
                     distributed_mode=None,
                     worker_count=None,
                     task_index=0,
-                    data_prior_dict={}):
+                    data_prior_dict={},
+                    use_tpu=False):
   """Creates an `input_fn` closure to be passed to TPUEstimator."""
   def input_fn(params):
     """The actual input function."""
@@ -653,7 +654,8 @@ def input_fn_builder(data_generator,
             dataset_merge_method=dataset_merge_method,
             distributed_mode=distributed_mode,
             worker_count=worker_count,
-            task_index=task_index)
+            task_index=task_index,
+            use_tpu=use_tpu)
     # Since we evaluate for a fixed number of steps we don't want to encounter
     # out-of-range exceptions.
     return d
@@ -764,7 +766,8 @@ def main(_):
           worker_count=1,
           task_index=0,
           distributed_mode=None,
-          data_prior_dict=data_prior_dict
+          data_prior_dict=data_prior_dict,
+          use_tpu=True
           )
 
   if FLAGS.model_fn_type == 'normal':

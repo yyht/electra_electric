@@ -355,7 +355,8 @@ class PretrainGenerator(data_generator.DataGenerator):
       dataset = self.to_dataset_(data_path_dict, data_key, 
                     types, shapes, names=names, 
                     padded_batch=padded_batch,
-                    is_training=is_training)
+                    is_training=is_training,
+                    use_tpu=use_tpu)
       dataset_list.append(dataset)
       if data_prior_dict:
         data_prior.append(data_prior_dict[data_key])

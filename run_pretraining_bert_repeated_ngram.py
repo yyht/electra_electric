@@ -53,6 +53,12 @@ flags.DEFINE_string(
     "This specifies the model architecture.")
 
 flags.DEFINE_string(
+    "buckets", None,
+    "buckets. "
+    "This specifies the model architecture.")
+
+
+flags.DEFINE_string(
     "vocab_path", None,
     "vocab path. "
     "This specifies the model architecture.")

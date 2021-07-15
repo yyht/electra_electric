@@ -23,6 +23,8 @@ _DocSpan = collections.namedtuple(  # pylint: disable=invalid-name
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+tf.disable_v2_behavior()
+
 class PretrainGenerator(data_generator.DataGenerator):
   def __init__(self, 
       vocab_path,

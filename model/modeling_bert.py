@@ -27,7 +27,7 @@ import six
 # import tensorflow as tf
 
 import tensorflow as tf
-# tf.disable_v2_behavior()
+tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__

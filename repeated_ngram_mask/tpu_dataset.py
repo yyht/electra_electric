@@ -27,6 +27,7 @@ from tensorflow.python.framework import function
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import functional_ops
 
+tf.disable_v2_behavior()
 
 def _TextLineDataset(filename):
   buffer_size = 8 * 1024 * 1024  # 8 MiB per file

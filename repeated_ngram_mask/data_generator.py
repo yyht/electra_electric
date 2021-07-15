@@ -312,9 +312,9 @@ class PretrainGenerator(data_generator.DataGenerator):
         from tensorflow.python.framework import tensor_shape
         def reshape(shape):
           if len(shape) == 1:
-            return tensor_shape.TensorShape([shape[0]])
+            return [shape[0]]
           else:
-            return tensor_shape.TensorShape([])
+            return []
         shapes = [reshape(shape) for shape in shapes]
         
       tf.logging.info("** shapes **")

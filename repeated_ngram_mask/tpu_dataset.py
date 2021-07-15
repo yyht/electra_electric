@@ -119,8 +119,8 @@ def StreamingFilesDataset(files,
 
   num_parallel_reads = num_parallel_reads or 8
 
-  if batch_transfer_size is None:
-    batch_transfer_size = 256
+  # if batch_transfer_size is None:
+  #   batch_transfer_size = 256
 
   if sloppy is None:
     sloppy = True
@@ -148,8 +148,8 @@ def StreamingFilesDataset(files,
 
     source_dataset = source_dataset.repeat(num_epochs)
 
-    if batch_transfer_size:
-      source_dataset = source_dataset.batch(batch_transfer_size)
+    # if batch_transfer_size:
+    #   source_dataset = source_dataset.batch(batch_transfer_size)
 
     source_dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
         source_dataset)
@@ -194,8 +194,8 @@ def StreamingFilesDataset(files,
         MapFn, num_parallel_calls=4 if sloppy else None)
     output_dataset = output_dataset.prefetch(1)
 
-    if batch_transfer_size:
-      # Undo the batching used during the transfer.
-      output_dataset = output_dataset.unbatch().prefetch(1)
+    # if batch_transfer_size:
+    #   # Undo the batching used during the transfer.
+    #   output_dataset = output_dataset.unbatch().prefetch(1)
 
   return output_dataset

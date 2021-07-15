@@ -319,7 +319,7 @@ class PretrainGenerator(data_generator.DataGenerator):
 
       if is_training:
         dataset = dataset.repeat()
-        # dataset = dataset.shuffle(self.buffer_size)
+        dataset = dataset.shuffle(self.buffer_size)
       try:
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
       except:
@@ -343,7 +343,6 @@ class PretrainGenerator(data_generator.DataGenerator):
 
     dataset_output_types = dataset_ops.get_legacy_output_shapes(
                   dataset)
-    print(dataset_output_types, "==dataset_output_types==")
 
     return dataset
 

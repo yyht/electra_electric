@@ -765,7 +765,7 @@ def main(_):
           shapes=tuple(shapes),
           names=names,
           is_training=True,
-          dataset_merge_method='sample',
+          dataset_merge_method='concat',
           worker_count=1,
           task_index=0,
           distributed_mode=None,

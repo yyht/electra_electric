@@ -118,7 +118,7 @@ def StreamingFilesDataset(files,
   if sloppy is None:
     sloppy = True
 
-  file_reader_device = '/job:worker/replica:0/task:0/device:cpu:0'
+  file_reader_device = '/job:worker/replica:0/task:0/device:CPU:0'
 
   with ops.device(file_reader_device):
     if isinstance(files, str):
@@ -163,7 +163,7 @@ def StreamingFilesDataset(files,
         args=[source_handle],
         Tout=output_types,
         f=LoadingFunc,
-        target='/job:worker/replica:0/task:0/device:tpu:%s' % device_id)
+        target='/job:worker/replica:0/task:0/device:TPU:%s' % device_id)
     if len(remote_calls) == 1:
       return remote_calls[0]
     else:

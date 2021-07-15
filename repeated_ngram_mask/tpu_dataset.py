@@ -187,11 +187,6 @@ def StreamingFilesDataset(files,
         MapFn, num_parallel_calls=4 if sloppy else None)
     output_dataset = output_dataset.prefetch(1)
 
-    output_dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
-        output_dataset)
-    print(output_dataset_output_shapes, "==output_dataset_output_shapes==")
-
-
     # if batch_transfer_size:
     #   # Undo the batching used during the transfer.
     #   output_dataset = output_dataset.unbatch().prefetch(1)

@@ -296,7 +296,6 @@ class PretrainGenerator(data_generator.DataGenerator):
       
       dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
         dataset)
-      print(dataset_output_shapes, "==dataset_output_shapes==")
 
       if is_training:
         dataset = dataset.repeat()
@@ -310,6 +309,21 @@ class PretrainGenerator(data_generator.DataGenerator):
     source_dataset = dataset_ops.Dataset.range(10)
     dataset = StreamingFilesDataset(
         source_dataset, filetype=gen_dataset)
+
+    dataset = dataset.map(lambda a0,a1,a2,a3,a4,a5,a6,a7:_map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
+
+    def warps(key, value):
+      output_dict = {}
+      for key_name, value_name in zip(key, value):
+        output_dict[key_name] = value_name
+      return output_dict
+
+    name2shape_dict = warps(names, shapes)
+    dataset = dataset.map(lambda record: self._fixup_shape(record, name2shape_dict))
+
+    dataset_output_types = dataset_ops.get_legacy_output_shapes(
+                  dataset)
+    print(dataset_output_types)
 
     return dataset
 

@@ -163,7 +163,7 @@ def StreamingFilesDataset(files,
         args=[source_handle],
         Tout=output_types,
         f=LoadingFunc,
-        target='/job:worker/replica:0/task:0/device:TPU:%s' % device_id)
+        target='/job:worker/replica:0/task:0/device:TPU')
     
     if len(remote_calls) == 1:
       return remote_calls[0]
@@ -172,7 +172,7 @@ def StreamingFilesDataset(files,
 
   with ops.device(file_reader_device):
     output_dataset = dataset_ops.Dataset.range(8).repeat().map(
-      lambda device_id:MapFn(device_id), 
+      MapFn, 
       num_parallel_calls=4 if sloppy else None)
     output_dataset = output_dataset.prefetch(1)
 

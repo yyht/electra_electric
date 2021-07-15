@@ -96,6 +96,8 @@ class PretrainGenerator(data_generator.DataGenerator):
           sep_id=self.sep_id,
     )
 
+    tf.logging.info("** succeeded in initializing MLMGenerator and BlockPairDataset **")
+
   def iteration(self, data_path_dict, data_key):
     doc_lst = []
     count = 0
@@ -317,6 +319,8 @@ class PretrainGenerator(data_generator.DataGenerator):
     except:
       dataset = dataset.prefetch(self.batch_size*100)
     # dataset = dataset.apply(tf.data.experimental.ignore_errors())
+    tf.logging.info("** succeeded in building dataset **")
+    tf.logging.info(data_key)
     return dataset
 
   def to_dataset(self, data_path_dict, types, shapes, names=None, padded_batch=False,
@@ -362,4 +366,5 @@ class PretrainGenerator(data_generator.DataGenerator):
       if worker_count and task_index:
         combined_dataset = combined_dataset.shard(worker_count, task_index)
         tf.logging.info("** shard dataset for collective reduce **")
+    tf.logging.info("** succeeded in building multiple-dataset **")
     return combined_dataset

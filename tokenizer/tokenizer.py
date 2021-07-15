@@ -23,6 +23,8 @@ class Tokenizer(object):
         )
     self._do_lower_case = do_lower_case
 
+    tf.logging.info("** succeeded in initializing tokenizers **")
+
   def tokenize(self, input_text):
     if BertWordPieceTokenizer:
       return self.tokenizer.encode(input_text, add_special_tokens=False).tokens

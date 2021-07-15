@@ -1,4 +1,4 @@
-python3 ./run_pretraining_bert_repeated_ngram.py \
+nohup python3 ./run_pretraining_bert_repeated_ngram.py \
 	--bert_config_file ./config/bert_funnelformer_xtiny_2_chinese.json \
 	--data_path_dict ./config/chinese_data_path.json \
 	--output_dir gs://yyht_source/pretrain/models/roberta_base_repeated_ngram_sop \

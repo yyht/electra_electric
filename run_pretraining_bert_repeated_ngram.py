@@ -276,7 +276,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "masked_lm_ids": masked_lm_ids,
         "rdropout_masked_lm_loss": rdropout_masked_lm_example_loss,
         "kl_inclusive_loss": kl_inclusive_per_example_loss,
-        "kl_exclusive_loss": kl_exclusive_per_example_loss
+        "kl_exclusive_loss": kl_exclusive_per_example_loss,
         "sentence_order_loss": sentence_order_example_loss,
         "rdropout_sentence_order_loss": rdropout_sentence_order_example_loss
     }

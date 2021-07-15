@@ -308,7 +308,15 @@ class PretrainGenerator(data_generator.DataGenerator):
         types = warps(names, types)
         
         shapes = warps(names, shapes)
-
+      else:
+        from tensorflow.python.framework import tensor_shape
+        def reshape(shape):
+          if len(shape) == 1:
+            return tensor_shape.TensorShape([shape[0]])
+          else:
+            return tensor_shape.TensorShape([])
+        shapes = [reshape(shape) for shape in shapes]
+        
       tf.logging.info("** shapes **")
       tf.logging.info(shapes)
       tf.logging.info("** types **")

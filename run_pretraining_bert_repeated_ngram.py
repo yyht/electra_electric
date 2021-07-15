@@ -38,7 +38,9 @@ def check_tf_version():
 import os, json
 from model import modeling_bert
 from model import optimization
-from repeated_ngram_mask import data_generator, model_fn_utils
+from repeated_ngram_mask import (data_generator, 
+                        model_fn_utils, 
+                        data_generator_tpu)
 from util import utils, log_utils
 from bunch import Bunch
 
@@ -654,8 +656,7 @@ def input_fn_builder(data_generator,
             dataset_merge_method=dataset_merge_method,
             distributed_mode=distributed_mode,
             worker_count=worker_count,
-            task_index=task_index,
-            use_tpu=use_tpu)
+            task_index=task_index)
     # Since we evaluate for a fixed number of steps we don't want to encounter
     # out-of-range exceptions.
     return d
@@ -718,21 +719,22 @@ def main(_):
            ]
 
   types = [tf.int32]*len(names)
+  from tensorflow.python.framework import tensor_shape
   shapes = [
-      (FLAGS.max_seq_length,),
-      (FLAGS.max_seq_length,),
-      (FLAGS.max_seq_length,),
-      (FLAGS.max_seq_length,),
-      (FLAGS.max_predictions_per_seq,),
-      (FLAGS.max_predictions_per_seq,),
-      (FLAGS.max_predictions_per_seq,),
-      ()
+      tensor_shape.TensorShape([FLAGS.max_seq_length]),
+      tensor_shape.TensorShape([FLAGS.max_seq_length]),
+      tensor_shape.TensorShape([FLAGS.max_seq_length]),
+      tensor_shape.TensorShape([FLAGS.max_seq_length]),
+      tensor_shape.TensorShape([FLAGS.max_predictions_per_seq]),
+      tensor_shape.TensorShape([FLAGS.max_predictions_per_seq]),
+      tensor_shape.TensorShape([FLAGS.max_predictions_per_seq]),
+      tensor_shape.TensorShape([])
       ]
 
   import os
   # vocab_path = os.path.join(FLAGS.buckets, FLAGS.vocab_path)
   vocab_path = FLAGS.vocab_path
-  data_gen = data_generator.PretrainGenerator(
+  data_gen = data_generator_tpu.PretrainGenerator(
       vocab_path=vocab_path,
       batch_size=FLAGS.train_batch_size, 
       buffer_size=1024, 
@@ -766,8 +768,7 @@ def main(_):
           worker_count=1,
           task_index=0,
           distributed_mode=None,
-          data_prior_dict=data_prior_dict,
-          use_tpu=True
+          data_prior_dict=data_prior_dict
           )
 
   if FLAGS.model_fn_type == 'normal':

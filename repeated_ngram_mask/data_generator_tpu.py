@@ -15,6 +15,8 @@ import math
 import re, json
 import numpy as np
 from tokenizer.utils import text_token_mapping
+from repeated_ngram_mask.tpu_dataset import StreamingFilesDataset
+from tensorflow.python.data.ops import dataset_ops
 
 import collections
 _DocSpan = collections.namedtuple(  # pylint: disable=invalid-name
@@ -267,58 +269,45 @@ class PretrainGenerator(data_generator.DataGenerator):
                 ]:
       tmp_dict[key] += [0]*(self.max_predictions_per_seq-len(tmp_dict[key]))
     
-    return tmp_dict
+    tmp_list = []
+    for key in [
+                'origin_input', 
+                'masked_input', 
+                'input_mask',
+                'segment_ids',
+                'masked_lm_positions', 
+                'masked_lm_weights', 
+                'masked_lm_ids',
+                'sent_rel_label_ids'
+              ]:
+    
+      tmp_list.append(tmp_dict[key])
+    return tmp_list
 
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
-              is_training=False):
-    """
-    """
-    if names is None:
-      def generator():
-        for d in self.iteration(data_path_dict, data_key):
-          yield d
-    else:
+              is_training=False, data_size=1000):
+    def generator():
+      for d in self.iteration(data_path_dict, data_key):
+        yield d
 
-      def warps(key, value):
-        output_dict = {}
-        for key_name, value_name in zip(key, value):
-          output_dict[key_name] = value_name
-        return output_dict
-
-      def generator():
-        for d in self.iteration(data_path_dict, data_key):
-          yield d
-
-    if padded_batch:
+    def gen_dataset(dummy):
       dataset = tf.data.Dataset.from_generator(
-        generator, output_types=types
-      )
+                generator, types, shapes)
       if is_training:
         dataset = dataset.repeat()
         dataset = dataset.shuffle(self.buffer_size)
-      dataset = dataset.map(lambda record: self._fixup_shape(record, shapes))
-      dataset = dataset.padded_batch(1, 
-                              padded_shapes=shapes,
-                              drop_remainder=True)
-      tf.logging.info("** padded_batch **")
-    else:
-      dataset = tf.data.Dataset.from_generator(
-        generator, output_types=types, output_shapes=shapes
-      )
-      if is_training:
-        dataset = dataset.repeat()
-        dataset = dataset.shuffle(self.buffer_size)
-        tf.logging.info("** apply repeat **")
-      dataset = dataset.map(lambda record: self._fixup_shape(record, shapes))
-#       dataset = dataset.batch(self.batch_size, drop_remainder=True)
-      tf.logging.info("** not padded_batch **")
-    try:
-      dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    except:
-      dataset = dataset.prefetch(self.batch_size*100)
-    # dataset = dataset.apply(tf.data.experimental.ignore_errors())
-    tf.logging.info("** succeeded in building dataset **")
-    tf.logging.info(data_key)
+      try:
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+      except:
+        dataset = dataset.prefetch(self.batch_size*100)
+      return dataset
+
+    source_dataset = dataset_ops.Dataset.range(data_size)
+    if is_training:
+      source_dataset = source_dataset.repeat()
+    dataset = StreamingFilesDataset(
+        source_dataset, filetype=gen_dataset)
+
     return dataset
 
   def to_dataset(self, data_path_dict, types, shapes, names=None, padded_batch=False,

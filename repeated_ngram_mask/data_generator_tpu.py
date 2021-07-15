@@ -284,6 +284,11 @@ class PretrainGenerator(data_generator.DataGenerator):
       tmp_list.append(tmp_dict[key])
     return tmp_list
 
+  def _fixup_shape_lst(self, record, shapes):
+    for index, _ in enumerate(record):
+      record[index].set_shape(shapes[index])
+    return record
+
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
               is_training=False, data_size=1000):
     def generator():
@@ -299,6 +304,7 @@ class PretrainGenerator(data_generator.DataGenerator):
       if is_training:
         dataset = dataset.repeat()
         dataset = dataset.shuffle(self.buffer_size)
+      dataset = dataset.map(lambda record: self._fixup_shape_lst(record, shapes))
       try:
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
       except:

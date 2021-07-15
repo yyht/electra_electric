@@ -328,7 +328,8 @@ class PretrainGenerator(data_generator.DataGenerator):
 
     source_dataset = dataset_ops.Dataset.range(10)
     dataset = StreamingFilesDataset(
-        source_dataset, filetype=gen_dataset)
+        source_dataset, filetype=gen_dataset,
+        file_reader_job='worker')
 
     dataset = dataset.map(lambda a0,a1,a2,a3,a4,a5,a6,a7:_map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
 

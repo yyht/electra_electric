@@ -184,7 +184,7 @@ class PretrainGenerator(data_generator.DataGenerator):
       'origin_input': origin_input,
       'masked_input': masked_input,
       'input_mask': input_mask,
-      'segment_ids': segment_ids
+      'segment_ids': segment_ids,
       'masked_lm_positions': masked_lm_positions,
       'masked_lm_weights': masked_lm_weights,
       'masked_lm_ids': masked_lm_ids,

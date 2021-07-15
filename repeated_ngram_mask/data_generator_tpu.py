@@ -296,7 +296,7 @@ class PretrainGenerator(data_generator.DataGenerator):
       
       dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
         dataset)
-      print(dataset_output_shapes)
+      print(dataset_output_shapes, "==dataset_output_shapes==")
 
       if is_training:
         dataset = dataset.repeat()

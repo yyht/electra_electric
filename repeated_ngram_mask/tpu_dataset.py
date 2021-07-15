@@ -156,6 +156,10 @@ def StreamingFilesDataset(files,
     source_iterator = dataset_ops.make_one_shot_iterator(source_dataset)
     source_handle = source_iterator.string_handle()
 
+  source_dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
+        source_dataset)
+  print(source_dataset_output_shapes, "==source_dataset_output_shapes==")
+
   @function.Defun(dtypes.string)
   def LoadingFunc(h):
     remote_iterator = iterator_ops.Iterator.from_string_handle(

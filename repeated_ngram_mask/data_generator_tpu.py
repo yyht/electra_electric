@@ -284,9 +284,24 @@ class PretrainGenerator(data_generator.DataGenerator):
       tmp_list.append(tmp_dict[key])
     return tuple(tmp_list)
 
-  def _fixup_shape_lst(self, record, shapes):
-    for index, _ in enumerate(record):
-      record[index].set_shape(shapes[index])
+  def _map_to_dict(self, 
+                origin_input, 
+                masked_input,
+                input_mask,
+                segment_ids,
+                masked_lm_positions,
+                masked_lm_weights,
+                masked_lm_ids,
+                sent_rel_label_ids):
+    record_dict = {}
+    record_dict['origin_input'] = origin_input
+    record_dict['masked_input'] = masked_input
+    record_dict['input_mask'] = input_mask
+    record_dict['segment_ids'] = segment_ids
+    record_dict['masked_lm_positions'] = masked_lm_positions
+    record_dict['masked_lm_weights'] = masked_lm_weights
+    record_dict['masked_lm_ids'] = masked_lm_ids
+    record_dict['sent_rel_label_ids'] = sent_rel_label_ids
     return record
 
   def to_dataset_(self, data_path_dict, data_key, types, shapes, names=None, padded_batch=False,
@@ -310,6 +325,23 @@ class PretrainGenerator(data_generator.DataGenerator):
     source_dataset = dataset_ops.Dataset.range(10)
     dataset = StreamingFilesDataset(
         source_dataset, filetype=gen_dataset)
+
+    dataset = dataset.map(lambda origin_input, 
+                masked_input,
+                input_mask,
+                segment_ids,
+                masked_lm_positions,
+                masked_lm_weights,
+                masked_lm_ids,
+                sent_rel_label_ids: 
+                self._map_to_dict(origin_input, 
+                masked_input,
+                input_mask,
+                segment_ids,
+                masked_lm_positions,
+                masked_lm_weights,
+                masked_lm_ids,
+                sent_rel_label_ids))
 
     return dataset
 

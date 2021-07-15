@@ -2,7 +2,8 @@
 	"data_path":{
 		"cc_100":{
 			"data":"cc_100/zh-Hans.txt",
-			"ratio":1.0
+			"ratio":1.0,
+			"local_data":"/home/htxu91/data/zh-Hans.txt"
 		}
 	}
 }

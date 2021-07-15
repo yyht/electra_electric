@@ -700,8 +700,13 @@ def main(_):
 
   import os
 
+  # for key in data_path_dict['data_path']:
+  #   data_path_dict['data_path'][key]['data'] = os.path.join(FLAGS.buckets, data_path_dict['data_path'][key]['data'])
+  #   tf.logging.info("** data path **")
+  #   tf.logging.info(data_path_dict['data_path'][key]['data'])
+
   for key in data_path_dict['data_path']:
-    data_path_dict['data_path'][key]['data'] = os.path.join(FLAGS.buckets, data_path_dict['data_path'][key]['data'])
+    data_path_dict['data_path'][key]['data'] = data_path_dict['data_path'][key]['local_data']
     tf.logging.info("** data path **")
     tf.logging.info(data_path_dict['data_path'][key]['data'])
 

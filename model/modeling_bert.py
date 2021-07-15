@@ -27,12 +27,12 @@ import six
 # import tensorflow as tf
 
 import tensorflow as tf
-tf.disable_v2_behavior()
+# tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
   print("==tf version==", version)
-  if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+  if int(version.split(".")[0]) >= 2:
     return True
   else:
     return False
@@ -392,7 +392,16 @@ def dropout(input_tensor, dropout_prob, dropout_name=None):
 
 def layer_norm(input_tensor, name=None):
   """Run layer normalization on the last dimension of the tensor."""
-  return tf.contrib.layers.layer_norm(
+  if check_tf_version():
+    layer_norm = tf.keras.layers.LayerNormalization(
+      axis=-1, epsilon=0.001, center=True, scale=True,
+      beta_initializer='zeros', gamma_initializer='ones',
+      beta_regularizer=None, gamma_regularizer=None, beta_constraint=None,
+      gamma_constraint=None, **kwargs
+    )
+    return layer_norm(input_tensor)
+  else:
+    return tf.contrib.layers.layer_norm(
       inputs=input_tensor, begin_norm_axis=-1, begin_params_axis=-1, scope=name)
 
 

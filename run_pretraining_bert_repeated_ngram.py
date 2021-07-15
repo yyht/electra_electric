@@ -679,7 +679,7 @@ def input_fn_builder(data_generator,
       record_dict['masked_lm_ids'] = masked_lm_ids
       record_dict['sent_rel_label_ids'] = sent_rel_label_ids
       return record_dict
-    d_output_types = dataset_ops.get_legacy_output_types(
+    d_output_types = dataset_ops.get_legacy_output_shapes(
         d)
     print(d_output_types)
     d = d.map(lambda a0,a1,a2,a3,a4,a5,a6,a7:_map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))

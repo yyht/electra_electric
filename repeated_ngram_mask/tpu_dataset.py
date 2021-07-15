@@ -151,6 +151,10 @@ def StreamingFilesDataset(files,
     if batch_transfer_size:
       source_dataset = source_dataset.batch(batch_transfer_size)
 
+    source_dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
+        source_dataset)
+    print(source_dataset_output_shapes, "==source_dataset_output_shapes after batch==")
+
     source_dataset = source_dataset.prefetch(1)
 
     source_iterator = dataset_ops.make_one_shot_iterator(source_dataset)
@@ -158,7 +162,6 @@ def StreamingFilesDataset(files,
 
   source_dataset_output_shapes = dataset_ops.get_legacy_output_shapes(
         source_dataset)
-  print(source_dataset_output_shapes, "==source_dataset_output_shapes==")
 
   @function.Defun(dtypes.string)
   def LoadingFunc(h):

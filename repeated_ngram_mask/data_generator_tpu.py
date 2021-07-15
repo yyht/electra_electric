@@ -343,7 +343,7 @@ class PretrainGenerator(data_generator.DataGenerator):
 
     dataset_output_types = dataset_ops.get_legacy_output_shapes(
                   dataset)
-    print(dataset_output_types)
+    print(dataset_output_types, "==dataset_output_types==")
 
     return dataset
 

@@ -301,7 +301,6 @@ class PretrainGenerator(data_generator.DataGenerator):
       if is_training:
         dataset = dataset.repeat()
         dataset = dataset.shuffle(self.buffer_size)
-      dataset = dataset.map(lambda record: self._fixup_shape_lst(record, shapes))
       try:
         dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
       except:

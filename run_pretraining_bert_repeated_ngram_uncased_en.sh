@@ -3,6 +3,7 @@ nohup python3 ./run_pretraining_bert_repeated_ngram.py \
 	--data_path_dict ./config/uncased_english_data_config.json \
 	--output_dir gs://yyht_source/pretrain/models/roberta_base_repeated_ngram_sop_uncased_en \
 	--input_data_dir gs://yyht_source/pretrain \
+	--buckets gs://yyht_source/pretrain \
 	--vocab_path ./vocab/vocab_uncased_en.txt \
 	--max_seq_length 512 \
 	--do_train True \

@@ -374,20 +374,6 @@ class PretrainGenerator(data_generator.DataGenerator):
     tf.logging.info("** succeeded in building multiple-dataset **")
     
     combined_dataset = combined_dataset.map(
-              lambda origin_input, 
-              masked_input,
-              input_mask,
-              segment_ids,
-              masked_lm_positions,
-              masked_lm_weights,
-              masked_lm_ids,
-              sent_rel_label_ids: 
-              self._map_to_dict(origin_input, 
-              masked_input,
-              input_mask,
-              segment_ids,
-              masked_lm_positions,
-              masked_lm_weights,
-              masked_lm_ids,
-              sent_rel_label_ids))
+              lambda a0,a1,a2,a3,a4,a5,a6,a7:
+              self._map_to_dict(a0, a1, a2, a3, a4, a5, a6, a7))
     return combined_dataset

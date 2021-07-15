@@ -94,6 +94,8 @@ flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
 
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
+flags.DEFINE_integer("doc_num", 5, "Total batch size for eval.")
+
 flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
 flags.DEFINE_float("weight_decay_rate", 0.01, "The initial learning rate for Adam.")
 flags.DEFINE_float("lr_decay_power", 1.0, "The initial learning rate for Adam.")
@@ -733,7 +735,9 @@ def main(_):
       geometric_p=FLAGS.geometric_p,
       max_pair_targets=FLAGS.max_pair_targets,
       random_next_sentence=FLAGS.random_next_sentence,
-      break_mode=FLAGS.break_mode
+      max_predictions_per_seq=FLAGS.max_predictions_per_seq,
+      break_mode=FLAGS.break_mode,
+      doc_num=FLAGS.doc_num
   )
 
   input_fn = input_fn_builder(

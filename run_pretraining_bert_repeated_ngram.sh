@@ -29,4 +29,6 @@ nohup python3 ./run_pretraining_bert_repeated_ngram.py \
 	--pad_id 0 \
 	--geometric_p 0.1 \
 	--max_pair_targets 10 \
-	--break_mode 'doc'
+	--break_mode 'doc' \
+	--doc_stride 64 \
+	--doc_num 5

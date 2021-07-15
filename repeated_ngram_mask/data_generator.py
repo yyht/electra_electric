@@ -42,6 +42,7 @@ class PretrainGenerator(data_generator.DataGenerator):
       geometric_p=0.1,
       max_pair_targets=10,
       random_next_sentence=False,
+      max_predictions_per_seq=78,
       break_mode='sentence',
       doc_num=5
       ):
@@ -65,6 +66,10 @@ class PretrainGenerator(data_generator.DataGenerator):
     self.random_next_sentence = random_next_sentence
     self.break_mode = break_mode
     self.doc_num = doc_num
+    self.max_predictions_per_seq = max_predictions_per_seq
+
+    tf.logging.info("** random_next_sentence **")
+    tf.logging.info(self.random_next_sentence)
 
     with tf.gfile.GFile(vocab_path, 'r') as frobj:
       self.vocab = []
@@ -72,6 +77,7 @@ class PretrainGenerator(data_generator.DataGenerator):
         self.vocab.append(line.strip())
 
     self.mask_num = int(self.max_length * self.mask_ratio)
+
     self.mlm_gen = mlm_generator.MLMGenerator(
               mask_ratio=self.mask_ratio, 
               random_ratio=self.random_ratio,
@@ -255,7 +261,7 @@ class PretrainGenerator(data_generator.DataGenerator):
                 'masked_lm_weights', 
                 'masked_lm_ids'
                 ]:
-      tmp_dict[key] += [0]*(self.mask_num-len(tmp_dict[key]))
+      tmp_dict[key] += [0]*(self.max_predictions_per_seq-len(tmp_dict[key]))
     
     return tmp_dict
 

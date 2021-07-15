@@ -327,7 +327,7 @@ class PretrainGenerator(data_generator.DataGenerator):
       tf.logging.info("** use tpu for dataset generator **")
       from repeated_ngram_mask.tpu_dataset import StreamingFilesDataset
       from tensorflow.python.data.ops import dataset_ops
-      def get_dataset(dummy):
+      def gen_dataset(dummy):
         dataset = dataset_ops.Dataset.from_generator(
             generator, 
             output_types=types,

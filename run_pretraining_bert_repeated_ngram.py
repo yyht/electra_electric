@@ -58,6 +58,11 @@ flags.DEFINE_string(
     "This specifies the model architecture.")
 
 flags.DEFINE_string(
+    "data_path_dict", None,
+    "data path dict. "
+    "This specifies the model architecture.")
+
+flags.DEFINE_string(
     "input_file", None,
     "Input TF example files (can be a glob or comma separated).")
 

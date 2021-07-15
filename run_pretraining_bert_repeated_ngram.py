@@ -721,14 +721,14 @@ def main(_):
   types = [tf.int32]*len(names)
   from tensorflow.python.framework import tensor_shape
   shapes = [
-      tensor_shape.TensorShape([FLAGS.max_seq_length]),
-      tensor_shape.TensorShape([FLAGS.max_seq_length]),
-      tensor_shape.TensorShape([FLAGS.max_seq_length]),
-      tensor_shape.TensorShape([FLAGS.max_seq_length]),
-      tensor_shape.TensorShape([FLAGS.max_predictions_per_seq]),
-      tensor_shape.TensorShape([FLAGS.max_predictions_per_seq]),
-      tensor_shape.TensorShape([FLAGS.max_predictions_per_seq]),
-      tensor_shape.TensorShape([])
+      (FLAGS.max_seq_length,),
+      (FLAGS.max_seq_length,),
+      (FLAGS.max_seq_length,),
+      (FLAGS.max_seq_length,),
+      (FLAGS.max_predictions_per_seq,),
+      (FLAGS.max_predictions_per_seq,),
+      (FLAGS.max_predictions_per_seq,),
+      (),
       ]
 
   import os

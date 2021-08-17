@@ -251,10 +251,14 @@ class PretrainingModel(object):
     if config.two_tower_generator:
       self.total_loss = config.gen_weight * cloze_output.loss
       tf.logging.info("** apply cloze loss **")
+      tf.logging.info("** cloze loss ratio:%s"%(config.gen_weight))
+      tf.logging.info(cloze_output.loss)
     else:
       self.total_loss = config.gen_weight * mlm_output.loss
       tf.logging.info("** apply mlm loss **")
-
+      tf.logging.info("** mlm_output loss ratio:%s"%(config.gen_weight))
+      tf.logging.info(mlm_output.loss)
+    
     if config.two_tower_generator:
       self.gen_loss = cloze_output.loss
     else:
@@ -280,6 +284,9 @@ class PretrainingModel(object):
       self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
       self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_cls_scope)
       self.disc_loss = disc_output.loss
+
+      tf.logging.info("** disc loss ratio:%s"%(config.disc_weight))
+      tf.logging.info(disc_output.loss)
 
       self.total_loss += config.disc_weight * disc_output.loss
       
@@ -316,7 +323,8 @@ class PretrainingModel(object):
                               gamma=32)
       simcse_loss = tf.reduce_mean(sim_per_example_loss)
       self.total_loss += simcse_loss * config.simcse_ratio
-
+      tf.logging.info("** simcse loss ratio:%s"%(config.simcse_ratio))
+      tf.logging.info(simcse_loss)
     # Evaluation
     eval_fn_inputs = {
         "input_ids": masked_inputs.input_ids,

@@ -27,7 +27,7 @@
     "untied_generator_embeddings": false,
     "use_tpu":true,
     "num_tpu_cores":8,
-    "disc_weight":1.0,
+    "disc_weight":50.0,
     "electra_disc_weight":1.0,
     "nce_disc_weight":1.0,
     "lr_decay_power":1.0,

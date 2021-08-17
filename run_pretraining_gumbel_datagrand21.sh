@@ -4,5 +4,5 @@ nohup python3 run_pretraining_gumbel.py \
 	--model-name chinese_datagrand21_self_critic_gumbel_st \
 	--hparams electric_gumbel_datagrand.json \
 	--generator-ckpt models/bert_tiny_50g/model.ckpt-1000000 \
-	--discriminator-ckpt models/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt
+	--discriminator-ckpt models/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt \
 	--vocab_file ./vocab/vocab_cn_datagrand.txt

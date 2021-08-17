@@ -135,7 +135,7 @@ VOCAB_MAPPING = {}
 def get_vocab(config):
   """Memoized load of the vocab file."""
   if config.vocab_file not in VOCAB_MAPPING:
-    with tf.gfile.Gfile(config.vocab_file, "r") as frobj:
+    with tf.io.gfile.GFile(config.vocab_file, "r") as frobj:
       vocab = {}
       for index, line in enuemrate(frobj):
         vocab[line.strip()] = index

@@ -37,9 +37,8 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 
 import configure_pretraining

@@ -50,6 +50,7 @@ def shape_list(x, out_type=tf.int32):
 import configure_pretraining
 from model import modeling
 from model import modeling_tta
+from model import modeling_tta_electra
 from model import modeling_convbert
 from model import optimization
 from pretrain import pretrain_data
@@ -748,7 +749,7 @@ def build_tta_transformer(config,
                       bert_config, reuse=False, **kwargs):
   """Build a transformer encoder network."""
   with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
-    return modeling_tta.BertModel(
+    return modeling_tta_electra.BertModel(
         bert_config=bert_config,
         is_training=is_training,
         input_ids=inputs.input_ids,

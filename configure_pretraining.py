@@ -60,6 +60,8 @@ class PretrainingConfig(object):
     self.nce_disc_weight = 10.0
     self.electra_disc_weight = 10.0
     self.nce_electra = False
+    self.contras = False
+    self.simcse_ratio = 1.0
     
     # optimization
     self.learning_rate = 5e-4

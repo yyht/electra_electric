@@ -17,6 +17,7 @@
     "gumbel_temp": 0.1,
     "monitoring":true,
     "straight_through": true,
+    "model_size_generator": "small",
     "model_scope":"electra",
     "disallow_correct":false,
     "tpu_name":"albert0",

@@ -521,7 +521,7 @@ class PretrainingModel(object):
 
       output_bias = tf.get_variable(
         "output_bias",
-        shape=[self._bert_config.vocab_size],
+        shape=[self._bert_config.vocab_size+1],
         initializer=tf.zeros_initializer())
 
       # [vocab_size+1, embedding_size]

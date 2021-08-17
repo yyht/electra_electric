@@ -8,8 +8,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
-
 import collections
 import copy
 import json
@@ -19,9 +17,7 @@ import re
 import numpy as np
 import six
 import tensorflow as tf
-tf.disable_v2_behavior()
 
-# import tensorflow as tf
 def check_tf_version():
   version = tf.__version__
   print("==tf version==", version)
@@ -29,12 +25,10 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 from tensorflow.contrib import layers as contrib_layers
-
 from model import dropout_utils
 
 stable_dropout = dropout_utils.ReuseDropout()
@@ -109,7 +103,7 @@ class BertConfig(object):
   @classmethod
   def from_json_file(cls, json_file):
     """Constructs a `BertConfig` from a json file of parameters."""
-    with tf.io.gfile.GFile(json_file, "r") as reader:
+    with tf.gfile.GFile(json_file, "r") as reader:
       text = reader.read()
     return cls.from_dict(json.loads(text))
 
@@ -161,7 +155,8 @@ class BertModel(object):
                input_embeddings=None,
                input_reprs=None,
                update_embeddings=True,
-               untied_embeddings=True):
+               untied_embeddings=True,
+               if_reuse_dropout=False):
     """Constructor for BertModel.
 
     Args:
@@ -229,13 +224,13 @@ class BertModel(object):
             initializer_range=bert_config.initializer_range,
             max_position_embeddings=bert_config.max_position_embeddings,
             dropout_prob=bert_config.hidden_dropout_prob,
-            dropout_name=tf.get_variable_scope().name+"/embeddings")
+            dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
     else:
       self.embedding_output = input_reprs
     if not update_embeddings:
       self.embedding_output = tf.stop_gradient(self.embedding_output)
 
-    with tf.variable_scope(scope, default_name="electra"):
+    with tf.variable_scope(scope, default_name="electra", reuse=tf.AUTO_REUSE):
       if self.embedding_output.shape[-1] != bert_config.hidden_size:
         self.embedding_output = tf.layers.dense(
             self.embedding_output, bert_config.hidden_size,
@@ -271,7 +266,7 @@ class BertModel(object):
             conv_type=bert_config.conv_type,
             from_tensor_mask=input_mask,
             to_tensor_mask=input_mask,
-            dropout_name=tf.get_variable_scope().name+"/encoder")
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
         self.sequence_output = self.all_layer_outputs[-1]
         self.pooled_output = self.sequence_output[:, 0]
 
@@ -374,6 +369,8 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint, prefix=""):
     (name, var) = (x[0], x[1])
     if prefix + name not in name_to_variable:
       continue
+    if var != name_to_variable[name].shape.as_list():
+      continue
     assignment_map[name] = prefix + name
     initialized_variable_names[name] = 1
     initialized_variable_names[name + ":0"] = 1
@@ -463,7 +460,7 @@ def embedding_lookup(input_ids,
 
   if original_dims == 3:
     input_shape = get_shape_list(input_ids)
-    tf.reshape(input_ids, [-1, input_shape[-1]])
+    input_ids = tf.reshape(input_ids, [-1, input_shape[-1]])
     output = tf.matmul(input_ids, embedding_table)
     output = tf.reshape(output,
                         [input_shape[0], input_shape[1], embedding_size])
@@ -628,7 +625,7 @@ def attention_layer(from_tensor,
                     to_seq_length=None, 
                     conv_kernel_size=9,
                     head_ratio=2,
-                    conv_type=1,
+                    conv_type='sdconv',
                     from_tensor_mask=None,
                     to_tensor_mask=None,
                     dropout_name=None):
@@ -743,13 +740,12 @@ def attention_layer(from_tensor,
   from_tensor_2d = reshape_to_matrix(from_tensor)
   to_tensor_2d = reshape_to_matrix(to_tensor)
 
-
   new_num_attention_heads = int(num_attention_heads/head_ratio)
-  if new_num_attention_heads<1:
-    head_ratio=num_attention_heads
-    num_attention_heads=1
+  if new_num_attention_heads < 1:
+    head_ratio = num_attention_heads
+    num_attention_heads = 1
   else:
-    num_attention_heads=new_num_attention_heads
+    num_attention_heads = new_num_attention_heads
 
   # `query_layer` = [B*F, N*H]
   query_layer = tf.layers.dense(
@@ -780,12 +776,6 @@ def attention_layer(from_tensor,
     key_conv_attn_layer = reshape_for_conv(to_tensor_2d, batch_size, num_attention_heads*head_ratio,
                                     to_seq_length, size_per_head)
 
-    if from_tensor_mask is not None and to_tensor_mask is not None:
-      to_tensor_2d_mask = tf.cast(to_tensor_mask, tf.float32)[:, :, None]
-      from_tensor_2d_mask = tf.cast(from_tensor_mask, tf.float32)[:, :, None]
-      key_conv_attn_layer *= to_tensor_2d_mask
-      tf.logging.info("== apply conv seq-masking on sequence padding ==")
-
     key_conv_attn_layer = tf.layers.separable_conv1d(key_conv_attn_layer,
         num_attention_heads * size_per_head,
         conv_kernel_size,
@@ -794,10 +784,6 @@ def attention_layer(from_tensor,
         depthwise_initializer=create_initializer(1/conv_kernel_size),
         pointwise_initializer=create_initializer(initializer_range),
         name="conv_attn_key")
-
-    if from_tensor_mask is not None and to_tensor_mask is not None:
-      key_conv_attn_layer *= to_tensor_2d_mask
-      tf.logging.info("== apply conv seq-masking on sequence padding ==")
 
     # [B*T, N*H]
     key_conv_attn_layer = reshape_to_matrix(key_conv_attn_layer)
@@ -827,11 +813,6 @@ def attention_layer(from_tensor,
         kernel_initializer=create_initializer(initializer_range))
     # [B,T, N*H]
     conv_out_layer = tf.reshape(conv_out_layer,[batch_size,to_seq_length,num_attention_heads * size_per_head])
-
-    if from_tensor_mask is not None and to_tensor_mask is not None:
-      conv_out_layer *= to_tensor_2d_mask
-      tf.logging.info("== apply conv seq-masking on sequence padding ==")
-
     conv_out_layer = tf.pad(conv_out_layer, paddings, "CONSTANT")
     # unfold [B,T, N*H, K]
     unfold_conv_out_layer = tf.stack(
@@ -843,11 +824,9 @@ def attention_layer(from_tensor,
     conv_out_layer = tf.reshape(unfold_conv_out_layer,
       [batch_size*to_seq_length*num_attention_heads ,size_per_head, conv_kernel_size])
 
-
     conv_out_layer = tf.matmul(conv_out_layer, conv_kernel_layer)
 
     conv_out_layer = tf.reshape(conv_out_layer, [batch_size*to_seq_length, num_attention_heads*size_per_head])
-
 
   # `query_layer` = [B, N, F, H]
   query_layer = transpose_for_scores(query_layer, batch_size,
@@ -890,7 +869,6 @@ def attention_layer(from_tensor,
   value_layer = tf.reshape(
       value_layer,
       [batch_size, to_seq_length, num_attention_heads, size_per_head])
-
 
   # `value_layer` = [B, N, T, H]
   value_layer = tf.transpose(value_layer, [0, 2, 1, 3])
@@ -939,7 +917,7 @@ def transformer_model(input_tensor,
                       do_return_all_layers=False,
                       conv_kernel_size=3,
                       head_ratio=2,
-                      conv_type="noconv",
+                      conv_type="sdconv",
                       from_tensor_mask=None,
                       to_tensor_mask=None,
                       dropout_name=None):

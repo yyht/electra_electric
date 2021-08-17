@@ -149,6 +149,7 @@ class BertModel(object):
                update_embeddings=True,
                untied_embeddings=False,
                spectral_regularization=False,
+               if_reuse_dropout=False,
                **kargs):
     """Constructor for BertModel.
 
@@ -260,7 +261,8 @@ class BertModel(object):
           token_type_embedding_name="token_type_embeddings",
           initializer_range=bert_config.initializer_range,
           max_position_embeddings=bert_config.max_position_embeddings,
-          dropout_prob=bert_config.hidden_dropout_prob)
+          dropout_prob=bert_config.hidden_dropout_prob,
+          dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
 
       if self.position_embeddings.shape[-1] != bert_config.hidden_size:
         self.position_embeddings = tf.layers.dense(
@@ -280,7 +282,7 @@ class BertModel(object):
         attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
         if bert_config.if_pretraining:
-          print("==remove self-attention mask==")
+          tf.logging.info("** remove self-attention **")
           attention_mask = attention_mask - tf.linalg.band_part(attention_mask, 0, 0) ## for self-blind
         
         # Run the stacked transformer.
@@ -297,7 +299,8 @@ class BertModel(object):
             hidden_dropout_prob=bert_config.hidden_dropout_prob,
             attention_probs_dropout_prob=bert_config.attention_probs_dropout_prob,
             initializer_range=bert_config.initializer_range,
-            do_return_all_layers=True)
+            do_return_all_layers=True,
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
 
       self.sequence_output = self.all_encoder_layers[-1]
       # The "pooler" converts the encoded sequence tensor of shape

@@ -35,7 +35,11 @@ class PretrainingConfig(object):
     self.do_train = True  # pre-train ELECTRA
     self.do_eval = False  # evaluate generator/discriminator on unlabeled data
     self.mask_strategy = 'electra'
-
+    self.contras = True
+    self.generator_transformer_type = 'conv_bert'
+    self.discriminator_transformer_type = 'conv_bert'
+    self.simcse_ratio = 0.1
+ 
     # loss functions
     # train ELECTRA or Electric? if both are false, trains a masked LM like BERT
     self.electra_objective = True
@@ -93,7 +97,7 @@ class PretrainingConfig(object):
     # modeling.BertConfig for the possible hparams and util.training_utils for
     # the defaults
 
-    self.model_size_generator = 'tiny'
+    self.model_size_generator = 'small'
 
     self.model_hparam_overrides = (
         kwargs["model_hparam_overrides"]

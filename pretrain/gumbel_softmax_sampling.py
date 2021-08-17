@@ -7,7 +7,6 @@ from __future__ import print_function
 
 
 import tensorflow as tf
-tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -16,9 +15,8 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 import configure_pretraining
 from model import modeling
@@ -130,14 +128,12 @@ def sample_from_top_k(logits, logits_temp=1.0,
                   disallow=None, 
                   straight_through=False, 
                   k=20):
-  print(logits, '===========')
   logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
   depth_dimension = (len(logits_shape) == 3)
   if depth_dimension:
     reshape_logits = tf.reshape(logits, [-1, logits_shape[-1]])
   else:
     reshape_logits = logits
-  print(reshape_logits, '======')
   reshape_logits_shape = modeling.get_shape_list(reshape_logits, expected_rank=[2])
   batch = reshape_logits_shape[0]
   
@@ -180,7 +176,6 @@ def sample_from_top_p(logits, logits_temp=1.0,
     reshape_logits = tf.reshape(logits, [-1, logits_shape[-1]])
   else:
     reshape_logits = logits
-  print(reshape_logits, '======')
   reshape_logits_shape = modeling.get_shape_list(reshape_logits, expected_rank=[2])
   batch = reshape_logits_shape[0]
   sorted_logits = tf.sort(reshape_logits, direction='DESCENDING', axis=-1)
@@ -198,7 +193,6 @@ def sample_from_top_p(logits, logits_temp=1.0,
       reshape_logits,
   )
   topp_logits = tf.reshape(reshape_topp_logits, logits_shape)
-  print(topp_logits, '====topp_logits====')
   if disallow is not None:
     topp_logits -= 1e10 * disallow
   uniform_noise = tf.random.uniform(modeling.get_shape_list(topp_logits), minval=0, maxval=1)

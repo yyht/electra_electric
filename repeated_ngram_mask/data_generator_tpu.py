@@ -111,7 +111,7 @@ class PretrainGenerator(data_generator.DataGenerator):
         if count == self.doc_num:
           for data_dict in self.preprocess(doc_lst):
             if data_dict:
-              data_dict = self.postprocess(data_dict, use_tpu)
+              data_dict = self.postprocess(data_dict)
               yield data_dict
           doc_lst = []
           count = 0

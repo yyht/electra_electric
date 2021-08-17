@@ -54,7 +54,6 @@ class PretrainGenerator(data_generator.DataGenerator):
     self.doc_stride = doc_stride
     self.batch_size = batch_size
     self.buffer_size = buffer_size
-    self.max_length = max_length
     self.mask_ratio = mask_ratio
     self.random_ratio = random_ratio
     self.min_tok = min_tok
@@ -109,7 +108,7 @@ class PretrainGenerator(data_generator.DataGenerator):
         if count == self.doc_num:
           for data_dict in self.preprocess(doc_lst):
             if data_dict:
-              data_dict = self.postprocess(data_dict, use_tpu)
+              data_dict = self.postprocess(data_dict)
               yield data_dict
           doc_lst = []
           count = 0
@@ -288,6 +287,10 @@ class PretrainGenerator(data_generator.DataGenerator):
       def generator():
         for d in self.iteration(data_path_dict, data_key):
           yield d
+
+      types = warps(names, types)
+      
+      shapes = warps(names, shapes)
 
     if padded_batch:
       dataset = tf.data.Dataset.from_generator(

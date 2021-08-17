@@ -197,7 +197,8 @@ class BertModel(object):
             position_embedding_name="position_embeddings",
             initializer_range=config.initializer_range,
             max_position_embeddings=config.max_position_embeddings,
-            dropout_prob=config.hidden_dropout_prob)
+            dropout_prob=config.hidden_dropout_prob,
+            )
         
     with tf.variable_scope(scope, default_name="bert", reuse=tf.AUTO_REUSE):
       with tf.variable_scope("embeddings"):

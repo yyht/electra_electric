@@ -26,7 +26,6 @@ from __future__ import print_function
 # import tensorflow as tf
 
 import tensorflow as tf
-tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -35,9 +34,8 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 
 import configure_pretraining
@@ -137,8 +135,12 @@ VOCAB_MAPPING = {}
 def get_vocab(config):
   """Memoized load of the vocab file."""
   if config.vocab_file not in VOCAB_MAPPING:
-    vocab = tokenization.FullTokenizer(
-        config.vocab_file, do_lower_case=True).vocab
+    with tf.gfile.Gfile(config.vocab_file, "r") as frobj:
+      vocab = {}
+      for index, line in enuemrate(frobj):
+        vocab[line.strip()] = index
+    # vocab = tokenization.FullTokenizer(
+    #     config.vocab_file, do_lower_case=True).vocab
     VOCAB_MAPPING[config.vocab_file] = vocab
   return VOCAB_MAPPING[config.vocab_file]
 
@@ -262,14 +264,12 @@ def sample_from_softmax(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None)
                               output_type=tf.int32), logits.shape[-1])
 
 def sample_from_top_k(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, k=20):
-  print(logits, '===========')
   logits_shape = modeling.get_shape_list(logits, expected_rank=[2,3])
   depth_dimension = (len(logits_shape) == 3)
   if depth_dimension:
     reshape_logits = tf.reshape(logits, [-1, logits_shape[-1]])
   else:
     reshape_logits = logits
-  print(reshape_logits, '======')
   reshape_logits_shape = modeling.get_shape_list(reshape_logits, expected_rank=[2])
   batch = reshape_logits_shape[0]
   
@@ -300,7 +300,6 @@ def sample_from_top_p(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, p
     reshape_logits = tf.reshape(logits, [-1, logits_shape[-1]])
   else:
     reshape_logits = logits
-  print(reshape_logits, '======')
   reshape_logits_shape = modeling.get_shape_list(reshape_logits, expected_rank=[2])
   batch = reshape_logits_shape[0]
   sorted_logits = tf.sort(reshape_logits, direction='DESCENDING', axis=-1)
@@ -318,7 +317,6 @@ def sample_from_top_p(logits, logits_temp=1.0, gumbel_temp=0.1, disallow=None, p
       reshape_logits,
   )
   topp_logits = tf.reshape(reshape_topp_logits, logits_shape)
-  print(topp_logits, '====topp_logits====')
   if disallow is not None:
     topp_logits -= 1e10 * disallow
   topp_logits /= logits_temp

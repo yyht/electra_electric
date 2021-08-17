@@ -29,7 +29,6 @@ from model import model_io as model_io_fn
 # tf.disable_v2_behavior()
 
 import tensorflow as tf
-tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -38,13 +37,20 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
+
+def shape_list(x, out_type=tf.int32):
+  """Deal with dynamic shape in tensorflow cleanly."""
+  static = x.shape.as_list()
+  dynamic = tf.shape(x, out_type=out_type)
+  return [dynamic[i] if s is None else s for i, s in enumerate(static)]
+
 
 import configure_pretraining
 from model import modeling
 from model import modeling_tta
+from model import modeling_convbert
 from model import optimization
 from pretrain import pretrain_data
 from pretrain import gumbel_softmax_sampling
@@ -101,8 +107,7 @@ class PretrainingModel(object):
           self._generator_config.hidden_size if config.generator_embedding_size is None else
           config.embedding_size)
         self.untied_generator_embeddings = True
-        # config.untied_generator_embeddings = True
-        print("==apply pretrained generator==")
+        tf.logging.info("==apply pretrained generator==")
       else:
         self.generator_scope = 'generator'
         self.generator_cls_scope = 'generator_predictions'
@@ -120,7 +125,6 @@ class PretrainingModel(object):
           self._bert_config.hidden_size if config.embedding_size is None else
           config.embedding_size)
         self.untied_discriminator_embeddings = True
-        # config.untied_generator_embeddings = True
       else:
         self.discriminator_scope = 'electra'
         self.discriminator_embedding_size = (
@@ -146,8 +150,6 @@ class PretrainingModel(object):
           config.embedding_size)
         self.untied_generator_embeddings = True
         self.untied_discriminator_embeddings = True
-        # config.untied_generator_embeddings = True
-        print("==apply pretrained generator==")
       else:
         self.discriminator_scope = 'electra'
         self.generator_scope = 'electra'
@@ -164,6 +166,24 @@ class PretrainingModel(object):
         self.generator_exclude_scope = ''
         self.untied_generator_embeddings = True
         self.untied_discriminator_embeddings = True
+
+    if config.generator_transformer_type == 'bert':
+      generator_fn = build_transformer
+    elif config.generator_transformer_type == 'conv_bert':
+      generator_fn = build_conv_transformer
+    elif config.generator_transformer_type == 'tta':
+      generator_fn = build_tta_transformer
+    else:
+      generator_fn = build_transformer
+
+    if config.discriminator_transformer_type == 'bert':
+      discriminator_fn = build_transformer
+    elif config.discriminator_transformer_type == 'conv_bert':
+      discriminator_fn = build_conv_transformer
+    elif config.discriminator_transformer_type == 'tta':
+      discriminator_fn = build_tta_transformer
+    else:
+      discriminator_fn = build_transformer
 
     # Generator
     if config.uniform_generator:
@@ -185,56 +205,41 @@ class PretrainingModel(object):
                 cloze_output.logits, masked_inputs.masked_lm_positions),
             masked_inputs.masked_lm_ids, masked_inputs.masked_lm_weights,
             self._bert_config.vocab_size)
-        print("==two_tower_generator==")
 
         self.gen_params = []
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_ltr')
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator_rtl')
-        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'cloze_predictions')
+        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cloze_scope)
         if not config.untied_generator_embeddings:
-          print("==add shared embeddings==")
-          self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
-      elif config.tta_generator:
-        generator = build_tta_transformer(
-            config, unmasked_inputs, is_training, self._generator_config,
-            embedding_size=self.generator_embedding_size,
-            untied_embeddings=self.untied_generator_embeddings,
-            scope=self.generator_scope)
-        mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
-        print("==tta_generator==")
-        self.gen_params = []
-        self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
-        self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
-        if not config.untied_generator_embeddings:
-          print("==add shared embeddings==")
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
       else:
         # small masked language model generator
-        generator = build_transformer(
+        generator = generator_fn(
             config, masked_inputs, is_training, self._generator_config,
             embedding_size=self.generator_embedding_size,
             untied_embeddings=self.untied_generator_embeddings,
             scope=self.generator_scope,
             reuse=tf.AUTO_REUSE)
+        tf.logging.info("** apply generator transformer **")
+        tf.logging.info(generator_fn)
         mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
-        print("==mlm share embeddings==")
         self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
         self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_cls_scope)
-        print("==untied_generator_embeddings==", config.untied_generator_embeddings)
         if not config.untied_generator_embeddings:
-          print("==add shared embeddings==")
+          tf.logging.info("** add shared embeddings to generator **")
           self.gen_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope+"/embeddings")
-        print(mlm_output, "===mlm_output using tied embedding mlm generator===")
     else:
       # full-sized masked language model generator if using BERT objective or if
       # the generator and discriminator have tied weights
-      generator = build_transformer(
+      generator = generator_fn(
           config, masked_inputs, is_training, self._bert_config,
           embedding_size=self.discriminator_embedding_size,
           untied_embeddings=self.untied_generator_embeddings,
           scope=self.generator_scope)
-      print("==share all params==")
+      tf.logging.info("** apply generator transformer **")
+      tf.logging.info(generator_fn)
+      
       mlm_output = self._get_masked_lm_output(masked_inputs, generator, self.generator_cls_scope)
 
       self.gen_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.generator_scope)
@@ -256,24 +261,59 @@ class PretrainingModel(object):
     # Discriminator
     disc_output = None
     if config.electra_objective or config.electric_objective:
-      discriminator = build_transformer(
+      fake_discriminator = discriminator_fn(
           config, fake_data.inputs, is_training, self._bert_config,
           reuse=tf.AUTO_REUSE, 
           embedding_size=self.discriminator_embedding_size,
           untied_embeddings=self.untied_discriminator_embeddings,
-          scope=self.discriminator_scope)
-      disc_output = self._get_discriminator_output(
-          fake_data.inputs, discriminator, fake_data.is_fake_tokens,
-          mlm_output)
+          scope=self.discriminator_scope,
+          if_reuse_dropout=True)
+      tf.logging.info("** apply transformer **")
+      tf.logging.info(discriminator_fn)
+      
+      disc_output = self._get_discriminator_output_v1(
+          fake_data.inputs, fake_discriminator, fake_data.is_fake_tokens,
+          scope=self.discriminator_cls_scope,
+          cloze_output=mlm_output)
 
       self.disc_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_scope)
-      self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator_predictions')
+      self.disc_params += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.discriminator_cls_scope)
       self.disc_loss = disc_output.loss
-      self.gen_loss -= disc_output.loss
-      tf.logging.info("** gen-disc minus **")
+
       self.total_loss += config.disc_weight * disc_output.loss
       
-      tf.logging.info("** apply electra **")
+    if config.contras:
+      real_discriminator = discriminator_fn(
+            config, unmasked_inputs, is_training, self._bert_config,
+            reuse=tf.AUTO_REUSE, 
+            embedding_size=self.discriminator_embedding_size,
+            untied_embeddings=self.untied_discriminator_embeddings,
+            scope=self.discriminator_scope,
+            if_reuse_dropout=True)
+      fake_view = fake_discriminator.get_pooled_output()
+      fake_view = tf.nn.l2_normalize(fake_view, axis=-1)
+
+      real_view = real_discriminator.get_pooled_output()
+      real_view = tf.nn.l2_normalize(real_view, axis=-1)
+
+      from model import circle_loss_utils
+      sim_matrix = tf.matmul(fake_view, 
+                        real_view, 
+                        transpose_b=True)
+
+      sim_matrix_shape = shape_list(sim_matrix)
+      pos_true_mask = tf.eye(sim_matrix_shape[0])
+      pos_true_mask = tf.cast(pos_true_mask, dtype=tf.float32)
+      neg_true_mask = tf.ones_like(pos_true_mask) - pos_true_mask
+
+      sim_per_example_loss = circle_loss_utils.circle_loss(
+                              sim_matrix, 
+                              pos_true_mask, 
+                              neg_true_mask,
+                              margin=0.25,
+                              gamma=32)
+      simcse_loss = tf.reduce_mean(sim_per_example_loss)
+      self.total_loss += simcse_loss * config.simcse_ratio
 
     # Evaluation
     eval_fn_inputs = {
@@ -296,11 +336,13 @@ class PretrainingModel(object):
           "sampled_tokids": tf.argmax(fake_data.sampled_tokens, -1,
                                       output_type=tf.int32)
       })
+    if config.contras:
+      eval_fn_inputs.update({
+          "simcse_loss": simcse_loss
+      })
     
     eval_fn_keys = eval_fn_inputs.keys()
     eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
-    print(eval_fn_keys, "===eval_fn_keys===")
-    print(eval_fn_values, "===eval_fn_values===")
 
     def electra_electric_monitor_fn(eval_fn_inputs, keys):
       d = {}
@@ -312,17 +354,9 @@ class PretrainingModel(object):
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
       masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
 
-      print(masked_lm_preds, "===masked_lm_preds===")
-      print(masked_lm_ids, "===masked_lm_ids===")
-      print(masked_lm_weights, "===masked_lm_weights===")
-
       sampled_masked_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
       sampled_masked_lm_preds = tf.reshape(d["sampled_masked_lm_preds"], [-1])
       sampled_masked_lm_weights = tf.reshape(d["sampled_masked_lm_weights"], [-1])
-
-      print(sampled_masked_lm_preds, "===sampled_masked_lm_preds===")
-      print(sampled_masked_lm_ids, "===sampled_masked_lm_ids===")
-      print(sampled_masked_lm_weights, "===sampled_masked_lm_weights===")
 
       mlm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
       mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
@@ -340,10 +374,6 @@ class PretrainingModel(object):
       sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
       sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(sampled_masked_lm_weights, dtype=tf.float32))
       sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(sampled_masked_lm_weights, dtype=tf.float32)))
-
-      sent_nce_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
-                                dtype=tf.float32)
-      sent_nce_pred_acc = tf.reduce_mean(sent_nce_pred_acc)
 
       monitor_dict['generator_sampled_mlm_acc'] = sampeld_mlm_acc
 
@@ -371,6 +401,7 @@ class PretrainingModel(object):
       token_recall = tf.reduce_sum(token_recall) / (1e-10+tf.reduce_sum(token_recall_mask))
 
       monitor_dict['disriminator_token_recall'] = token_recall
+      monitor_dict['simcse_loss'] = d['simcse_loss']
       return monitor_dict
 
     self.monitor_dict = electra_electric_monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -434,9 +465,9 @@ class PretrainingModel(object):
           self._bert_config.vocab_size)
  
   def _get_discriminator_output(
-      self, inputs, discriminator, labels, cloze_output=None):
+      self, inputs, discriminator, labels, scope='', cloze_output=None):
     """Discriminator binary classifier."""
-    with tf.variable_scope("discriminator_predictions"):
+    with tf.variable_scope(scope if scope else "discriminator_predictions"):
       hidden = tf.layers.dense(
           discriminator.get_sequence_output(),
           units=self._bert_config.hidden_size,
@@ -452,7 +483,69 @@ class PretrainingModel(object):
         log_q = tf.stop_gradient(log_q)
         logits += log_q
         logits += tf.log(self._config.mask_prob / (1 - self._config.mask_prob))
-        print("==apply electric_objective==")
+        tf.logging.info("==apply electric_objective==")
+
+      weights = tf.cast(inputs.input_mask, tf.float32)
+      labelsf = tf.cast(labels, tf.float32)
+      losses = tf.nn.sigmoid_cross_entropy_with_logits(
+          logits=logits, labels=labelsf) * weights
+      per_example_loss = (tf.reduce_sum(losses, axis=-1) /
+                          (1e-6 + tf.reduce_sum(weights, axis=-1)))
+      loss = tf.reduce_sum(losses) / (1e-6 + tf.reduce_sum(weights))
+      probs = tf.nn.sigmoid(logits)
+      preds = tf.cast(tf.round((tf.sign(logits) + 1) / 2), tf.int32)
+      DiscOutput = collections.namedtuple(
+          "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
+                         "labels"])
+      return DiscOutput(
+          loss=loss, per_example_loss=per_example_loss, probs=probs,
+          preds=preds, labels=labels,
+      )
+
+  def _get_discriminator_output_v1(
+      self, inputs, discriminator, labels, scope='', cloze_output=None):
+    """Discriminator binary classifier."""
+    with tf.variable_scope(scope if scope else "discriminator_predictions"):
+      hidden = tf.layers.dense(
+          discriminator.get_sequence_output(),
+          units=shape_list(discriminator.get_embedding_table())[-1],
+          activation=modeling.get_activation(self._bert_config.hidden_act),
+          kernel_initializer=modeling.create_initializer(
+              self._bert_config.initializer_range))
+      
+      extra_weight = tf.get_variable(
+          name="extra_weight",
+          shape=[1, shape_list(discriminator.get_embedding_table())[-1]],
+          initializer=tf.zeros_initializer())
+
+      output_bias = tf.get_variable(
+        "output_bias",
+        shape=[self._bert_config.vocab_size],
+        initializer=tf.zeros_initializer())
+
+      # [vocab_size+1, embedding_size]
+      weight_matrix = tf.concat([discriminator.get_embedding_table(), extra_weight],
+                    axis=0)
+
+      # hidden: [batch_size, seq, hidden_dims]
+      # [batch_size, seq, vocab-size+1]
+      if check_tf_version():
+        logits = tf.matmul(hidden, weight_matrix, transpose_b=True)
+      else:
+        logits = tf.einsum("abc,dc->abd", hidden, weight_matrix)
+      logits += output_bias
+      # being negative-token logits
+      logits = tf.nn.log_softmax(logits, axis=-1)[:, :, -1]
+
+      if self._config.electric_objective:
+        log_q = tf.reduce_sum(
+            tf.nn.log_softmax(cloze_output.logits) * tf.one_hot(
+                inputs.input_ids, depth=self._bert_config.vocab_size,
+                dtype=tf.float32), -1)
+        log_q = tf.stop_gradient(log_q)
+        logits += log_q
+        logits += tf.log(self._config.mask_prob / (1 - self._config.mask_prob))
+        tf.logging.info("==apply electric_objective==")
 
       weights = tf.cast(inputs.input_mask, tf.float32)
       labelsf = tf.cast(labels, tf.float32)
@@ -635,6 +728,21 @@ def build_transformer(config,
         use_one_hot_embeddings=config.use_tpu,
         **kwargs)
 
+def build_conv_transformer(config,
+                      inputs, is_training,
+                      bert_config, reuse=False, **kwargs):
+  """Build a transformer encoder network."""
+  with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
+    return modeling_convbert.BertModel(
+        bert_config=bert_config,
+        is_training=is_training,
+        input_ids=inputs.input_ids,
+        input_mask=inputs.input_mask,
+        token_type_ids=inputs.segment_ids,
+        use_one_hot_embeddings=config.use_tpu,
+        **kwargs)
+
+
 def build_tta_transformer(config,
                       inputs, is_training,
                       bert_config, reuse=False, **kwargs):
@@ -664,7 +772,7 @@ def get_generator_config(config,
   gen_config.num_hidden_layers = int(round(
       bert_config.num_hidden_layers * config.generator_layers))
   gen_config.intermediate_size = 4 * gen_config.hidden_size
-  gen_config.num_attention_heads = max(1, gen_config.hidden_size // 64)
+  gen_config.num_attention_heads = max(1, int(round(gen_config.hidden_size // 64)))
   return gen_config
 
 
@@ -907,11 +1015,14 @@ def main():
                       help="The name of the model being fine-tuned.")
   parser.add_argument("--hparams", default="{}",
                       help="JSON dict of model hyperparameters.")
+  parser.add_argument("--vocab_file", default="{}",
+                      help="JSON dict of model hyperparameters.")
   args = parser.parse_args()
   if args.hparams.endswith(".json"):
     hparams = utils.load_json(args.hparams)
   else:
     hparams = json.loads(args.hparams)
+  hparams['vocab_file'] = FLAGS.vocab_file
   # tf.logging.set_verbosity(tf.logging.ERROR)
   tf.logging.set_verbosity(tf.logging.INFO)
   train_or_eval(configure_pretraining.PretrainingConfig(

@@ -170,6 +170,7 @@ class BertModel(object):
                ltr=False,
                rtl=False,
                spectral_regularization=False,
+               if_reuse_dropout=False,
                **kargs):
     """Constructor for BertModel.
 
@@ -245,7 +246,7 @@ class BertModel(object):
             initializer_range=bert_config.initializer_range,
             max_position_embeddings=bert_config.max_position_embeddings,
             dropout_prob=bert_config.hidden_dropout_prob,
-            dropout_name=tf.get_variable_scope().name+"/embeddings")
+            dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
     else:
       self.embedding_output = input_reprs
     if not update_embeddings:
@@ -292,7 +293,7 @@ class BertModel(object):
             bert_config.attention_probs_dropout_prob,
             initializer_range=bert_config.initializer_range,
             do_return_all_layers=True,
-            dropout_name=tf.get_variable_scope().name+"/encoder")
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
         self.sequence_output = self.all_layer_outputs[-1]
         self.pooled_output = self.sequence_output[:, 0]
 

@@ -548,6 +548,9 @@ class PretrainingModel(object):
       # being negative-token logits
       logits = tf.nn.log_softmax(logits, axis=-1)[:, :, -1]
 
+      tf.logging.info("** discriminator logits **")
+      tf.logging.info(logits)
+
       if self._config.electric_objective:
         log_q = tf.reduce_sum(
             tf.nn.log_softmax(cloze_output.logits) * tf.one_hot(

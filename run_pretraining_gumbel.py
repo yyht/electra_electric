@@ -1022,7 +1022,7 @@ def main():
     hparams = utils.load_json(args.hparams)
   else:
     hparams = json.loads(args.hparams)
-  hparams['vocab_file'] = FLAGS.vocab_file
+  hparams['vocab_file'] = args.vocab_file
   # tf.logging.set_verbosity(tf.logging.ERROR)
   tf.logging.set_verbosity(tf.logging.INFO)
   train_or_eval(configure_pretraining.PretrainingConfig(

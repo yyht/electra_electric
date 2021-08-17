@@ -519,9 +519,10 @@ class PretrainingModel(object):
       hidden = tf.layers.dense(
           discriminator.get_sequence_output(),
           units=shape_list(discriminator.get_embedding_table())[-1],
-          activation=modeling.get_activation(self._bert_config.hidden_act),
-          kernel_initializer=modeling.create_initializer(
+          activation=modeling_convbert.get_activation(self._bert_config.hidden_act),
+          kernel_initializer=modeling_convbert.create_initializer(
               self._bert_config.initializer_range))
+      hidden = modeling_convbert.layer_norm(hidden)
       
       extra_weight = tf.get_variable(
           name="extra_weight",

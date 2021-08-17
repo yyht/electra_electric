@@ -269,7 +269,7 @@ class PretrainingModel(object):
           untied_embeddings=self.untied_discriminator_embeddings,
           scope=self.discriminator_scope,
           if_reuse_dropout=True)
-      tf.logging.info("** apply transformer **")
+      tf.logging.info("** apply discriminator transformer **")
       tf.logging.info(discriminator_fn)
       
       disc_output = self._get_discriminator_output_v1(
@@ -284,6 +284,7 @@ class PretrainingModel(object):
       self.total_loss += config.disc_weight * disc_output.loss
       
     if config.contras:
+      tf.logging.info("** apply contras of discriminator **")
       real_discriminator = discriminator_fn(
             config, unmasked_inputs, is_training, self._bert_config,
             reuse=tf.AUTO_REUSE, 

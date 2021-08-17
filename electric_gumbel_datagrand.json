@@ -10,7 +10,7 @@
     "electra_objective":true,
     "two_tower_generator": false,
     "electra_nce_objective":false,
-    "untied_generator":false,
+    "untied_generator":true,
     "use_pretrained_generator":false,
     "use_pretrained_discriminator":false,
     "logits_temp": 1.0,

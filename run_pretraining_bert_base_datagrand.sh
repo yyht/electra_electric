@@ -3,6 +3,7 @@ nohup python3 run_pretraining_bert.py \
 	--input_file datagrand21/datagrand_21_file_list.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_base_rdropout_datagrand \
 	--input_data_dir gs://yyht_source/pretrain \
+	--init_checkpoint models/bert_base_rdropout/model.ckpt-1000000 \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 128 \

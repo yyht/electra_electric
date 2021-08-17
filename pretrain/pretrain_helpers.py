@@ -137,7 +137,7 @@ def get_vocab(config):
   if config.vocab_file not in VOCAB_MAPPING:
     with tf.io.gfile.GFile(config.vocab_file, "r") as frobj:
       vocab = {}
-      for index, line in enuemrate(frobj):
+      for index, line in enumerate(frobj):
         vocab[line.strip()] = index
     # vocab = tokenization.FullTokenizer(
     #     config.vocab_file, do_lower_case=True).vocab

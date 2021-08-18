@@ -276,7 +276,7 @@ class PretrainingModel(object):
       tf.logging.info("** apply discriminator transformer **")
       tf.logging.info(discriminator_fn)
       
-      disc_output = self._get_discriminator_output_v1(
+      disc_output = self._get_discriminator_output(
           fake_data.inputs, fake_discriminator, fake_data.is_fake_tokens,
           scope=self.discriminator_cls_scope,
           cloze_output=mlm_output)

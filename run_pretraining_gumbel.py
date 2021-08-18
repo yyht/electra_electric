@@ -396,6 +396,10 @@ class PretrainingModel(object):
       monitor_dict['disriminator_token_acc'] = token_acc
       monitor_dict['disriminator_token_loss'] = tf.reduce_mean(d['disc_loss'])
 
+      print("====disc_preds===", d["disc_preds"])
+      print("====disc_labels===", d["disc_labels"])
+      print("====input_mask===", d["input_mask"])
+      
       token_precision = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
       token_precision_mask = tf.cast(d["disc_preds"] * d["input_mask"], dtype=tf.float32)

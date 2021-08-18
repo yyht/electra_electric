@@ -399,7 +399,7 @@ class PretrainingModel(object):
       print("====disc_preds===", d["disc_preds"])
       print("====disc_labels===", d["disc_labels"])
       print("====input_mask===", d["input_mask"])
-      
+
       token_precision = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)
       token_precision_mask = tf.cast(d["disc_preds"] * d["input_mask"], dtype=tf.float32)
@@ -550,7 +550,17 @@ class PretrainingModel(object):
         logits = tf.einsum("abc,dc->abd", hidden, weight_matrix)
       logits += output_bias
       # being negative-token logits
-      logits = tf.nn.log_softmax(logits, axis=-1)[:, :, -1]
+
+      # [batch_size, seq_len]
+      negative_prob = tf.nn.softmax(logits, axis=-1)[:, :, -1]
+      # [batch_size, seq_len, 1]
+      negative_prob = tf.expand_dims(negative_prob, axis=-1)
+      # [batch_size, seq_len, 1]
+      positive_prob = 1 - negative_prob
+
+      # [batch_size, seq_len, 1]
+      probs = tf.concat([positive_prob, negative_prob], axis=-1)
+      logits = tf.log(probs)
 
       tf.logging.info("** discriminator logits **")
       tf.logging.info(logits)

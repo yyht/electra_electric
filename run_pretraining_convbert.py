@@ -442,7 +442,7 @@ def model_fn_rdrop_builder(bert_config, init_checkpoint, learning_rate,
       sim_loss = tf.reduce_mean(sim_per_example_loss)
 
     masked_lm_preds = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
-    rdropout_masked_lm_preds = tf.argmax(rdropout_masked_lm_log_probs, axis=-1, output_type=tf.int32)
+    rdropout_masked_lm_preds = tf.argmax(rdrop_masked_lm_log_probs, axis=-1, output_type=tf.int32)
 
     (kl_inclusive_per_example_loss,
     kl_inclusive_loss) = kld(rdrop_masked_lm_log_probs,
@@ -475,7 +475,7 @@ def model_fn_rdrop_builder(bert_config, init_checkpoint, learning_rate,
         "masked_lm_loss": masked_lm_example_loss,
         "masked_lm_weights": masked_lm_weights,
         "masked_lm_ids": masked_lm_ids,
-        "rdropout_masked_lm_loss": rdropout_masked_lm_example_loss,
+        "rdropout_masked_lm_loss": rdrop_masked_lm_example_loss,
         "kl_inclusive_loss": kl_inclusive_per_example_loss,
         "kl_exclusive_loss": kl_exclusive_per_example_loss
     }

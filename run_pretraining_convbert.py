@@ -122,6 +122,7 @@ flags.DEFINE_float("simcse_ratio", 1.0, "The initial learning rate for Adam.")
 flags.DEFINE_float("kld_ratio", 1.0, "The initial learning rate for Adam.")
 flags.DEFINE_string("model_fn_type", 'normal', "[Optional] TensorFlow master URL.")
 flags.DEFINE_bool("if_simcse", False, "[Optional] TensorFlow master URL.")
+from model import circle_loss_utils
 
 def kld(x_logprobs, y_logprobs, mask_weights=None):
   x_prob = tf.nn.softmax(x_logprobs, axis=-1)

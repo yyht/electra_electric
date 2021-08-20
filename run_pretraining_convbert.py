@@ -458,7 +458,7 @@ def model_fn_rdrop_builder(bert_config, init_checkpoint, learning_rate,
     tf.logging.info(FLAGS.kld_ratio)
     kl_loss = (kl_inclusive_loss+kl_exclusive_loss) * FLAGS.kld_ratio * 0.5
 
-    total_loss = (masked_lm_loss + rdropout_masked_lm_loss)*0.5 + kl_loss
+    total_loss = (masked_lm_loss + rdrop_masked_lm_loss)*0.5 + kl_loss
     if FLAGS.if_simcse:
       tf.logging.info("** apply simcse loss **")
       tf.logging.info("** simcse ratio **")

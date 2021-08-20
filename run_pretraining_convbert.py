@@ -118,7 +118,34 @@ tf.flags.DEFINE_string("mask_strategy", 'span_mask', "[Optional] TensorFlow mast
 flags.DEFINE_integer(
     "num_tpu_cores", 8,
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
+flags.DEFINE_float("simcse_ratio", 1.0, "The initial learning rate for Adam.")
+flags.DEFINE_float("kld_ratio", 1.0, "The initial learning rate for Adam.")
+flags.DEFINE_string("model_fn_type", 'normal', "[Optional] TensorFlow master URL.")
+flags.DEFINE_bool("if_simcse", False, "[Optional] TensorFlow master URL.")
 
+def kld(x_logprobs, y_logprobs, mask_weights=None):
+  x_prob = tf.nn.softmax(x_logprobs, axis=-1)
+  tf.logging.info("** x_prob **")
+  tf.logging.info(x_prob)
+  tf.logging.info("** y_prob **")
+  tf.logging.info(y_logprobs)
+
+  kl_per_example_div = x_prob * (x_logprobs - y_logprobs)
+  kl_per_example_div = tf.reduce_sum(kl_per_example_div, axis=-1)
+  
+  tf.logging.info("**  kl_per_example_div **")
+  tf.logging.info(kl_per_example_div)
+
+  if mask_weights is not None:
+    mask_weights = tf.reshape(mask_weights, [-1])
+    kl_div = tf.reduce_mean(kl_per_example_div*mask_weights, axis=0)
+  else:
+    kl_div = tf.reduce_mean(kl_per_example_div)
+  
+  tf.logging.info("** kl_div **")
+  tf.logging.info(kl_div)
+
+  return kl_per_example_div, kl_div
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,
@@ -312,6 +339,294 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
   return model_fn
 
+def model_fn_rdrop_builder(bert_config, init_checkpoint, learning_rate,
+                     num_train_steps, num_warmup_steps, use_tpu,
+                     use_one_hot_embeddings, 
+                     input_embeddings,
+                     input_reprs, 
+                     update_embeddings,
+                     untied_embeddings,
+                     scope):
+  """Returns `model_fn` closure for TPUEstimator."""
+
+  def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
+    """The `model_fn` for TPUEstimator."""
+
+    tf.logging.info("*** Features ***")
+    for name in sorted(features.keys()):
+      tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+
+    segment_ids = features["segment_ids"]
+    input_ids = features['masked_input']
+    input_mask = tf.cast(features['pad_mask'], dtype=tf.int32)
+
+    masked_lm_positions = features["masked_lm_positions"]
+    masked_lm_ids = features["masked_lm_ids"]
+    masked_lm_weights = features["masked_lm_weights"]
+      
+    is_training = (mode == tf.estimator.ModeKeys.TRAIN)
+
+    model = modeling_convbert.BertModel(
+        bert_config=bert_config,
+        is_training=is_training,
+        input_ids=input_ids,
+        input_mask=input_mask,
+        token_type_ids=segment_ids,
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        input_embeddings=input_embeddings,
+        input_reprs=input_reprs,
+        update_embeddings=update_embeddings,
+        untied_embeddings=untied_embeddings,
+        scope=scope)
+
+    (masked_lm_loss,
+    masked_lm_example_loss, 
+    masked_lm_log_probs) = get_masked_lm_output(
+         bert_config, model.get_sequence_output(), 
+         model.get_embedding_table(),
+         masked_lm_positions, 
+         masked_lm_ids, 
+         masked_lm_weights)
+
+    rdrop_model = modeling_convbert.BertModel(
+        bert_config=bert_config,
+        is_training=is_training,
+        input_ids=input_ids,
+        input_mask=input_mask,
+        token_type_ids=segment_ids,
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        input_embeddings=input_embeddings,
+        input_reprs=input_reprs,
+        update_embeddings=update_embeddings,
+        untied_embeddings=untied_embeddings,
+        scope=scope)
+
+    (rdrop_masked_lm_loss,
+    rdrop_masked_lm_example_loss, 
+    rdrop_masked_lm_log_probs) = get_masked_lm_output(
+         bert_config, rdrop_model.get_sequence_output(), 
+         rdrop_model.get_embedding_table(),
+         masked_lm_positions, 
+         masked_lm_ids, 
+         masked_lm_weights)
+
+    if FLAGS.if_simcse:
+      """
+
+      add masked-input simcse loss
+      since ori-input simcse loss could work, this could also be work
+      """
+      tf.logging.info("** apply simcse loss **")
+      output_repres = tf.nn.l2_normalize(model.get_pooled_output(), axis=-1)
+      rdrop_output_repres = tf.nn.l2_normalize(rdrop_model.get_pooled_output(), axis=-1)
+
+      sim_matrix = tf.matmul(output_repres, 
+                                rdrop_output_repres, 
+                                transpose_b=True)
+
+      sim_matrix_shape = modeling_convbert.get_shape_list(sim_matrix, expected_rank=[2,3])
+      pos_true_mask = tf.eye(sim_matrix_shape[0])
+      pos_true_mask = tf.cast(pos_true_mask, dtype=tf.float32)
+      neg_true_mask = tf.ones_like(pos_true_mask) - pos_true_mask
+
+      sim_per_example_loss = circle_loss_utils.circle_loss(
+                              sim_matrix, 
+                              pos_true_mask, 
+                              neg_true_mask,
+                              margin=0.25,
+                              gamma=32)
+      tf.logging.info("** sim_per_example_loss **")
+      tf.logging.info(sim_per_example_loss)
+
+      sim_loss = tf.reduce_mean(sim_per_example_loss)
+
+    masked_lm_preds = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
+    rdropout_masked_lm_preds = tf.argmax(rdropout_masked_lm_log_probs, axis=-1, output_type=tf.int32)
+
+    (kl_inclusive_per_example_loss,
+    kl_inclusive_loss) = kld(rdrop_masked_lm_log_probs,
+                      masked_lm_log_probs, 
+                      masked_lm_weights)
+
+    (kl_exclusive_per_example_loss,
+    kl_exclusive_loss) = kld(masked_lm_log_probs,
+                      rdrop_masked_lm_log_probs,
+                      masked_lm_weights)
+
+    tf.logging.info("** kl ratio **")
+    tf.logging.info(FLAGS.kld_ratio)
+    kl_loss = (kl_inclusive_loss+kl_exclusive_loss) * FLAGS.kld_ratio * 0.5
+
+    total_loss = (masked_lm_loss + rdropout_masked_lm_loss)*0.5 + kl_loss
+    if FLAGS.if_simcse:
+      tf.logging.info("** apply simcse loss **")
+      tf.logging.info("** simcse ratio **")
+      tf.logging.info(FLAGS.simcse_ratio)
+      total_loss += FLAGS.simcse_ratio * sim_loss
+    monitor_dict = {}
+
+    tvars = tf.trainable_variables()
+    for tvar in tvars:
+      print(tvar, "=====tvar=====")
+
+    eval_fn_inputs = {
+        "masked_lm_preds": masked_lm_preds,
+        "masked_lm_loss": masked_lm_example_loss,
+        "masked_lm_weights": masked_lm_weights,
+        "masked_lm_ids": masked_lm_ids,
+        "rdropout_masked_lm_loss": rdropout_masked_lm_example_loss,
+        "kl_inclusive_loss": kl_inclusive_per_example_loss,
+        "kl_exclusive_loss": kl_exclusive_per_example_loss
+    }
+    if FLAGS.if_simcse:
+      tf.logging.info("** add simcse_loss for monitoring **")
+      eval_fn_inputs['simcse_loss'] = sim_per_example_loss
+
+    eval_fn_keys = eval_fn_inputs.keys()
+    eval_fn_values = [eval_fn_inputs[k] for k in eval_fn_keys]
+
+    def monitor_fn(eval_fn_inputs, keys):
+      # d = {k: arg for k, arg in zip(eval_fn_keys, args)}
+      d = {}
+      for key in eval_fn_inputs:
+        if key in keys:
+          d[key] = eval_fn_inputs[key]
+      monitor_dict = dict()
+      masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
+      masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
+      print(masked_lm_preds, "===masked_lm_preds===")
+      print(masked_lm_ids, "===masked_lm_ids===")
+      print(masked_lm_weights, "===masked_lm_weights===")
+      #  masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
+      #                             output_type=tf.int32)
+      masked_lm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
+      masked_lm_acc = tf.reduce_sum(masked_lm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
+      masked_lm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      masked_lm_loss = tf.reshape(d["masked_lm_loss"], [-1])
+      masked_lm_loss = tf.reduce_sum(masked_lm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      masked_lm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      kl_inclusive_loss = tf.reshape(d["kl_inclusive_loss"], [-1])
+      kl_inclusive_loss = tf.reduce_sum(kl_inclusive_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      kl_inclusive_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      kl_exclusive_loss = tf.reshape(d["kl_exclusive_loss"], [-1])
+      kl_exclusive_loss = tf.reduce_sum(kl_exclusive_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      kl_exclusive_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      rdropout_masked_lm_loss = tf.reshape(d["rdropout_masked_lm_loss"], [-1])
+      rdropout_masked_lm_loss = tf.reduce_sum(rdropout_masked_lm_loss*tf.cast(masked_lm_weights, dtype=tf.float32))
+      rdropout_masked_lm_loss /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
+
+      monitor_dict['masked_lm_loss'] = masked_lm_loss
+      monitor_dict['masked_lm_acc'] = masked_lm_acc
+      monitor_dict['rdropout_masked_lm_loss'] = rdropout_masked_lm_loss
+      monitor_dict['kl_inclusive_loss'] = kl_inclusive_loss
+      monitor_dict['kl_exclusive_loss'] = kl_exclusive_loss
+      if FLAGS.if_simcse:
+        tf.logging.info("** monitoring simcse loss")
+        monitor_dict['simcse_loss'] = tf.reduce_mean(d['simcse_loss'])
+
+      return monitor_dict
+
+    monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
+
+    initialized_variable_names = {}
+    scaffold_fn = None
+    if init_checkpoint:
+      (assignment_map, initialized_variable_names
+      ) = modeling_convbert.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      if use_tpu:
+
+        def tpu_scaffold():
+          tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+          return tf.train.Scaffold()
+
+        scaffold_fn = tpu_scaffold
+      else:
+        tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+
+    tf.logging.info("**** Trainable Variables ****")
+    for var in tvars:
+      init_string = ""
+      if var.name in initialized_variable_names:
+        init_string = ", *INIT_FROM_CKPT*"
+      tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+                      init_string)
+
+    output_spec = None
+    if mode == tf.estimator.ModeKeys.TRAIN:
+
+      train_op, output_learning_rate = optimization.create_optimizer(
+          total_loss, learning_rate, num_train_steps, 
+          weight_decay_rate=FLAGS.weight_decay_rate,
+          use_tpu=use_tpu,
+          warmup_steps=num_warmup_steps,
+          lr_decay_power=FLAGS.lr_decay_power)
+
+      monitor_dict['learning_rate'] = output_learning_rate
+      if FLAGS.monitoring and monitor_dict:
+        host_call = log_utils.construct_scalar_host_call_v1(
+                                    monitor_dict=monitor_dict,
+                                    model_dir=FLAGS.output_dir,
+                                    prefix="train/")
+      else:
+        host_call = None
+
+      print(host_call, "====host_call====")
+
+      output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+          mode=mode,
+          loss=total_loss,
+          train_op=train_op,
+          scaffold_fn=scaffold_fn,
+          host_call=host_call)
+    elif mode == tf.estimator.ModeKeys.EVAL:
+
+      def metric_fn(masked_lm_example_loss, 
+                    masked_lm_log_probs, 
+                    masked_lm_ids,
+                    masked_lm_weights):
+        """Computes the loss and accuracy of the model."""
+        masked_lm_log_probs = tf.reshape(masked_lm_log_probs,
+                                         [-1, masked_lm_log_probs.shape[-1]])
+        masked_lm_predictions = tf.argmax(
+            masked_lm_log_probs, axis=-1, output_type=tf.int32)
+        masked_lm_example_loss = tf.reshape(masked_lm_example_loss, [-1])
+        masked_lm_ids = tf.reshape(masked_lm_ids, [-1])
+        masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
+        masked_lm_accuracy = tf.metrics.accuracy(
+            labels=masked_lm_ids,
+            predictions=masked_lm_predictions,
+            weights=masked_lm_weights)
+        masked_lm_mean_loss = tf.metrics.mean(
+            values=masked_lm_example_loss, weights=masked_lm_weights)
+
+        return {
+            "masked_lm_accuracy": masked_lm_accuracy,
+            "masked_lm_loss": masked_lm_mean_loss
+          }
+
+      eval_metrics = (metric_fn, [
+          masked_lm_example_loss, 
+          masked_lm_log_probs, 
+          masked_lm_ids,
+          masked_lm_weights
+      ])
+      output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+          mode=mode,
+          loss=total_loss,
+          eval_metrics=eval_metrics,
+          scaffold_fn=scaffold_fn)
+    else:
+      raise ValueError("Only TRAIN and EVAL modes are supported: %s" % (mode))
+
+    return output_spec
+
+  return model_fn
+
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
   input_shape = modeling_convbert.get_shape_list(input_tensor, expected_rank=3)
@@ -377,7 +692,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
   """Get loss and log probs for the masked LM."""
   input_tensor = gather_indexes(input_tensor, positions)
 
-  with tf.variable_scope("cls/predictions"):
+  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
     with tf.variable_scope("transform"):
@@ -591,20 +906,35 @@ def main(_):
   else:
     init_checkpoint = FLAGS.init_checkpoint
 
-  model_fn = model_fn_builder(
-      bert_config=bert_config,
-      init_checkpoint=init_checkpoint,
-      learning_rate=FLAGS.learning_rate,
-      num_train_steps=FLAGS.num_train_steps,
-      num_warmup_steps=FLAGS.num_warmup_steps,
-      use_tpu=FLAGS.use_tpu,
-      use_one_hot_embeddings=FLAGS.use_tpu,
-      input_embeddings=None,
-      input_reprs=None, 
-      update_embeddings=True,
-      untied_embeddings=True,
-      scope='bert')
-
+  if FLAGS.model_fn_type == 'normal':
+    model_fn = model_fn_builder(
+        bert_config=bert_config,
+        init_checkpoint=init_checkpoint,
+        learning_rate=FLAGS.learning_rate,
+        num_train_steps=FLAGS.num_train_steps,
+        num_warmup_steps=FLAGS.num_warmup_steps,
+        use_tpu=FLAGS.use_tpu,
+        use_one_hot_embeddings=FLAGS.use_tpu,
+        input_embeddings=None,
+        input_reprs=None, 
+        update_embeddings=True,
+        untied_embeddings=True,
+        scope='bert')
+    tf.logging.info("** normal model fn **")
+  elif FLAGS.model_fn_type == 'rdropout':
+    model_fn = model_fn_rdrop_builder(
+        bert_config=bert_config,
+        init_checkpoint=init_checkpoint,
+        learning_rate=FLAGS.learning_rate,
+        num_train_steps=FLAGS.num_train_steps,
+        num_warmup_steps=FLAGS.num_warmup_steps,
+        use_tpu=FLAGS.use_tpu,
+        use_one_hot_embeddings=FLAGS.use_tpu,
+        input_embeddings=None,
+        input_reprs=None, 
+        update_embeddings=True,
+        untied_embeddings=True,
+        scope='bert')
   # If TPU is not available, this will fall back to normal Estimator on CPU
   # or GPU.
   estimator = tf.contrib.tpu.TPUEstimator(

@@ -4,8 +4,9 @@ nohup python3 run_pretraining_convbert.py \
 	--output_dir gs://yyht_source/pretrain/models/datagrand_21_convbert_base \
 	--input_data_dir gs://yyht_source/pretrain \
 	--max_seq_length 512 \
+	--init_checkpoint models/datagrand_21_convbert_base/model.ckpt-300000 \
 	--do_train True \
-	--train_batch_size 256 \
+	--train_batch_size 128 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
@@ -19,4 +20,8 @@ nohup python3 run_pretraining_convbert.py \
 	--monitoring True \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \
-	--mask_strategy "span_mask"
+	--mask_strategy "span_mask" \
+	--if_simcse True \
+	--model_fn_type 'rdropout' \
+	--kld_ratio 1.0 \
+	--simcse_ratio 1.0

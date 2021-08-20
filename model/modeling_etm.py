@@ -1,6 +1,17 @@
 
 import tensorflow as tf
-tf.disable_v2_behavior()
+# tf.disable_v2_behavior()
+
+# def check_tf_version():
+#   version = tf.__version__
+#   print("==tf version==", version)
+#   if int(version.split(".")[0]) >= 2 or int(version.split(".")[1]) >= 15:
+#     return True
+#   else:
+#     return False
+# if check_tf_version():
+#   import tensorflow.compat.v1 as tf
+#   tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -9,9 +20,8 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 # from model.vqvae_utils import tfidf_utils
 import collections
@@ -92,33 +102,23 @@ class ETM(object):
     if not is_training:
       etm_config.hidden_dropout_prob = 0.0
 
-    with tf.variable_scope("etm", scope):
-      with tf.variable_scope("bow_embeddings"):
-       self.term_count = input_term_count
-       self.term_binary = input_term_binary
-       self.term_freq = input_term_freq
-
-       tf.logging.info(self.term_count)
-       tf.logging.info(self.term_binary)
-       tf.logging.info(self.term_freq)
-
     if input_type == 'term_count':
-      tf.logging.info("*** term_count ***")
-      self.model_input = tf.identity(self.term_count)
+      tf.logging.info("*** model_input term_count ***")
+      model_input = tf.identity(input_term_count)
     elif input_type == 'term_binary':
-      tf.logging.info("*** term_binary ***")
-      self.model_input = tf.identity(self.term_binary)
+      tf.logging.info("*** model_input term_binary ***")
+      model_input = tf.identity(input_term_binary)
     elif input_type == 'term_freq':
-      tf.logging.info("*** term_freq ***")
-      self.model_input = tf.identity(self.term_freq)
+      tf.logging.info("*** model_input term_freq ***")
+      model_input = tf.identity(input_term_freq)
     else:
-      tf.logging.info("*** term_freq ***")
-      self.model_input = tf.identity(self.term_freq)
+      tf.logging.info("*** model_input term_freq ***")
+      model_input = tf.identity(input_term_freq)
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("encoder"):
         # [batch_size, hidden_size]
-        self.q_theta = mlp(input_tensor=self.model_input, 
+        self.q_theta = mlp(input_tensor=model_input, 
                           num_hidden_layers=etm_config.num_hidden_layers, 
                           hidden_size=etm_config.hidden_size,
                           is_training=is_training,
@@ -148,6 +148,7 @@ class ETM(object):
                               intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
                               scope="mu_theta_mlp",
+                              matrix_start_zero=False,
                               use_bias=True if not etm_config.apply_bn_vae_mean else False
                               )
         tf.logging.info("*** mu_q_theta ***")
@@ -169,6 +170,7 @@ class ETM(object):
             tf.logging.info("*** after bn mu_q_theta ***")
             tf.logging.info(self.mu_q_theta)
 
+        # zero logsigma and simga is set 1
         self.sigma_std_q_theta = mlp(
                               input_tensor=self.q_theta, 
                               num_hidden_layers=1,
@@ -178,6 +180,7 @@ class ETM(object):
                               intermediate_act_fn=None,
                               initializer_range=etm_config.initializer_range,
                               scope="sigma_std_mlp",
+                              matrix_start_zero=False,
                               use_bias=True if not etm_config.apply_bn_vae_var else False
                               )
 
@@ -202,51 +205,68 @@ class ETM(object):
 
     with tf.variable_scope("etm", scope):
       with tf.variable_scope("reparameterize"):
-        self.z = reparameterize(self.mu_q_theta, 
-                        self.sigma_std_q_theta, is_training)
+        self.z = reparameterize(
+                        mu_q_theta=self.mu_q_theta, 
+                        sigma_std_q_theta=self.sigma_std_q_theta, 
+                        is_training=is_training)
 
         tf.logging.info("*** reparameterize z ***")
         tf.logging.info(self.z)
 
+      with tf.variable_scope("gsm"):
+        # [batch_size, hidden_size]
+        self.z_gsm = mlp(input_tensor=self.z, 
+                          num_hidden_layers=etm_config.num_hidden_layers, 
+                          hidden_size=etm_config.topic_size,
+                          is_training=is_training,
+                          dropout_prob=etm_config.hidden_dropout_prob,
+                          intermediate_act_fn=None,
+                          initializer_range=etm_config.initializer_range,
+                          scope="decoder")
+
+        tf.logging.info("*** z_gsm ***")
+        tf.logging.info(self.z_gsm)
+
         # [batch_size, topic_size]
-        self.theta = tf.nn.softmax(self.z, dim=-1)
+        self.theta = tf.nn.softmax(self.z_gsm, dim=-1)
 
         tf.logging.info("*** theta ***")
         tf.logging.info(self.theta)
 
-        with tf.variable_scope("embeddings"):
-          if embedding_matrix is None:
-            self.embedding_table = tf.get_variable(
-                  name="vocab_word_embeddings",
-                  shape=[etm_config.vocab_size, etm_config.embedding_size],
-                  initializer=create_initializer(initializer_range))
-          else:
-            self.embedding_table = tf.get_variable(
-                  name="vocab_word_embeddings",
-                  shape=[etm_config.vocab_size, etm_config.embedding_size],
-                  initializer=tf.constant_initializer(embedding_matrix, dtype=tf.float32),
-                  trainable=False)
+      with tf.variable_scope("embeddings"):
+        if embedding_matrix is None:
+          self.embedding_table = tf.get_variable(
+                name="vocab_word_embeddings",
+                shape=[etm_config.vocab_size, etm_config.embedding_size],
+                initializer=create_initializer(etm_config.initializer_range))
+        else:
+          self.embedding_table = tf.get_variable(
+                name="vocab_word_embeddings",
+                shape=[etm_config.vocab_size, etm_config.embedding_size],
+                initializer=tf.constant_initializer(embedding_matrix, dtype=tf.float32),
+                trainable=False)
 
-          tf.logging.info("*** vocab_word_embeddings ***")
-          tf.logging.info(self.embedding_table)
+        tf.logging.info("*** vocab_word_embeddings ***")
+        tf.logging.info(self.embedding_table)
 
-        with tf.variable_scope("embeddings"):
-          self.topic_embedding_table = tf.get_variable(
-                  name="topic_word_embeddings",
-                  shape=[etm_config.topic_size, etm_config.embedding_size],
-                  initializer=create_initializer(etm_config.initializer_range))
+      with tf.variable_scope("embeddings"):
+        self.topic_embedding_table = tf.get_variable(
+                name="topic_word_embeddings",
+                shape=[etm_config.topic_size, etm_config.embedding_size],
+                initializer=create_initializer(etm_config.initializer_range))
 
-          tf.logging.info("*** topic_word_embeddings ***")
-          tf.logging.info(self.topic_embedding_table)
+        tf.logging.info("*** topic_word_embeddings ***")
+        tf.logging.info(self.topic_embedding_table)
 
-        # topic_embedding_table: [topic_size, embedding_size]
-        # embedding_table: [vocan_size, embedding_size]
+      # topic_embedding_table: [topic_size, embedding_size]
+      # embedding_table: [vocab_size, embedding_size]
+      with tf.variable_scope("decoder"):
         self.topic_word_align = tf.matmul(self.topic_embedding_table,
                                         self.embedding_table,
                                         transpose_b=True)
 
-        self.topic_word_align = tf.multiply(self.topic_word_align,
-                                 1.0 / math.sqrt(float(etm_config.embedding_size)))
+        # self.topic_word_align = tf.multiply(self.topic_word_align,
+        #                          1.0 / math.sqrt(float(etm_config.embedding_size)))
 
         tf.logging.info("*** topic_word_align ***")
         tf.logging.info(self.topic_word_align)
@@ -264,6 +284,14 @@ class ETM(object):
 
         tf.logging.info("*** preds ***")
         tf.logging.info(self.preds)
+
+      self.per_example_recon_loss = -tf.reduce_sum(self.preds * tf.stop_gradient(model_input), axis=-1)
+      self.recon_loss = tf.reduce_mean(self.per_example_recon_loss)
+    
+      self.sigma_q_theta = tf.pow(self.sigma_std_q_theta, 2.0)
+      self.logsigma_q_theta = tf.log(self.sigma_q_theta+1e-10)
+      self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_q_theta - tf.pow(self.mu_q_theta, 2) - self.sigma_q_theta, axis=-1)
+      self.kl_theta_loss = tf.reduce_mean(self.per_example_kl_theta_loss)
         
   def get_hidden_vector(self):
     return self.z
@@ -275,15 +303,9 @@ class ETM(object):
     return self.topic_embedding_table
 
   def get_recon_loss(self):
-    self.per_example_recon_loss = -tf.reduce_sum(self.preds * tf.stop_gradient(self.model_input), axis=-1)
-    self.recon_loss = tf.reduce_mean(self.per_example_recon_loss)
     return self.recon_loss
 
   def get_kl_loss(self):
-    self.sigma_q_theta = tf.pow(self.sigma_std_q_theta, 2.0)
-    self.logsigma_theta = tf.log(self.sigma_q_theta+1e-10)
-    self.per_example_kl_theta_loss = -0.5 * tf.reduce_sum(1 + self.logsigma_theta - tf.pow(self.mu_q_theta, 2) - tf.exp(self.logsigma_theta), axis=-1)
-    self.kl_theta_loss = tf.reduce_mean(self.per_example_kl_theta_loss)
     return self.kl_theta_loss
 
 
@@ -318,6 +340,9 @@ def gelu(input_tensor):
 def create_initializer(initializer_range=0.02):
   """Creates a `truncated_normal_initializer` with the given range."""
   return tf.truncated_normal_initializer(stddev=initializer_range)
+
+def create_zero_initializer(initializer_range=0.02):
+  return tf.zeros_initializer()
 
 def get_activation(activation_string):
   """Maps a string to a Python function, e.g., "relu" => `tf.nn.relu`.
@@ -371,8 +396,16 @@ def mlp(input_tensor,
         initializer_range,
         scope=None,
         use_bias=True,
+        matrix_start_zero=False
         ):
   prev_output = input_tensor
+  if matrix_start_zero:
+    kernel_initializer = create_zero_initializer(initializer_range)
+    tf.logging.info("** apply zero initializer **")
+  else:
+    kernel_initializer = create_initializer(initializer_range)
+    tf.logging.info("** apply truncated normal initializer **")
+ 
   with tf.variable_scope(scope, default_name="mlp"):
     for layer_idx in range(num_hidden_layers):
       with tf.variable_scope("layer_%d" % layer_idx):
@@ -380,7 +413,8 @@ def mlp(input_tensor,
         layer_output = tf.layers.dense(
                 layer_input,
                 hidden_size,
-                kernel_initializer=create_initializer(initializer_range),
+                kernel_initializer=kernel_initializer,
+                bias_initializer=tf.zeros_initializer(),
                 activation=intermediate_act_fn,
                 use_bias=use_bias)
         prev_output = layer_output
@@ -497,3 +531,32 @@ def assert_rank(tensor, expected_rank, name=None):
         "For the tensor `%s` in scope `%s`, the actual rank "
         "`%d` (shape = %s) is not equal to the expected rank `%s`" %
         (name, scope_name, actual_rank, str(tensor.shape), str(expected_rank)))
+
+
+def get_assigment_map_from_checkpoint(tvars, init_checkpoint):
+  """Compute the union of the current variables and checkpoint variables."""
+  assignment_map = {}
+  initialized_variable_names = {}
+
+  name_to_variable = collections.OrderedDict()
+  for var in tvars:
+    name = var.name
+    m = re.match("^(.*):\\d+$", name)
+    if m is not None:
+      name = m.group(1)
+    name_to_variable[name] = var
+
+  init_vars = tf.train.list_variables(init_checkpoint)
+
+  assignment_map = collections.OrderedDict()
+  for x in init_vars:
+    (name, var) = (x[0], x[1])
+    if name not in name_to_variable:
+      continue
+    if var != name_to_variable[name].shape.as_list():
+      continue
+    assignment_map[name] = name
+    initialized_variable_names[name] = 1
+    initialized_variable_names[name + ":0"] = 1
+
+  return (assignment_map, initialized_variable_names)

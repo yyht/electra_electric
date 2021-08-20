@@ -552,15 +552,8 @@ class PretrainingModel(object):
       # being negative-token logits
 
       # [batch_size, seq_len]
-      negative_prob = tf.nn.softmax(logits, axis=-1)[:, :, -1]
+      logits = tf.nn.log_softmax(logits, axis=-1)[:, :, -1]
       # [batch_size, seq_len, 1]
-      negative_prob = tf.expand_dims(negative_prob, axis=-1)
-      # [batch_size, seq_len, 1]
-      positive_prob = 1 - negative_prob
-
-      # [batch_size, seq_len, 1]
-      probs = tf.concat([positive_prob, negative_prob], axis=-1)
-      logits = tf.log(probs)
 
       tf.logging.info("** discriminator logits **")
       tf.logging.info(logits)
@@ -577,13 +570,15 @@ class PretrainingModel(object):
 
       weights = tf.cast(inputs.input_mask, tf.float32)
       labelsf = tf.cast(labels, tf.float32)
-      losses = tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=logits, labels=labelsf) * weights
+      # losses = tf.nn.sigmoid_cross_entropy_with_logits(
+      #     logits=logits, labels=labelsf) * weights
+
+      losses = (logits * labelsf + (1-tf.exp(logits)) * labelsf) * weights
       per_example_loss = (tf.reduce_sum(losses, axis=-1) /
                           (1e-6 + tf.reduce_sum(weights, axis=-1)))
       loss = tf.reduce_sum(losses) / (1e-6 + tf.reduce_sum(weights))
-      probs = tf.nn.sigmoid(logits)
-      preds = tf.cast(tf.round((tf.sign(logits) + 1) / 2), tf.int32)
+      probs = tf.exp(logits)
+      preds = tf.cast(tf.round(probs), tf.int32)
       DiscOutput = collections.namedtuple(
           "DiscOutput", ["loss", "per_example_loss", "probs", "preds",
                          "labels"])

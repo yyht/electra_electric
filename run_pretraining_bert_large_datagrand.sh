@@ -21,7 +21,7 @@ nohup python3 run_pretraining_bert.py \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \
 	--mask_strategy "span_mask" \
-	--model_fn_type "normal" \
+	--model_fn_type "rdropout" \
 	--kld_ratio 1.0 \
 	--if_simcse True \
 	--simcse_ratio 1.0

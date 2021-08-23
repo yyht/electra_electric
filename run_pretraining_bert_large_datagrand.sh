@@ -1,9 +1,9 @@
 nohup python3 run_pretraining_bert.py \
 	--bert_config_file ./config/bert_config_datagrand_large.json \
 	--input_file datagrand21/datagrand_21_file_list.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_large_datagrand \
+	--output_dir gs://yyht_source/pretrain/models/bert_large_datagrand_rdrop \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint models/chinese_L-24_H-1024_A-16-mayi_v1/bert_model.ckpt \
+	--init_checkpoint bert_large_datagrand/model.ckpt-200000 \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 64 \

@@ -228,12 +228,11 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
       add masked-input simcse loss
       since ori-input simcse loss could work, this could also be work
       """
-
       model_sent = modeling_bert.BertModel(
         config=bert_config,
         is_training=is_training,
         input_ids=features['origin_input'],
-        input_mask=features['input_mask'],
+        input_mask=features['pad_mask'],
         token_type_ids=features['segment_ids'],
         use_one_hot_embeddings=use_one_hot_embeddings,
         if_reuse_dropout=False,
@@ -243,7 +242,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
         config=bert_config,
         is_training=is_training,
         input_ids=features['origin_input'],
-        input_mask=features['input_mask'],
+        input_mask=features['pad_mask'],
         token_type_ids=features['segment_ids'],
         use_one_hot_embeddings=use_one_hot_embeddings,
         if_reuse_dropout=False,

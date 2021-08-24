@@ -1,7 +1,7 @@
 nohup python3 run_pretraining_bert.py \
 	--bert_config_file ./config/bert_config_datagrand.json \
 	--input_file datagrand21/datagrand_21_file_list.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_base_rdropout_datagrand \
+	--output_dir gs://yyht_source/pretrain/models/bert_base_rdropout_datagrand_nosimcse \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/bert_base_rdropout/model.ckpt-1000000 \
 	--max_seq_length 512 \
@@ -10,7 +10,7 @@ nohup python3 run_pretraining_bert.py \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
-	--save_checkpoints_steps 100000 \
+	--save_checkpoints_steps 50000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
 	--tpu_name albert2 \
@@ -23,5 +23,5 @@ nohup python3 run_pretraining_bert.py \
 	--mask_strategy "span_mask" \
 	--model_fn_type "rdropout" \
 	--kld_ratio 1.0 \
-	--if_simcse True \
+	--if_simcse False \
 	--simcse_ratio 1.0

@@ -413,13 +413,39 @@ def model_fn_rdrop_builder(bert_config, init_checkpoint, learning_rate,
 
     if FLAGS.if_simcse:
       """
-
       add masked-input simcse loss
       since ori-input simcse loss could work, this could also be work
       """
+
+      model_sent = modeling_convbert.BertModel(
+        bert_config=bert_config,
+        is_training=is_training,
+        input_ids=features['origin_input'],
+        input_mask=input_mask,
+        token_type_ids=segment_ids,
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        input_embeddings=input_embeddings,
+        input_reprs=input_reprs,
+        update_embeddings=update_embeddings,
+        untied_embeddings=untied_embeddings,
+        scope=scope)
+
+      r_model_sent = modeling_convbert.BertModel(
+        bert_config=bert_config,
+        is_training=is_training,
+        input_ids=features['origin_input'],
+        input_mask=input_mask,
+        token_type_ids=segment_ids,
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        input_embeddings=input_embeddings,
+        input_reprs=input_reprs,
+        update_embeddings=update_embeddings,
+        untied_embeddings=untied_embeddings,
+        scope=scope)
+
       tf.logging.info("** apply simcse loss **")
-      output_repres = tf.nn.l2_normalize(model.get_pooled_output(), axis=-1)
-      rdrop_output_repres = tf.nn.l2_normalize(rdrop_model.get_pooled_output(), axis=-1)
+      output_repres = tf.nn.l2_normalize(model_sent.get_pooled_output(), axis=-1)
+      rdrop_output_repres = tf.nn.l2_normalize(r_model_sent.get_pooled_output(), axis=-1)
 
       sim_matrix = tf.matmul(output_repres, 
                                 rdrop_output_repres, 

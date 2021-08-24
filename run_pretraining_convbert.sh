@@ -1,10 +1,10 @@
 nohup python3 run_pretraining_convbert.py \
 	--bert_config_file ./config/bert_config_base_official_conv_datagrand.json \
 	--input_file datagrand21/datagrand_21_file_list.txt \
-	--output_dir gs://yyht_source/pretrain/models/datagrand_21_convbert_base_simcse \
+	--output_dir gs://yyht_source/pretrain/models/datagrand_21_convbert_base_rdrop_nosimcse \
 	--input_data_dir gs://yyht_source/pretrain \
 	--max_seq_length 512 \
-	--init_checkpoint models/datagrand_21_convbert_base/model.ckpt-300000 \
+	--init_checkpoint models/datagrand_21_convbert_base/model.ckpt-710000 \
 	--do_train True \
 	--train_batch_size 128 \
 	--learning_rate 1e-4 \
@@ -21,7 +21,6 @@ nohup python3 run_pretraining_convbert.py \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \
 	--mask_strategy "span_mask" \
-	--if_simcse True \
 	--model_fn_type 'rdropout' \
 	--kld_ratio 1.0 \
 	--simcse_ratio 1.0

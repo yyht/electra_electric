@@ -3,7 +3,7 @@ nohup python3 run_pretraining_bert.py \
 	--input_file datagrand21/datagrand_21_file_list.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_base_rdropout_datagrand_nosimcse \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint models/bert_base_rdropout/model.ckpt-1000000 \
+	--init_checkpoint models/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 128 \

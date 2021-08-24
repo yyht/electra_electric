@@ -225,13 +225,33 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     if FLAGS.if_simcse:
       """
-
       add masked-input simcse loss
       since ori-input simcse loss could work, this could also be work
       """
+
+      model_sent = modeling_bert.BertModel(
+        config=bert_config,
+        is_training=is_training,
+        input_ids=features['origin_input'],
+        input_mask=features['input_mask'],
+        token_type_ids=features['segment_ids'],
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        if_reuse_dropout=False,
+        scope='bert')
+
+      r_model_sent = modeling_bert.BertModel(
+        config=bert_config,
+        is_training=is_training,
+        input_ids=features['origin_input'],
+        input_mask=features['input_mask'],
+        token_type_ids=features['segment_ids'],
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        if_reuse_dropout=False,
+        scope='bert')
+
       tf.logging.info("** apply simcse loss **")
-      output_repres = tf.nn.l2_normalize(model.get_pooled_output(), axis=-1)
-      rdropout_output_repres = tf.nn.l2_normalize(rdropout_model.get_pooled_output(), axis=-1)
+      output_repres = tf.nn.l2_normalize(model_sent.get_pooled_output(), axis=-1)
+      rdropout_output_repres = tf.nn.l2_normalize(r_model_sent.get_pooled_output(), axis=-1)
 
       sim_matrix = tf.matmul(output_repres, 
                                 rdropout_output_repres, 

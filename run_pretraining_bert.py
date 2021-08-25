@@ -897,6 +897,9 @@ def main(_):
   # for input_pattern in FLAGS.input_file.split(","):
   #   input_files.extend(tf.gfile.Glob(input_pattern))
 
+  import random
+  random.shuffle(input_files)
+
   tf.logging.info("*** Input Files ***")
   for input_file in input_files:
     tf.logging.info("  %s" % input_file)

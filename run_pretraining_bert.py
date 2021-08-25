@@ -768,7 +768,7 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 1
+data_config.min_tok = 2
 data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0

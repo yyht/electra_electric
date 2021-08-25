@@ -768,8 +768,8 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 3
-data_config.max_tok = 7
+data_config.min_tok = 1
+data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0
 data_config.cls_id = 101
@@ -780,6 +780,7 @@ data_config.mask_prob = 0.15
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
 data_config.stride = 1
+data_config.p = 0.1
 data_config.use_bfloat16 = False
 data_config.max_predictions_per_seq = int(data_config.mask_prob*FLAGS.max_seq_length)
 data_config.max_seq_length = FLAGS.max_seq_length

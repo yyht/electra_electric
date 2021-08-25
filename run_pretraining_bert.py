@@ -180,7 +180,7 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
     masked_lm_positions = features["masked_lm_positions"]
     masked_lm_ids = features["masked_lm_ids"]
     masked_lm_weights = features["masked_lm_weights"]
-      
+    
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
     model = modeling_bert.BertModel(

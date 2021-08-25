@@ -164,7 +164,7 @@ class PretrainingConfig(object):
     self.results_pkl = os.path.join(results_dir, "unsup_results.pkl")
 
     # span-mask-config
-    self.min_tok = 3
+    self.min_tok = 2
     self.max_tok = 10
     self.sep_id = 102
     self.pad_id = 0
@@ -178,6 +178,7 @@ class PretrainingConfig(object):
     self.truncate_seq = False
     self.stride = 1
     self.use_bfloat16 = False
+    self.p = 0.1
 
 
     # update defaults with passed-in hyperparameters

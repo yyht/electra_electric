@@ -276,12 +276,12 @@ def rdropout_model_fn_builder(bert_config, init_checkpoint, learning_rate,
     rdropout_masked_lm_preds = tf.argmax(rdropout_masked_lm_log_probs, axis=-1, output_type=tf.int32)
 
     (kl_inclusive_per_example_loss,
-    kl_inclusive_loss) = kld(rdropout_masked_lm_log_probs,
+    kl_inclusive_loss) = kld(tf.stop_gradient(rdropout_masked_lm_log_probs),
                       masked_lm_log_probs, 
                       masked_lm_weights)
 
     (kl_exclusive_per_example_loss,
-    kl_exclusive_loss) = kld(masked_lm_log_probs,
+    kl_exclusive_loss) = kld(tf.stop_gradient(masked_lm_log_probs),
                       rdropout_masked_lm_log_probs,
                       masked_lm_weights)
 

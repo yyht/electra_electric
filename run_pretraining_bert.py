@@ -140,7 +140,7 @@ flags.DEFINE_string("model_fn_type", 'normal', "[Optional] TensorFlow master URL
 flags.DEFINE_bool("if_simcse", False, "[Optional] TensorFlow master URL.")
 
 def kld(x_logprobs, y_logprobs, mask_weights=None):
-  x_prob = tf.nn.softmax(x_logprobs, axis=-1)
+  x_prob = tf.exp(x_logprobs)
   tf.logging.info("** x_prob **")
   tf.logging.info(x_prob)
   tf.logging.info("** y_prob **")

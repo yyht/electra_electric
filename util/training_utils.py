@@ -147,6 +147,8 @@ def get_bert_generator_config(config):
     args = {"hidden_size": 768, "num_hidden_layers": 12}
   elif config.model_size_generator == "small":
     args = {"hidden_size": 256, "num_hidden_layers": 12}
+  elif config.model_size_generator == "medium":
+    args = {"hidden_size": 256, "num_hidden_layers": 24}
   elif config.model_size_generator == "tiny":
     args = {"hidden_size": 312, "num_hidden_layers": 4, 
           'num_attention_heads':12,

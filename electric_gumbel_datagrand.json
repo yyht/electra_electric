@@ -21,7 +21,7 @@
     "model_size_generator": "small",
     "model_scope":"electra",
     "disallow_correct":false,
-    "tpu_name":"albert0",
+    "tpu_name":"albert1",
     "contras": true,
     "simcse_ratio": 1.0,
     "untied_generator_embeddings": false,

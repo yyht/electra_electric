@@ -9,7 +9,7 @@ nohup python3 run_pretraining_bert.py \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
-	--save_checkpoints_steps 1000 \
+	--save_checkpoints_steps 10000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
 	--tpu_name albert4 \

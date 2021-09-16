@@ -234,6 +234,7 @@ class BertModel(object):
         attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
         if config.if_pretraining:
+          tf.logging.info("==remove self-attention mask==")
           print("==remove self-attention mask==")
           attention_mask = attention_mask - tf.linalg.band_part(attention_mask, 0, 0) ## for self-blind
         

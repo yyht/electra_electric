@@ -8,12 +8,12 @@ nohup python3 run_pretraining_bert.py \
 	--do_train True \
 	--train_batch_size 128 \
 	--learning_rate 1e-4 \
-	--num_train_steps 1000000 \
+	--num_train_steps 2000000 \
 	--num_warmup_steps 10000 \
 	--save_checkpoints_steps 10000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
-	--tpu_name albert0 \
+	--tpu_name albert3 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 78 \

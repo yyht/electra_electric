@@ -28,7 +28,7 @@ from model import modeling_electra
 from model import optimization
 from pretrain import pretrain_data
 from pretrain import pretrain_helpers
-from util import training_utils
+from util import training_utils_electra as training_utils
 from util import utils, log_utils
 
 

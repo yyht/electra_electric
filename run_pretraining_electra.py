@@ -402,7 +402,7 @@ def model_fn_builder(config):
           host_call = None
         print("==host_call==", host_call)
 
-      train_op = optimization.create_optimizer(
+      train_op, _ = optimization.create_optimizer(
           model.total_loss, config.learning_rate, config.num_train_steps,
           weight_decay_rate=config.weight_decay_rate,
           use_tpu=config.use_tpu,

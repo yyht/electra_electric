@@ -76,6 +76,8 @@ class PretrainingConfig(object):
     self.max_seq_length = 512
     self.train_batch_size = 256
     self.eval_batch_size = 256
+    self.initial_ratio = 0.15
+    self.final_ratio = 0.15
 
     # TPU settings
     self.use_tpu = False

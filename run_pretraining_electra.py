@@ -22,7 +22,7 @@ def check_tf_version():
 if check_tf_version():
   tf.disable_v2_behavior()
 import numpy as np
-import configure_pretraining
+import configure_pretraining_electra as configure_pretraining
 from model import modeling_electra
 from model import modeling_electra
 from model import optimization

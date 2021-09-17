@@ -131,11 +131,11 @@ def get_bert_config(config):
     args["num_attention_heads"] = max(1, args["hidden_size"] // 64)
   args["intermediate_size"] = 4 * args["hidden_size"]
   args.update(**config.model_hparam_overrides)
-  if config.generator_transformer_type == 'bert':
+  if config.discriminator_transformer_type == 'bert':
     return modeling.BertConfig.from_dict(args)
-  elif config.generator_transformer_type == 'tta':
+  elif config.discriminator_transformer_type == 'tta':
     return modeling_tta_electra.BertConfig.from_dict(args)
-  elif config.generator_transformer_type == 'conv_bert':
+  elif config.discriminator_transformer_type == 'conv_bert':
     return modeling_convbert.BertConfig.from_dict(args)
 
 

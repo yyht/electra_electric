@@ -130,9 +130,12 @@ class PretrainingModel(object):
       masked_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
       masked_lm_preds = tf.reshape(d["masked_lm_preds"], [-1])
       masked_lm_weights = tf.reshape(d["masked_lm_weights"], [-1])
-      masked_lm_pred_ids = tf.argmax(masked_lm_preds, axis=-1, 
-                                  output_type=tf.int32)
-      mlm_acc = tf.cast(tf.equal(masked_lm_pred_ids, masked_lm_ids), dtype=tf.float32)
+
+      sampled_masked_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
+      sampled_masked_lm_preds = tf.reshape(d["sampled_masked_lm_preds"], [-1])
+      sampled_masked_lm_weights = tf.reshape(d["sampled_masked_lm_weights"], [-1])
+
+      mlm_acc = tf.cast(tf.equal(masked_lm_preds, masked_lm_ids), dtype=tf.float32)
       mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
       mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
 
@@ -143,13 +146,12 @@ class PretrainingModel(object):
       monitor_dict['mlm_loss'] = mlm_loss
       monitor_dict['mlm_acc'] = mlm_acc
 
-      sampled_lm_ids = tf.reshape(d["masked_lm_ids"], [-1])
+      sampled_lm_ids = tf.reshape(d["sampled_masked_lm_ids"], [-1])
       sampled_lm_pred_ids = tf.reshape(d["sampled_tokids"], [-1])
       sampeld_mlm_acc = tf.cast(tf.equal(sampled_lm_pred_ids, sampled_lm_ids), dtype=tf.float32)
-      sampeld_mlm_acc = tf.reduce_sum(mlm_acc*tf.cast(masked_lm_weights, dtype=tf.float32))
-      sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(masked_lm_weights, dtype=tf.float32)))
-
-      monitor_dict['sampeld_mlm_acc'] = sampeld_mlm_acc
+      sampeld_mlm_acc = tf.reduce_sum(sampeld_mlm_acc*tf.cast(sampled_masked_lm_weights, dtype=tf.float32))
+      sampeld_mlm_acc /= (1e-10+tf.reduce_sum(tf.cast(sampled_masked_lm_weights, dtype=tf.float32)))
+      monitor_dict['sampled_mlm_acc'] = sampeld_mlm_acc
 
       token_pred_acc = tf.cast(tf.equal(d["disc_preds"], d['disc_labels']),
                                 dtype=tf.float32)

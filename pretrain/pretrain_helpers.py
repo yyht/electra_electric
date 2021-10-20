@@ -190,18 +190,9 @@ def mask(config,
 
   # Set the number of tokens to mask out per example
   num_tokens = tf.cast(tf.reduce_sum(inputs.input_mask, -1), tf.float32)
-  
-  global_step = tf.train.get_or_create_global_step()
-  mask_ratio = tf.train.polynomial_decay(
-                          config.initial_ratio,
-                          global_step,
-                          int(config.num_train_steps*0.1),
-                          end_learning_rate=config.final_ratio,
-                          power=1.0,
-                          cycle=True)
 
   num_to_predict = tf.maximum(1, tf.minimum(
-      N, tf.cast(tf.round(num_tokens * mask_ratio), tf.int32)))
+      N, tf.cast(tf.round(num_tokens * initial_ratio), tf.int32)))
   masked_lm_weights = tf.cast(tf.sequence_mask(num_to_predict, N), tf.float32)
   if already_masked is not None:
     masked_lm_weights *= (1 - already_masked)

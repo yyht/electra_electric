@@ -6,7 +6,7 @@ nohup python3 run_pretraining_mlm_mix_unilm.py \
 	--init_checkpoint models/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt \
 	--max_seq_length 512 \
 	--do_train True \
-	--train_batch_size 256 \
+	--train_batch_size 128 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \

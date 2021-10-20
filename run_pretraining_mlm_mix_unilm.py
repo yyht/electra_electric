@@ -570,7 +570,7 @@ def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   if not FLAGS.do_train and not FLAGS.do_eval:
-    raise ValueError("At least one of `do_train` or `do_eval` must be True.")
+    raise ValueError(" At least one of `do_train` or `do_eval` must be True.")
 
   bert_config = modeling_bert_unilm.BertConfig.from_json_file(FLAGS.bert_config_file)
 

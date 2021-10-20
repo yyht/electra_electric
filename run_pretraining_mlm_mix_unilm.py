@@ -222,12 +222,12 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     (ilm_loss, 
     ilm_per_example_loss, 
     ilm_log_probs) = get_lm_output(bert_config, 
-                  unilm_model.get_sequence_output()[:, :-1], 
-                  unilm_model.get_embedding_table(), 
+                  ilm_model.get_sequence_output()[:, :-1], 
+                  ilm_model.get_embedding_table(), 
                   label_ids=ilm_input_ids[:, 1:], 
                   label_mask=ilm_segment_ids[:, 1:])
 
-    ilm_preds = tf.argmax(unilm_model.get_sequence_output(), axis=-1, output_type=tf.int32)
+    ilm_preds = tf.argmax(ilm_model.get_sequence_output(), axis=-1, output_type=tf.int32)
 
     total_loss = masked_lm_loss + ilm_loss
     monitor_dict = {}

@@ -294,7 +294,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling_bert.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling_bert_unilm.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -347,7 +347,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  input_shape = modeling_bert.get_shape_list(input_tensor, expected_rank=3)
+  input_shape = modeling_bert_unilm.get_shape_list(input_tensor, expected_rank=3)
   input_tensor = tf.reshape(input_tensor, [input_shape[0]*input_shape[1], input_shape[2]])
   
   with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
@@ -357,9 +357,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_bert.get_activation(config.hidden_act),
-          kernel_initializer=modeling_bert.create_initializer(config.initializer_range))
-      input_tensor = modeling_bert.layer_norm(input_tensor)
+          activation=modeling_bert_unilm.get_activation(config.hidden_act),
+          kernel_initializer=modeling_bert_unilm.create_initializer(config.initializer_range))
+      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -414,10 +414,10 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
       input_tensor = tf.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
-          activation=modeling_bert.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_bert.create_initializer(
+          activation=modeling_bert_unilm.get_activation(bert_config.hidden_act),
+          kernel_initializer=modeling_bert_unilm.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling_bert.layer_norm(input_tensor)
+      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -454,7 +454,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""
-  sequence_shape = modeling_bert.get_shape_list(sequence_tensor, expected_rank=3)
+  sequence_shape = modeling_bert_unilm.get_shape_list(sequence_tensor, expected_rank=3)
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
   width = sequence_shape[2]
@@ -570,9 +570,9 @@ def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   if not FLAGS.do_train and not FLAGS.do_eval:
-    raise ValueError("At least one of `do_train` or `do_eval` must be True.")
+    raise ValueError(" At least one of  `do_train` or `do_eval` must be True.")
 
-  bert_config = modeling_bert.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling_bert_unilm.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
 

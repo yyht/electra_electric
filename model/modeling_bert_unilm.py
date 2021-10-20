@@ -579,12 +579,12 @@ def embedding_postprocessor(input_tensor,
   output = layer_norm_and_dropout(output, dropout_prob, dropout_name=dropout_name)
   return output
 
-def create_attention_mask_from_input_segment_id(from_tensor, segment_id):
+def create_attention_mask_from_input_segment_id(from_tensor, to_mask):
   from_shape = get_shape_list(from_tensor, expected_rank=[2, 3])
   batch_size = from_shape[0]
   from_seq_length = from_shape[1]
 
-  idxs = tf.cumsum(segment_ids, axis=1)
+  idxs = tf.cumsum(to_mask, axis=1)
   mask = idxs[:, None, :] <= idxs[:, :, None]
   mask = tf.cast(mask, dtype=tf.float32)
   return mask

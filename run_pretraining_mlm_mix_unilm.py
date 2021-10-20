@@ -393,14 +393,11 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     denominator = tf.reduce_sum(loss_mask) + 1e-5
     loss = numerator / (denominator)
 
-    print(log_probs, '==log_probs==')
-    print(label_ids, '==label_ids==')
-    print(loss_mask, '==loss_mask==')
-    print(per_example_loss, '==per_example_loss==')
-    print(loss, '==loss==')
-
-    # per_example_loss = tf.math.multiply(per_example_loss, loss_mask)
-    # loss = tf.reduce_mean(per_example_loss)
+    print(log_probs, '==ilm log_probs==')
+    print(label_ids, '==ilm label_ids==')
+    print(loss_mask, '==ilm loss_mask==')
+    print(per_example_loss, '==ilm per_example_loss==')
+    print(loss, '==ilm loss==')
 
   return (loss, per_example_loss, log_probs)
 
@@ -447,11 +444,11 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     denominator = tf.reduce_sum(label_weights) + 1e-5
     loss = numerator / denominator
 
-    print(log_probs, '==log_probs==')
-    print(label_ids, '==label_ids==')
-    print(label_weights, '==label_weights==')
-    print(per_example_loss, '==per_example_loss==')
-    print(loss, '==loss==')
+    print(log_probs, '==mlm log_probs==')
+    print(label_ids, '==mlm label_ids==')
+    print(label_weights, '==mlm label_weights==')
+    print(per_example_loss, '==mlm per_example_loss==')
+    print(loss, '==mlm loss==')
 
   return (loss, per_example_loss, log_probs)
 

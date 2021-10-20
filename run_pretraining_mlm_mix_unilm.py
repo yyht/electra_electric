@@ -587,7 +587,7 @@ def main(_):
             train_file_path = os.path.join(FLAGS.input_data_dir, content)
             # print(train_file_path, "====train_file_path====")
             input_files.append(train_file_path)
-  print("==total input files==", len(input_files))
+  print("===total input files==", len(input_files))
   # for input_pattern in FLAGS.input_file.split(","):
   #   input_files.extend(tf.gfile.Glob(input_pattern))
 

@@ -392,7 +392,7 @@ def discrepancy_correction(FLAGS, inputs, is_target, tgt_len):
     masked_ids_random_with_leak = tf.where(change_to_rand, rand_ids, masked_ids_with_leak)
   else:
     masked_ids_random_with_leak = tf.identity(masked_ids_with_leak)
-  
+
   return masked_ids, masked_ids_random_with_leak
 
 
@@ -510,10 +510,10 @@ def _decode_record(FLAGS, record, num_predict,
 
     ilm_input = tf.concat([ilm_prefix, 
                           ilm_suffix[1:-1], 
-                          tf.constant([FLAGS.sep_id])], axis=0)
+                          tf.constant([FLAGS.sep_id], dtype=tf.int64)], axis=0)
     ilm_segment_ids = tf.concat([ilm_prefix_segment_ids, 
                           ilm_suffix_segment_ids[1:-1], 
-                          tf.constant([1])], axis=0)
+                          tf.constant([1], dtype=tf.int64)], axis=0)
     
     ilm_len = tf.reduce_sum(tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32))
     ilm_pad = tf.zeros((max_seq_length+num_predict-ilm_len), dtype=ilm_input.dtype)

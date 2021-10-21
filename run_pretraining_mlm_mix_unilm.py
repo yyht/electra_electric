@@ -222,12 +222,24 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     (ilm_loss, 
     ilm_per_example_loss, 
     ilm_log_probs) = get_lm_output(bert_config, 
-                  ilm_model.get_sequence_output()[:, :-1], 
+                  ilm_model.get_sequence_output()[:, :-1, :], 
                   ilm_model.get_embedding_table(), 
                   label_ids=ilm_input_ids[:, 1:], 
                   label_mask=ilm_segment_ids[:, 1:])
 
+    tf.logging.info("** ilm_model sequence_output **")
+    tf.logging.info(ilm_model.get_sequence_output()[:, :-1, :])
+
+    tf.logging.info("** ilm_model ilm_input_ids **")
+    tf.logging.info(ilm_input_ids[:, 1:])
+
+    tf.logging.info("** ilm_model ilm_segment_ids **")
+    tf.logging.info(ilm_segment_ids[:, 1:])
+
     ilm_preds = tf.argmax(ilm_model.get_sequence_output(), axis=-1, output_type=tf.int32)
+
+    tf.logging.info("** ilm_model ilm_preds **")
+    tf.logging.info(ilm_preds)
 
     total_loss = masked_lm_loss + ilm_loss
     monitor_dict = {}
@@ -285,6 +297,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
       monitor_dict['ilm_loss'] = ilm_loss
       monitor_dict['ilm_acc'] = ilm_acc
+      monitor_dict['ilm_weights'] = tf.reduce_mean(tf.reduce_sum(d["ilm_weights"], axis=-1))
 
       return monitor_dict
 
@@ -482,7 +495,7 @@ data_config.truncate_seq = False
 data_config.stride = 1
 data_config.p = 0.1
 data_config.use_bfloat16 = False
-data_config.max_predictions_per_seq = int(data_config.mask_prob*(FLAGS.max_seq_length-2))
+data_config.max_predictions_per_seq = int(data_config.mask_prob*(FLAGS.max_seq_length))
 data_config.max_seq_length = FLAGS.max_seq_length
 data_config.initial_ratio = 0.15
 data_config.final_ratio = 0.15
@@ -587,7 +600,7 @@ def main(_):
             train_file_path = os.path.join(FLAGS.input_data_dir, content)
             # print(train_file_path, "====train_file_path====")
             input_files.append(train_file_path)
-  print("==total input files==", len(input_files))
+  print("===total input files===", len(input_files))
   # for input_pattern in FLAGS.input_file.split(","):
   #   input_files.extend(tf.gfile.Glob(input_pattern))
 

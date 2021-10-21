@@ -256,7 +256,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "masked_lm_loss": masked_lm_example_loss,
         "masked_lm_weights": masked_lm_weights,
         "masked_lm_ids": masked_lm_ids,
-        "ilm_preds": ilm_preds[:, :-1],
+        "ilm_preds": ilm_preds,
         "ilm_ids": ilm_input_ids[:, 1:],
         "ilm_weights": ilm_segment_ids[:, 1:],
         "ilm_loss": ilm_per_example_loss

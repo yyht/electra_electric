@@ -236,7 +236,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     tf.logging.info("** ilm_model ilm_segment_ids **")
     tf.logging.info(ilm_segment_ids[:, 1:])
 
-    ilm_preds = tf.argmax(ilm_model.get_sequence_output(), axis=-1, output_type=tf.int32)
+    tf.logging.info("** ilm_model ilm_log_probs **")
+    tf.logging.info(ilm_log_probs)
+
+    ilm_preds = tf.argmax(ilm_log_probs, axis=-1, output_type=tf.int32)
 
     tf.logging.info("** ilm_model ilm_preds **")
     tf.logging.info(ilm_preds)

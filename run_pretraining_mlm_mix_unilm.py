@@ -222,12 +222,24 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     (ilm_loss, 
     ilm_per_example_loss, 
     ilm_log_probs) = get_lm_output(bert_config, 
-                  ilm_model.get_sequence_output()[:, :-1], 
+                  ilm_model.get_sequence_output()[:, :-1, :], 
                   ilm_model.get_embedding_table(), 
                   label_ids=ilm_input_ids[:, 1:], 
                   label_mask=ilm_segment_ids[:, 1:])
 
+    tf.logging.info("** ilm_model sequence_output **")
+    tf.logging.info(ilm_model.get_sequence_output()[:, :-1, :])
+
+    tf.logging.info("** ilm_model ilm_input_ids **")
+    tf.logging.info(ilm_input_ids[:, 1:])
+
+    tf.logging.info("** ilm_model ilm_segment_ids **")
+    tf.logging.info(ilm_segment_ids[:, 1:])
+
     ilm_preds = tf.argmax(ilm_model.get_sequence_output(), axis=-1, output_type=tf.int32)
+
+    tf.logging.info("** ilm_model ilm_preds **")
+    tf.logging.info(ilm_preds)
 
     total_loss = masked_lm_loss + ilm_loss
     monitor_dict = {}
@@ -285,6 +297,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
       monitor_dict['ilm_loss'] = ilm_loss
       monitor_dict['ilm_acc'] = ilm_acc
+      monitor_dict['ilm_weights'] = tf.reduce_mean(tf.reduce_sum(d["ilm_weights"], axis=-1))
 
       return monitor_dict
 

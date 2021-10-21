@@ -363,9 +363,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  input_shape = modeling_bert_unilm.get_shape_list(input_tensor, expected_rank=3)
-  input_tensor = tf.reshape(input_tensor, [input_shape[0]*input_shape[1], input_shape[2]])
-  
   with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
@@ -387,6 +384,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     logits = tf.nn.bias_add(logits, output_bias)
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
+    logits_shape = modeling_bert_unilm.get_shape_list(logits, expected_rank=3)
+    logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
+  
     label_ids = tf.reshape(label_ids, [-1])
 
     # The `positions` tensor might be zero-padded (if the sequence is too

@@ -509,10 +509,10 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_suffix_segment_ids = tf.ones_like(ilm_suffix)
 
     ilm_input = tf.concat([ilm_prefix, 
-                          ilm_suffix[1:-1], 
+                          ilm_suffix[1:], 
                           tf.constant([FLAGS.sep_id], dtype=tf.int64)], axis=0)
     ilm_segment_ids = tf.concat([ilm_prefix_segment_ids, 
-                          ilm_suffix_segment_ids[1:-1], 
+                          ilm_suffix_segment_ids[1:], 
                           tf.constant([1], dtype=tf.int64)], axis=0)
     
     ilm_len = tf.reduce_sum(tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32))

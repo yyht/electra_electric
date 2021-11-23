@@ -504,7 +504,8 @@ data_config.initial_ratio = 0.15
 data_config.final_ratio = 0.15
 data_config.num_train_steps = FLAGS.num_train_steps
 data_config.seg_id = 105 # <S>
-data_config.ilm = True
+data_config.ilm_v1 = False
+data_config.ilm_v2 = True
 
 def input_fn_builder(input_files,
                      max_seq_length,

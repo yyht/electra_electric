@@ -499,7 +499,7 @@ def _decode_record(FLAGS, record, num_predict,
   example["masked_lm_weights"] = example['target_mask']
   example["masked_lm_ids"] = example['target']
 
-  if FLAGS.ilm:
+  if FLAGS.ilm_v1:
     # ['[CLS]', [mask], 'a', 'b', '[SEP]']
     ilm_prefix = prepare_ilm(ilm_masked_input, FLAGS.mask_id, example["pad_mask"])
     suffix_ids = tf.cast((1.0 - target_mask) * FLAGS.seg_id, dtype=inputs.dtype) + inputs * tf.cast(target_mask, dtype=inputs.dtype)
@@ -521,12 +521,44 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_segment_ids = tf.concat([ilm_segment_ids, ilm_pad], axis=0)
     ilm_input_mask = tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32)
 
+  elif FLAGS.ilm_v2:
+    ilm_prefix = prepare_ilm(ilm_masked_input, FLAGS.mask_id, example["pad_mask"])
+    ilm_prefix_mask = tf.cast(tf.equal(ilm_prefix, FLAGS.mask_id), dtype=tf.int64)
+    ilm_seg_prefix = tf.cast(tf.cumsum(ilm_prefix_mask), dtype=tf.int64) * ilm_prefix_mask
+    
+    ilm_prefix = (1-ilm_prefix_mask) * ilm_prefix + ilm_seg_prefix
+    
+    suffix_ids = tf.cast((1.0 - target_mask) * FLAGS.seg_id, dtype=inputs.dtype) + inputs * tf.cast(target_mask, dtype=inputs.dtype)
+    ilm_suffix = prepare_ilm(suffix_ids, FLAGS.seg_id, example["pad_mask"])[1:]
+    
+    ilm_suffix_mask = tf.cast(tf.equal(ilm_suffix, FLAGS.seg_id), dtype=tf.int64)
+    ilm_seg_suffix = tf.cast(tf.cumsum(ilm_suffix_mask), dtype=tf.int64) * ilm_suffix_mask
+    
+    ilm_suffix = (1-ilm_suffix_mask) * ilm_suffix + ilm_seg_suffix
+    
+    ilm_prefix_segment_ids = tf.zeros_like(ilm_prefix)
+    ilm_suffix_segment_ids = tf.ones_like(ilm_suffix)
+
+    ilm_input = tf.concat([ilm_prefix, 
+                          ilm_suffix, 
+                          tf.constant([FLAGS.sep_id], dtype=tf.int64)], axis=0)
+    ilm_segment_ids = tf.concat([ilm_prefix_segment_ids, 
+                          ilm_suffix_segment_ids, 
+                          tf.constant([1], dtype=tf.int64)], axis=0)
+    
+    ilm_len = tf.reduce_sum(tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32))
+    ilm_pad = tf.zeros((max_seq_length+num_predict-ilm_len), dtype=ilm_input.dtype)
+    ilm_input = tf.concat([ilm_input, ilm_pad], axis=0)
+    ilm_segment_ids = tf.concat([ilm_segment_ids, ilm_pad], axis=0)
+    ilm_input_mask = tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32)
+
+  if FLAGS.ilm_v2 or FLAGS.ilm_v1:
     tgt_shape = inputs.shape.as_list()
     tgt_shape[0] = max_seq_length+num_predict
     ilm_input.set_shape(tgt_shape)
     ilm_segment_ids.set_shape(tgt_shape)
     ilm_input_mask.set_shape(tgt_shape)
-
+    
     example['ilm_input'] = ilm_input
     example['ilm_segment_ids'] = ilm_segment_ids
     example['ilm_input_mask'] = ilm_input_mask

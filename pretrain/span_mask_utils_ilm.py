@@ -500,6 +500,9 @@ def _decode_record(FLAGS, record, num_predict,
   example["masked_lm_ids"] = example['target']
 
   if FLAGS.ilm_v1:
+
+    tf.logging.info("** apply same placeholder [MASK] **")
+
     # ['[CLS]', [mask], 'a', 'b', '[SEP]']
     ilm_prefix = prepare_ilm(ilm_masked_input, FLAGS.mask_id, example["pad_mask"])
     suffix_ids = tf.cast((1.0 - target_mask) * FLAGS.seg_id, dtype=inputs.dtype) + inputs * tf.cast(target_mask, dtype=inputs.dtype)
@@ -522,6 +525,9 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_input_mask = tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32)
 
   elif FLAGS.ilm_v2:
+
+    tf.logging.info("** apply different placeholder [unused] **")
+
     ilm_prefix = prepare_ilm(ilm_masked_input, FLAGS.mask_id, example["pad_mask"])
     ilm_prefix_mask = tf.cast(tf.equal(ilm_prefix, FLAGS.mask_id), dtype=tf.int64)
     ilm_seg_prefix = tf.cast(tf.cumsum(ilm_prefix_mask), dtype=tf.int64) * ilm_prefix_mask

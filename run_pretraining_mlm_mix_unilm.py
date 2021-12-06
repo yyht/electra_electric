@@ -363,7 +363,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  with tf.variable_scope("cls/ilm_predictions", reuse=tf.AUTO_REUSE):
+  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
     with tf.variable_scope("transform"):

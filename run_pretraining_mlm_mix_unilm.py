@@ -191,10 +191,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     ilm_shape = modeling_bert_unilm.get_shape_list(ilm_input_ids)
     input_shape = modeling_bert_unilm.get_shape_list(input_ids)
     
-    input_ids = tf.concat([input_ids, tf.zeros((input_shape[0], ilm_shape[1]-FLAGS.max_seq_length), dtype=input_ids.dtype)], axis=-1)
-    segment_ids = tf.concat([segment_ids, tf.zeros((input_shape[0], ilm_shape[1]-FLAGS.max_seq_length), dtype=segment_ids.dtype)], axis=-1)
-    input_mask = tf.concat([input_mask, tf.zeros((input_shape[0], ilm_shape[1]-FLAGS.max_seq_length), dtype=input_mask.dtype)], axis=-1)
-
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
     mlm_model = modeling_bert_unilm.BertModel(
@@ -204,8 +200,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_use_unilm=False,
-        if_reuse_dropout=True)
+        if_use_unilm=False)
 
     (masked_lm_loss,
     masked_lm_example_loss, 
@@ -225,8 +220,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=ilm_input_mask,
         token_type_ids=ilm_segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_use_unilm=True,
-        if_reuse_dropout=True)
+        if_use_unilm=True)
 
     (ilm_loss, 
     ilm_per_example_loss, 

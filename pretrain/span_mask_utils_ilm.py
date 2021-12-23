@@ -574,6 +574,7 @@ def _decode_record(FLAGS, record, num_predict,
 
   for k, v in example.items():
     tf.logging.info("%s: %s", k, v)
+  
 
   return example
 

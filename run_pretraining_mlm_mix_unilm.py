@@ -188,8 +188,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     ilm_input_mask = features['ilm_input_mask']
     ilm_segment_ids = features['ilm_segment_ids']
 
-    ilm_shape = get_shape_list(ilm_input_ids)
-    input_shape = get_shape_list(input_ids)
+    ilm_shape = modeling_bert_unilm.get_shape_list(ilm_input_ids)
+    input_shape = modeling_bert_unilm.get_shape_list(input_ids)
     
     input_ids = tf.concat([input_ids, tf.zeros((input_shape[0], ilm_shape[1]-FLAGS.max_seq_length))], axis=-1)
     segment_ids = tf.concat([segment_ids, tf.zeros((input_shape[0], ilm_shape[1]-FLAGS.max_seq_length))], axis=-1)

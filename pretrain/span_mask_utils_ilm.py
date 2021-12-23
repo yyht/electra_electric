@@ -558,6 +558,7 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_segment_ids = tf.concat([ilm_segment_ids, ilm_pad], axis=0)
     ilm_input_mask = tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32)
 
+  
   if FLAGS.ilm_v2 or FLAGS.ilm_v1:
     tgt_shape = inputs.shape.as_list()
     tgt_shape[0] = max_seq_length+2*num_predict

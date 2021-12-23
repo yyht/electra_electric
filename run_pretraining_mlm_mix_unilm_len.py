@@ -370,9 +370,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_bert_unilm.get_activation(config.hidden_act),
-          kernel_initializer=modeling_bert_unilm.create_initializer(config.initializer_range))
-      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
+          activation=modeling_bert_unilm_len.get_activation(config.hidden_act),
+          kernel_initializer=modeling_bert_unilm_len.create_initializer(config.initializer_range))
+      input_tensor = modeling_bert_unilm_len.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -384,7 +384,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     logits = tf.nn.bias_add(logits, output_bias)
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
-    logits_shape = modeling_bert_unilm.get_shape_list(logits, expected_rank=3)
+    logits_shape = modeling_bert_unilm_len.get_shape_list(logits, expected_rank=3)
     logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
   
     label_ids = tf.reshape(label_ids, [-1])
@@ -430,10 +430,10 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
       input_tensor = tf.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
-          activation=modeling_bert_unilm.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_bert_unilm.create_initializer(
+          activation=modeling_bert_unilm_len.get_activation(bert_config.hidden_act),
+          kernel_initializer=modeling_bert_unilm_len.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
+      input_tensor = modeling_bert_unilm_len.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -470,7 +470,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""
-  sequence_shape = modeling_bert_unilm.get_shape_list(sequence_tensor, expected_rank=3)
+  sequence_shape = modeling_bert_unilm_len.get_shape_list(sequence_tensor, expected_rank=3)
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
   width = sequence_shape[2]
@@ -590,7 +590,7 @@ def main(_):
   if not FLAGS.do_train and not FLAGS.do_eval:
     raise ValueError(" At least one of  `do_train` or `do_eval` must be True.")
 
-  bert_config = modeling_bert_unilm.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling_bert_unilm_len.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
 

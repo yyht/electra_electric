@@ -767,7 +767,9 @@ def attention_layer(from_tensor,
   # attention scores.
   # `attention_scores` = [B, N, F, T]
   attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)
-  
+  # attention_scores = tf.multiply(attention_scores,
+  #                                1.0 / math.sqrt(float(size_per_head)))
+
   if attention_mask is not None:
     attention_scores_mask = tf.expand_dims(tf.cast(attention_mask, dtype=tf.float32), axis=[1])
     # `attention_mask` = [B, 1, F, T]
@@ -776,6 +778,7 @@ def attention_layer(from_tensor,
     attention_scale = tf.log(attention_scores_len)/tf.log(1024)
     attention_scale *= 1.0 / math.sqrt(float(size_per_head))
     attention_scores = tf.multiply(attention_scores, attention_scale)
+    tf.logging.info("** reserve entropy of attention-score **")
   else:
     attention_scores = tf.multiply(attention_scores,
                                  1.0 / math.sqrt(float(size_per_head)))

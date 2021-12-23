@@ -484,14 +484,14 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 2
+data_config.min_tok = 5
 data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0
 data_config.cls_id = 101
 data_config.mask_id = 103
 data_config.leak_ratio = 0.1
-data_config.rand_ratio = 0.8
+data_config.rand_ratio = 0.1
 data_config.mask_prob = 0.15
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False

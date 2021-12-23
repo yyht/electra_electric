@@ -569,12 +569,11 @@ def _decode_record(FLAGS, record, num_predict,
     example['ilm_segment_ids'] = ilm_segment_ids
     example['ilm_input_mask'] = ilm_input_mask
 
-  # type cast for example
+  ## type cast for example
   convert_example(example, use_bfloat16)
 
   for k, v in example.items():
     tf.logging.info("%s: %s", k, v)
-  
 
   return example
 

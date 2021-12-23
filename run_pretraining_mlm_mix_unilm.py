@@ -173,7 +173,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     tf.logging.info("**** Input Features ****")
     for name in sorted(features.keys()):
-      tf.logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+      tf.logging.info("  name = %s, with shape = %s" % (name, features[name].shape))
 
     segment_ids = features["segment_ids"]
     input_ids = features['masked_input']

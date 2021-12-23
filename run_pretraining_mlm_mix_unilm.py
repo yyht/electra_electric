@@ -197,7 +197,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_use_unilm=False)
+        if_use_unilm=False,
+        if_reuse_dropout=True)
 
     (masked_lm_loss,
     masked_lm_example_loss, 
@@ -217,7 +218,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=ilm_input_mask,
         token_type_ids=ilm_segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_use_unilm=True)
+        if_use_unilm=True,
+        if_reuse_dropout=True)
 
     (ilm_loss, 
     ilm_per_example_loss, 

@@ -244,7 +244,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     tf.logging.info("** ilm_model ilm_preds **")
     tf.logging.info(ilm_preds)
 
-    total_loss = masked_lm_loss + ilm_loss
+    total_loss = (masked_lm_loss + ilm_loss) * 0.5
     monitor_dict = {}
 
     tvars = tf.trainable_variables()

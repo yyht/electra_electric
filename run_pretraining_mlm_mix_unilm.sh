@@ -7,7 +7,7 @@ nohup python3 run_pretraining_mlm_mix_unilm.py \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 128 \
-	--learning_rate 5e-5 \
+	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
 	--save_checkpoints_steps 10000 \

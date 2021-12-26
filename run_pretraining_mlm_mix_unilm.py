@@ -171,7 +171,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
   def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
     """The `model_fn` for TPUEstimator."""
 
-    tf.logging.info("****  Input Features ****")
+    tf.logging.info("**** * Input Features *****")
     for name in sorted(features.keys()):
       tf.logging.info("  name = %s, with shape = %s" % (name, features[name].shape))
 
@@ -486,7 +486,7 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 5
+data_config.min_tok = 2
 data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0

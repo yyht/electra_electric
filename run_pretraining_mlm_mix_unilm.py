@@ -171,7 +171,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
   def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
     """The `model_fn` for TPUEstimator."""
 
-    tf.logging.info("****  Input Features ****")
+    tf.logging.info("**** * Input Features ****")
     for name in sorted(features.keys()):
       tf.logging.info("  name = %s, with shape = %s" % (name, features[name].shape))
 

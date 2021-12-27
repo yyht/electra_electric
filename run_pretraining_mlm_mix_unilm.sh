@@ -5,7 +5,6 @@ nohup python3 run_pretraining_mlm_mix_unilm.py \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/chinese_L-12_H-768_A-12_ilm_v1/bert_model.ckpt \
 	--max_seq_length 512 \
-	--init_checkpoint models/chinese_L-12_H-768_A-12_ilm/bert_model.ckpt \
 	--do_train True \
 	--train_batch_size 128 \
 	--learning_rate 1e-4 \
@@ -17,7 +16,7 @@ nohup python3 run_pretraining_mlm_mix_unilm.py \
 	--tpu_name albert0 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
-	--max_predictions_per_seq 72 \
+	--max_predictions_per_seq 78 \
 	--monitoring False \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \

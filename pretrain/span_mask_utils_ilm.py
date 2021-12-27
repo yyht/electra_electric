@@ -229,8 +229,9 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   probs = np.array([1.0 /  (i + 1) for i in span_len_seq])
 
   probs /= np.sum(probs)
+  p = probs
 
-  H_f = np.log(probs.shape[0]-0.5)  # reshape-mask-prob
+  H_f = np.log(p.shape[0]-0.5)  # reshape-mask-prob
 
   for i in range(2):
     H = -(p * np.log(p)).sum()

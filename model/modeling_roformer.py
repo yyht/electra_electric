@@ -220,7 +220,7 @@ class BertModel(object):
 
         [self.position_embeddings,
         self.position_table] = _generate_sinusodial_position_embedding(
-                        max_position_embeddings=input_shape[1],
+                        max_position_embeddings=config.max_position_embeddings,
                         depth=size_per_head,
                         name="sinusodial_position_embeddings",
                         initializer_range=0.02)

@@ -150,7 +150,8 @@ class BertModel(object):
                token_type_ids=None,
                use_one_hot_embeddings=False,
                scope=None,
-               if_reuse_dropout=False):
+               if_reuse_dropout=False,
+               if_use_unilm=False):
     """Constructor for BertModel.
     Args:
       config: `BertConfig` instance.
@@ -212,6 +213,15 @@ class BertModel(object):
         # mask of shape [batch_size, seq_length, seq_length] which is used
         # for the attention scores.
         attention_mask = create_attention_mask_from_input_mask(
+            input_ids, input_mask)
+
+        if if_use_unilm:
+          tf.logging.info("** apply unilm mask **")
+          attention_mask = create_attention_mask_from_input_segment_id(
+            input_ids, token_type_ids)
+        else:
+          tf.logging.info("** apply mlm mask **")
+          attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
 
         # [batch_size, seq_len]
@@ -422,11 +432,9 @@ def layer_norm_and_dropout(input_tensor, dropout_prob, name=None, dropout_name=N
   output_tensor = dropout(output_tensor, dropout_prob, dropout_name=dropout_name)
   return output_tensor
 
-
 def create_initializer(initializer_range=0.02):
   """Creates a `truncated_normal_initializer` with the given range."""
   return tf.truncated_normal_initializer(stddev=initializer_range)
-
 
 def embedding_lookup(input_ids,
                      vocab_size,
@@ -597,6 +605,16 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
   # Here we broadcast along two dimensions to create the mask.
   mask = broadcast_ones * to_mask
 
+  return mask
+
+def create_attention_mask_from_input_segment_id(from_tensor, to_mask):
+  from_shape = get_shape_list(from_tensor, expected_rank=[2, 3])
+  batch_size = from_shape[0]
+  from_seq_length = from_shape[1]
+
+  idxs = tf.cumsum(to_mask, axis=1)
+  mask = idxs[:, None, :] <= idxs[:, :, None]
+  mask = tf.cast(mask, dtype=tf.float32)
   return mask
 
 def _generate_sinusodial_position_embedding( 

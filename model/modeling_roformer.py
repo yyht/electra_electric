@@ -214,12 +214,13 @@ class BertModel(object):
         attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
 
+        # [batch_size, seq_len]
         input_shape = get_shape_list(input_ids)
         size_per_head = config.hidden_size // config.num_attention_heads
 
         [self.position_embeddings,
         self.position_table] = _generate_sinusodial_position_embedding(
-                        max_position_embeddings=config.max_position_embeddings,
+                        max_position_embeddings=input_shape[1],
                         depth=size_per_head,
                         name="sinusodial_position_embeddings",
                         initializer_range=0.02)
@@ -911,14 +912,16 @@ def attention_layer(from_tensor,
     tf.logging.info(query_layer[:, :, :, ::2])
 
     # [B, N, F, depth]
-    query_layer2 = tf.concat([-query_layer[:, :, :, 1::2], query_layer[:, :, :, ::2]], axis=-1)
+    query_layer2 = tf.stack([-query_layer[:, :, :, 1::2], query_layer[:, :, :, ::2]], axis=-1)
+    query_layer2 = tf.reshape(query_layer2, get_shape_list(query_layer))
     tf.logging.info(query_layer2)
     tf.logging.info("*** query_layer2 ***")
     # [B, N, F, depth] * [1, 1, F, depth]
     query_layer = query_layer * cos_pos + query_layer2 * sin_pos
 
     # [B, N, F, depth] * [1, F, 1, depth]
-    key_layer2 = tf.concat([-key_layer[:, :, :, 1::2], key_layer[:, :, :, ::2]], axis=-1)
+    key_layer2 = tf.stack([-key_layer[:, :, :, 1::2], key_layer[:, :, :, ::2]], axis=-1)
+    key_layer2 = tf.reshape(key_layer2, get_shape_list(key_layer))
     key_layer = key_layer * cos_pos + key_layer2 * sin_pos
 
   attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)

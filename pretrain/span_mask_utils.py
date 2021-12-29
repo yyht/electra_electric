@@ -216,16 +216,30 @@ def _token_span_mask(FLAGS, inputs, tgt_len, num_predict, stride=1):
   round_to_int = lambda x: tf.cast(tf.round(x), tf.int32)
 
   # Sample span lengths from a zipf distribution
-  # span_len_seq = np.arange(FLAGS.min_tok, FLAGS.max_tok + 1)
-  probs = [FLAGS.p * (1-FLAGS.p)**(i - FLAGS.min_tok) for i in range(FLAGS.min_tok, FLAGS.max_tok+1)] 
-  # probs = [x / (sum(len_distrib)) for x in len_distrib]
-  # probs = np.array([1.0 /  (i + 1) for i in span_len_seq])
+  span_len_seq = np.arange(FLAGS.min_tok, FLAGS.max_tok + 1)
+  # probs = [FLAGS.p * (1-FLAGS.p)**(i - FLAGS.min_tok) for i in range(FLAGS.min_tok, FLAGS.max_tok+1)] 
+  # # probs = [x / (sum(len_distrib)) for x in len_distrib]
+  probs = np.array([1.0 /  (i + 1) for i in span_len_seq])
 
   probs /= np.sum(probs)
+  p = probs
+
+  H_f = np.log(p.shape[0]-0.5)  # reshape-mask-prob
+
+  for i in range(2):
+    H = -(p * np.log(p)).sum()
+    gamma = 1 + (H_f - H) / (H**2 - (p * np.log(p)**2).sum())
+    p = p**gamma
+    p /= p.sum()
+
   tf.logging.info("** sampling probs **")
   tf.logging.info(probs)
 
-  logits = tf.constant(np.log(probs), dtype=tf.float32)
+  tf.logging.info("** target probs **")
+  tf.logging.info(p)
+
+  logits = tf.constant(np.log(p), dtype=tf.float32)
+
   if check_tf_version():
     span_lens = tf.random.categorical(
         logits=logits[None],

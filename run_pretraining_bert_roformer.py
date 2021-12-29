@@ -447,7 +447,7 @@ data_config.pad_id = 0
 data_config.cls_id = 101
 data_config.mask_id = 103
 data_config.leak_ratio = 0.1
-data_config.rand_ratio = 0.8
+data_config.rand_ratio = 0.1
 data_config.mask_prob = 0.15
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
@@ -455,7 +455,7 @@ data_config.stride = 1
 data_config.use_bfloat16 = False
 data_config.max_predictions_per_seq = int(data_config.mask_prob*FLAGS.max_seq_length)
 data_config.max_seq_length = FLAGS.max_seq_length
-data_config.initial_ratio = 0.1
+data_config.initial_ratio = 0.15
 data_config.final_ratio = 0.15
 data_config.num_train_steps = FLAGS.num_train_steps
 

@@ -22,7 +22,6 @@ from __future__ import print_function
 # tf.disable_v2_behavior()
 
 import tensorflow as tf
-tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -31,9 +30,8 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 import os
 from model import modeling_roformer
@@ -442,7 +440,7 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 3
+data_config.min_tok = 2
 data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0

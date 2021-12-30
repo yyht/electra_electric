@@ -232,6 +232,8 @@ class BertModel(object):
         self.position_table] = _generate_sinusodial_position_embedding(
                         max_position_embeddings=config.max_position_embeddings,
                         depth=size_per_head,
+                        seq_length=seq_length,
+                        position_offset=0,
                         name="sinusodial_position_embeddings",
                         initializer_range=0.02)
 
@@ -622,6 +624,8 @@ def create_attention_mask_from_input_segment_id(from_tensor, to_mask):
 def _generate_sinusodial_position_embedding( 
                             max_position_embeddings,
                             depth,
+                            seq_length,
+                            position_offset,
                             name,
                             initializer_range=0.02):
 
@@ -639,7 +643,7 @@ def _generate_sinusodial_position_embedding(
                     trainable=False)
 
   # [1, max_position_embeddings]
-  positions_ids = tf.range(0, max_position_embeddings, dtype=tf.int32)[None]
+  positions_ids = tf.range(0, seq_length, dtype=tf.int32)[None] + position_offset
   position_embeddings = tf.gather(position_table, positions_ids)
 
   # [1, T, depth]

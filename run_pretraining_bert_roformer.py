@@ -420,7 +420,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     print(label_ids, '==label_ids==')
     print(label_weights, '==label_weights==')
     print(per_example_loss, '==per_example_loss==')
-    print(loss, '==loss==')
+    print(loss, '===loss===')
 
   return (loss, per_example_loss, log_probs)
 

@@ -643,7 +643,7 @@ def _generate_sinusodial_position_embedding(
                     trainable=False)
 
   # [1, max_position_embeddings]
-  positions_ids = tf.range(0, seq_length, dtype=tf.int32)[None] + position_offset
+  positions_ids = tf.range(0, seq_length + position_offset, dtype=tf.int32)[None]
   position_embeddings = tf.gather(position_table, positions_ids)
 
   # [1, T, depth]

@@ -1,7 +1,7 @@
 nohup python3 run_pretraining_mlm_mix_unilm.py \
 	--bert_config_file ./config/bert_config_ilm_uncased_en.json \
 	--input_file uncased_english_whole_sentence_v3_32/uncased_english_whole_sentence_file.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_uncased_en_raw \
+	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_uncased_en_final_v1 \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/uncased_L-12_H-768_A-12_ilm_v1/bert_model.ckpt \
 	--max_seq_length 512 \

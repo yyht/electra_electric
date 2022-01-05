@@ -3,7 +3,7 @@ nohup python3 run_pretraining_mlm_mix_unilm_roformer.py \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_roformer_final \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint bert_base_roformer_50g_final/model.ckpt-1000000 \
+	--init_checkpoint bert_base_roformer_50g_final/model.ckpt-874000 \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 128 \
@@ -13,7 +13,7 @@ nohup python3 run_pretraining_mlm_mix_unilm_roformer.py \
 	--save_checkpoints_steps 10000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
-	--tpu_name albert3 \
+	--tpu_name albert0 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 76 \

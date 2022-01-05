@@ -489,7 +489,7 @@ def gather_indexes(sequence_tensor, positions):
 
 data_config = Bunch({})
 data_config.min_tok = 2
-data_config.max_tok = 5
+data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0
 data_config.cls_id = 101
@@ -567,7 +567,7 @@ def input_fn_builder(input_files,
           batch_size=batch_size,
           num_parallel_batches=num_cpu_threads,
           drop_remainder=True))
-    # d = d.apply(tf.data.experimental.ignore_errors())
+    d = d.apply(tf.data.experimental.ignore_errors())
     return d
 
   return input_fn

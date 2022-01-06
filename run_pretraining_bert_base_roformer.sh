@@ -1,8 +1,9 @@
 nohup python3 run_pretraining_bert_roformer.py \
 	--bert_config_file ./config/bert_config_base_roformer.json \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_base_roformer_50g_final \
+	--output_dir gs://yyht_source/pretrain/models/bert_base_roformer_50g_final_v1 \
 	--input_data_dir gs://yyht_source/pretrain \
+	--init_checkpoint models/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 256 \

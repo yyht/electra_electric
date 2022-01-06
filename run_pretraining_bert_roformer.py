@@ -442,7 +442,7 @@ def gather_indexes(sequence_tensor, positions):
 
 data_config = Bunch({})
 data_config.min_tok = 2
-data_config.max_tok = 5
+data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0
 data_config.cls_id = 101

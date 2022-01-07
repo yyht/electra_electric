@@ -794,9 +794,10 @@ def _generate_relative_positions_matrix(length, max_relative_position,
                                         bidirectional=True):
   """Generates matrix of relative positions between inputs."""
   if cache is None:
+    tf.logging.info("** apply incremental distance mat **")
     distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
   else:
-  
+    tf.logging.info("** apply all distance mat **")
     range_vec = tf.range(length)
 
     q_idxs = tf.expand_dims(range_vec, 1)
@@ -826,8 +827,10 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
   https://gist.github.com/huchenxucs/c65524185e8e35c4bcfae4059f896c16
   """
   if cache is None:
+    tf.logging.info("** apply incremental distance mat **")
     distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
   else:
+    tf.logging.info("** apply all distance mat **")
     range_vec = tf.range(length)
 
     q_idxs = tf.expand_dims(range_vec, 1)

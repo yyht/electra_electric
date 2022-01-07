@@ -537,6 +537,8 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_segment_ids = tf.concat([ilm_segment_ids, ilm_pad], axis=0)
     ilm_input_mask = tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32)
 
+    ilm_relative_position = tf.cast(tf.cumsum(ilm_segment_ids), dtype=tf.int32) * ilm_input_mask
+
   elif FLAGS.ilm_v2:
 
     tf.logging.info("** apply different placeholder [unused] **")
@@ -571,6 +573,7 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_segment_ids = tf.concat([ilm_segment_ids, ilm_pad], axis=0)
     ilm_input_mask = tf.cast(tf.not_equal(ilm_input, 0), dtype=tf.int32)
 
+    ilm_relative_position = tf.cast(tf.cumsum(ilm_segment_ids), dtype=tf.int32) * ilm_input_mask
   
   if FLAGS.ilm_v2 or FLAGS.ilm_v1:
     tgt_shape = inputs.shape.as_list()
@@ -578,10 +581,12 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_input.set_shape(tgt_shape)
     ilm_segment_ids.set_shape(tgt_shape)
     ilm_input_mask.set_shape(tgt_shape)
+    ilm_relative_position.set_shape(tgt_shape)
     
     example['ilm_input'] = ilm_input
     example['ilm_segment_ids'] = ilm_segment_ids
     example['ilm_input_mask'] = ilm_input_mask
+    example['ilm_relative_position'] = ilm_relative_position
 
   # type cast for example
   convert_example(example, use_bfloat16)

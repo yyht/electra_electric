@@ -157,7 +157,8 @@ class BertModel(object):
                token_type_ids=None,
                use_one_hot_embeddings=False,
                scope=None,
-               if_reuse_dropout=False):
+               if_reuse_dropout=False,
+               if_use_unilm=False):
     """Constructor for BertModel.
     Args:
       config: `BertConfig` instance.
@@ -219,6 +220,15 @@ class BertModel(object):
         # mask of shape [batch_size, seq_length, seq_length] which is used
         # for the attention scores.
         attention_mask = create_attention_mask_from_input_mask(
+            input_ids, input_mask)
+
+        if if_use_unilm:
+          tf.logging.info("** apply unilm mask **")
+          attention_mask = create_attention_mask_from_input_segment_id(
+            input_ids, token_type_ids)
+        else:
+          tf.logging.info("** apply mlm mask **")
+          attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
 
         input_shape = get_shape_list(input_ids)
@@ -746,11 +756,43 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
 
   return mask
 
+def create_attention_mask_from_input_mask(from_tensor, to_mask):
+  """Create 3D attention mask from a 2D tensor mask.
+  Args:
+    from_tensor: 2D or 3D Tensor of shape [batch_size, from_seq_length, ...].
+    to_mask: int32 Tensor of shape [batch_size, to_seq_length].
+  Returns:
+    float Tensor of shape [batch_size, from_seq_length, to_seq_length].
+  """
+  from_shape = get_shape_list(from_tensor, expected_rank=[2, 3])
+  batch_size = from_shape[0]
+  from_seq_length = from_shape[1]
+
+  to_shape = get_shape_list(to_mask, expected_rank=2)
+  to_seq_length = to_shape[1]
+
+  to_mask = tf.cast(
+      tf.reshape(to_mask, [batch_size, 1, to_seq_length]), tf.float32)
+
+  # We don't assume that `from_tensor` is a mask (although it could be). We
+  # don't actually care if we attend *from* padding tokens (only *to* padding)
+  # tokens so we create a tensor of all ones.
+  #
+  # `broadcast_ones` = [batch_size, from_seq_length, 1]
+  broadcast_ones = tf.ones(
+      shape=[batch_size, from_seq_length, 1], dtype=tf.float32)
+
+  # Here we broadcast along two dimensions to create the mask.
+  mask = broadcast_ones * to_mask
+
+  return mask
+
 
 def _generate_relative_positions_matrix(length, max_relative_position,
                                         num_buckets=32,
                                         bidirectional=True):
   """Generates matrix of relative positions between inputs."""
+  
   range_vec = tf.range(length)
 
   q_idxs = tf.expand_dims(range_vec, 1)
@@ -784,10 +826,10 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
   v_idxs = tf.expand_dims(range_vec, 0)
 
   distance_mat = v_idxs - q_idxs
-  # range_mat = tf.reshape(tf.tile(range_vec, [length]), [length, length])
-  # distance_mat = range_mat - tf.transpose(range_mat)
   # else:
   #   distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
+  # range_mat = tf.reshape(tf.tile(range_vec, [length]), [length, length])
+  # distance_mat = range_mat - tf.transpose(range_mat)
   
   num_buckets = num_buckets
   max_distance = max_relative_position

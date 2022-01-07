@@ -790,19 +790,23 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
 
 def _generate_relative_positions_matrix(length, max_relative_position,
                                         num_buckets=32,
+                                        cache=None,
                                         bidirectional=True):
   """Generates matrix of relative positions between inputs."""
+  if cache is None:
+    distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
+  else:
   
-  range_vec = tf.range(length)
+    range_vec = tf.range(length)
 
-  q_idxs = tf.expand_dims(range_vec, 1)
-  v_idxs = tf.expand_dims(range_vec, 0)
+    q_idxs = tf.expand_dims(range_vec, 1)
+    v_idxs = tf.expand_dims(range_vec, 0)
 
-  distance_mat = v_idxs - q_idxs
+    distance_mat = v_idxs - q_idxs
     # range_mat = tf.reshape(tf.tile(range_vec, [length]), [length, length])
     # distance_mat = range_mat - tf.transpose(range_mat)
   # else:
-  #   distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
+  #   
   distance_mat_clipped = tf.clip_by_value(distance_mat, -max_relative_position,
                                           max_relative_position)
   # Shift values to be >= 0. Each integer still uniquely identifies a relative
@@ -812,6 +816,7 @@ def _generate_relative_positions_matrix(length, max_relative_position,
 
 def _generate_relative_positions_matrix_t5(length, max_relative_position,
                                         num_buckets=32,
+                                        cache=None,
                                         bidirectional=True):
   
   """
@@ -820,12 +825,15 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
   # _relative_position_bucket
   https://gist.github.com/huchenxucs/c65524185e8e35c4bcfae4059f896c16
   """
-  range_vec = tf.range(length)
+  if cache is None:
+    distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
+  else:
+    range_vec = tf.range(length)
 
-  q_idxs = tf.expand_dims(range_vec, 1)
-  v_idxs = tf.expand_dims(range_vec, 0)
+    q_idxs = tf.expand_dims(range_vec, 1)
+    v_idxs = tf.expand_dims(range_vec, 0)
 
-  distance_mat = v_idxs - q_idxs
+    distance_mat = v_idxs - q_idxs
   # else:
   #   distance_mat = tf.expand_dims(tf.range(-length+1, 1, 1), 0)
   # range_mat = tf.reshape(tf.tile(range_vec, [length]), [length, length])
@@ -861,6 +869,7 @@ def _generate_relative_positions_embeddings(length, depth,
                             max_relative_position, name,
                             num_buckets=32,
                             initializer_range=0.02,
+                            cache=None,
                             bidirectional=True,
                             relative_position_type='relative_normal',
                             relative_position_embedding_type='sinusoidal'):
@@ -888,12 +897,14 @@ def _generate_relative_positions_embeddings(length, depth,
   if relative_position_type == 'relative_normal':
     relative_positions_matrix = _generate_relative_positions_matrix(
         length, max_relative_position,
+        cache=cache,
         bidirectional=bidirectional)
     vocab_size = max_relative_position * 2 + 1
   elif relative_position_type == 'relative_t5':
     relative_positions_matrix = _generate_relative_positions_matrix_t5(
         length, max_relative_position, 
         num_buckets=num_buckets,
+        cache=cache,
         bidirectional=bidirectional)
     vocab_size = num_buckets
     # Generates embedding for each relative position of dimension depth.

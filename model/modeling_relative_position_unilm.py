@@ -1086,7 +1086,7 @@ def attention_layer(from_tensor,
   # `attention_scores` = [B, N, F, T]
   attention_scores = tf.matmul(query_layer, key_layer, transpose_b=True)
   if use_relative_position:
-    assert from_seq_length == to_seq_length
+    # assert from_seq_length == to_seq_length
     # max_relative_position = 64
     # `relation_keys` = [F|T, F|T, H]
     if relative_position_type == 'relative_normal':

@@ -575,6 +575,9 @@ def main(_):
   for input_file in input_files:
     tf.logging.info("  %s" % input_file)
 
+  import random
+  random.shuffle(input_files)
+
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:
     tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(

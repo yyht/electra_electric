@@ -133,6 +133,19 @@ flags.DEFINE_integer(
     "num_tpu_cores", 8,
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
+def shape_list(x, out_type=tf.int32):
+  """Deal with dynamic shape in tensorflow cleanly."""
+  static = x.shape.as_list()
+  dynamic = tf.shape(x, out_type=out_type)
+  return [dynamic[i] if s is None else s for i, s in enumerate(static)]
+
+def smooth_labels(labels, factor=0.1):
+  # smooth the labels
+  labels *= (1 - factor)
+  label_shapes = shape_list(labels)
+  labels += (factor / label_shapes[-1])
+  # returned the smoothed labels
+  return labels
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,
@@ -410,11 +423,13 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     one_hot_labels = tf.one_hot(
         label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
 
+    one_hot_smooth_labels = smooth_labels(one_hot_labels)
+
     # The `positions` tensor might be zero-padded (if the sequence is too
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
     # padding predictions.
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_smooth_labels, axis=[-1])
     numerator = tf.reduce_sum(label_weights * per_example_loss)
     denominator = tf.reduce_sum(label_weights) + 1e-5
     loss = numerator / denominator

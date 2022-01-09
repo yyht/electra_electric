@@ -238,6 +238,7 @@ class BertModel(object):
         self.relative_position_table] = _generate_relative_positions_embeddings(
                     input_shape[1], 
                     depth=depth,
+                    segment_ids=segment_ids,
                     max_relative_position=config.max_relative_position, 
                     name="encoder_relative_positions_bias",
                     num_buckets=config.num_buckets,
@@ -639,6 +640,7 @@ def _generate_relative_positions_matrix(length, max_relative_position,
     
   distance_mat_clipped = tf.clip_by_value(distance_mat, -max_relative_position,
                                           max_relative_position)
+
   # Shift values to be >= 0. Each integer still uniquely identifies a relative
   # position difference.
   final_mat = distance_mat_clipped + max_relative_position
@@ -693,6 +695,7 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
 
 def _generate_relative_positions_embeddings(length, depth,
                             max_relative_position, name,
+                            segment_ids,
                             num_buckets=32,
                             initializer_range=0.02,
                             bidirectional=True,
@@ -720,15 +723,24 @@ def _generate_relative_positions_embeddings(length, depth,
  # '''
   #with tf.variable_scope(name):
   if relative_position_type == 'relative_normal':
-    relative_positions_matrix = _generate_relative_positions_matrix(
+    relative_positions_matrix_bi = _generate_relative_positions_matrix(
         length, max_relative_position,
-        bidirectional=bidirectional)
+        bidirectional=True)
     vocab_size = max_relative_position * 2 + 1
+    relative_positions_matrix_uni = _generate_relative_positions_matrix(
+        length, max_relative_position,
+        bidirectional=False)
+
   elif relative_position_type == 'relative_t5':
-    relative_positions_matrix = _generate_relative_positions_matrix_t5(
+    relative_positions_matrix_bi = _generate_relative_positions_matrix_t5(
         length, max_relative_position, 
         num_buckets=num_buckets,
-        bidirectional=bidirectional)
+        bidirectional=True)
+    relative_positions_matrix_uni = _generate_relative_positions_matrix_t5(
+        length, max_relative_position, 
+        num_buckets=num_buckets,
+        bidirectional=False)
+
     vocab_size = num_buckets
     # Generates embedding for each relative position of dimension depth.
   embeddings_table = np.zeros([vocab_size, depth]).astype(np.float32)
@@ -759,7 +771,13 @@ def _generate_relative_positions_embeddings(length, depth,
                       initializer=create_initializer(initializer_range),
                       trainable=True)
 
-  relative_position_embeddings = tf.gather(relative_position_table, relative_positions_matrix)
+  relative_position_embeddings_bi = tf.gather(relative_position_table, relative_positions_matrix_bi)
+  relative_position_embeddings_uni = tf.gather(relative_position_table, relative_positions_matrix_uni)
+  # [batch_size, seq_len, 1]
+  segment_mask = tf.expand_dims(segment_ids, axis=-1)
+  segment_mask = tf.cast(segment_mask, dtype=tf.float32)
+  relative_position_embeddings = (1.0-segment_mask) * relative_position_embeddings_bi
+  relative_position_embeddings += segment_mask * relative_position_embeddings_uni
   return relative_position_embeddings, relative_position_table
 
 def attention_layer(from_tensor,

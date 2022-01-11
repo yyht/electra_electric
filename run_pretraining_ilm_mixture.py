@@ -367,9 +367,20 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     # print(one_hot_labels, "==one_hot_labels==")
     # per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
     
+    label_ids = tf.reshape(label_ids, [-1])
+    logits = tf.reshape(logits, [-1])
+    label_weights = tf.reshape(label_weights, [-1])
+
+    one_hot_labels = tf.one_hot(
+        label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
+
     per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                         labels=label_ids, 
                         logits=logits)
+
+
+    
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
 
     label_mask = tf.reshape(label_mask, [-1])
     loss_mask = tf.cast(label_mask, tf.float32)
@@ -461,7 +472,7 @@ data_config.cls_id = 101
 data_config.mask_id = 103
 data_config.leak_ratio = 0.1
 data_config.rand_ratio = 0.1
-data_config.mask_prob = 0.2
+data_config.mask_prob = 0.15
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
 data_config.stride = 1

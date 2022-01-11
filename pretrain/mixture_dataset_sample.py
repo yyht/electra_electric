@@ -24,7 +24,7 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
     if t.dtype == tf.int64:
       t = tf.to_int32(t)
     example[name] = t
-    pad_tensor = tf.zeros((real_max_length-actual_len), dtype=ilm_input.dtype)
+    pad_tensor = tf.zeros((real_max_length-actual_len), dtype=example[name].dtype)
     example[name] = tf.concat([example[name], pad_tensor], axis=0)
 
   mapping = {

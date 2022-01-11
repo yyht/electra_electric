@@ -4,7 +4,7 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--finetune_input_file ilm_chinese_multitask_tfrecord/ilm_chinese_multitask.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_final_mixture \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint models/bert_base_50g_mix_ilm_final_v1/model.ckpt-1000000 \
+	--init_checkpoint models/bert_base_50g_mix_ilm_final/model.ckpt-1000000 \
 	--max_seq_length 512 \
 	--real_max_length 632 \
 	--do_train True \

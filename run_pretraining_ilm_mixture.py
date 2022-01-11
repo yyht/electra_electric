@@ -582,7 +582,7 @@ def main(_):
   finetune_input_files = []
   import os
   finetune_input_file = os.path.join(FLAGS.input_data_dir, FLAGS.finetune_input_file)
-  tf.logging.info("** finetune_input_file **")
+  tf.logging.info("*** finetune_input_file **")
   tf.logging.info(finetune_input_file)
   with tf.gfile.GFile(finetune_input_file, "r") as reader:
     for index, line in enumerate(reader):

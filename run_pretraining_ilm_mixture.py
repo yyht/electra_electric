@@ -587,6 +587,7 @@ def main(_):
   with tf.gfile.GFile(finetune_input_file, "r") as reader:
     for index, line in enumerate(reader):
       content = line.strip()
+      print(content, '======content======')
       if 'tfrecord' in content:
         train_file_path = os.path.join(FLAGS.input_data_dir, content)
         # print(train_file_path, "====train_file_path====")
@@ -633,7 +634,7 @@ def main(_):
   tf.logging.info("** data prior **")
   tf.logging.info(data_prior)
 
-  dataset = tf.contrib.data.sample_from_datasets(total_dataset, p)
+  dataset = tf.contrib.data.sample_from_datasets(total_dataset, data_prior)
   train_input_fn = lambda: dataset.batch(FLAGS.train_batch_size, 
             drop_remainder=True)
 

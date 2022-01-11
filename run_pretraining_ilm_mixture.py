@@ -513,7 +513,7 @@ def pretrain_input_fn_builder(
   d = d.map(lambda recode: mixture_dataset_sample._decode_pretrain_record(
           data_config, record, name_to_features, 
           real_max_length),
-        num_parallel_batches=num_cpu_threads)
+          num_parallel_calls=num_cpu_threads)
   # d = d.apply(tf.data.experimental.ignore_errors())
   return d
 
@@ -552,7 +552,7 @@ def finetuning_input_fn_builder(
   d = d.map(lambda recode: mixture_dataset_sample._decode_finetune_record(
           data_config, record, name_to_features, 
           real_max_length),
-        num_parallel_batches=num_cpu_threads)
+          num_parallel_calls=num_cpu_threads)
   # d = d.apply(tf.data.experimental.ignore_errors())
   return d
 

@@ -477,6 +477,7 @@ data_config.ilm_v1 = False
 data_config.ilm_v2 = True
 
 from pretrain import mixture_dataset_sample
+import numpy as np
 
 def pretrain_input_fn_builder(
                      input_files,
@@ -581,6 +582,8 @@ def main(_):
   finetune_input_files = []
   import os
   finetune_input_file = os.path.join(FLAGS.input_data_dir, FLAGS.finetune_input_file)
+  tf.logging.info("*** finetune_input_file **")
+  tf.logging.info(finetune_input_file)
   with tf.gfile.GFile(finetune_input_file, "r") as reader:
     for index, line in enumerate(reader):
       content = line.strip()

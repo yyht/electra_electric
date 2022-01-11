@@ -163,6 +163,13 @@ def kld(x_logprobs, y_logprobs, mask_weights=None):
 
   return kl_per_example_div, kl_div
   
+def smooth_labels(labels, factor=0.1):
+  # smooth the labels
+  labels *= (1 - factor)
+  label_shapes = shape_list(labels)
+  labels += (factor / label_shapes[-1])
+  # returned the smoothed labels
+  return labels
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,

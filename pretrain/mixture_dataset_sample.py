@@ -14,6 +14,10 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
   """Decodes a record to a TensorFlow example."""
   example = tf.parse_single_example(record, name_to_features)
 
+  tf.logging.info("** finetune input **")
+  for k, v in example.items():
+    tf.logging.info("%s: %s", k, v)
+
   # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
   # So cast all int64 to int32.
   

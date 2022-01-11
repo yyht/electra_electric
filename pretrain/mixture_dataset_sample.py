@@ -39,8 +39,8 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
     pad_tensor = tf.zeros((real_max_length-actual_len), dtype=example[name].dtype)
     output_example[mapping[name]] = tf.concat([output_example[mapping[name]], pad_tensor], axis=0)
 
-  output_example['fintune_loss_multipilier'] = tf.constant([1])
-  output_example['pretrain_loss_multipilier'] = tf.constant([0])
+  output_example['fintune_loss_multipilier'] = tf.constant(1)
+  output_example['pretrain_loss_multipilier'] = tf.constant(0)
   return output_example
 
 def _decode_pretrain_record(FLAGS, record, name_to_features, 
@@ -73,8 +73,8 @@ def _decode_pretrain_record(FLAGS, record, name_to_features,
     pad_tensor = tf.zeros((real_max_length-actual_len), dtype=example[name].dtype)
     output_example[mapping[name]] = tf.concat([output_example[mapping[name]], pad_tensor], axis=0)
     
-  output_example['fintune_loss_multipilier'] = tf.constant([0])
-  output_example['pretrain_loss_multipilier'] = tf.constant([1])
+  output_example['fintune_loss_multipilier'] = tf.constant(0)
+  output_example['pretrain_loss_multipilier'] = tf.constant(1)
 
   return output_example
  

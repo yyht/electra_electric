@@ -588,7 +588,7 @@ def main(_):
         train_file_path = os.path.join(FLAGS.input_data_dir, content)
         # print(train_file_path, "====train_file_path====")
         finetune_input_files.append(train_file_path)
-  print("===total fientuning_input_files files===", len(fientuning_input_files))
+  print("===total finetune_input_files files===", len(finetune_input_files))
   
   import random
   random.shuffle(finetune_input_files)

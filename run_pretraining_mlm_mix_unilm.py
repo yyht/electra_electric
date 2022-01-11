@@ -163,6 +163,13 @@ def kld(x_logprobs, y_logprobs, mask_weights=None):
 
   return kl_per_example_div, kl_div
   
+def smooth_labels(labels, factor=0.1):
+  # smooth the labels
+  labels *= (1 - factor)
+  label_shapes = shape_list(labels)
+  labels += (factor / label_shapes[-1])
+  # returned the smoothed labels
+  return labels
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,
@@ -388,24 +395,22 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
 
     logits_shape = modeling_bert_unilm.get_shape_list(logits, expected_rank=3)
     logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
-  
+    log_probs = tf.reshape(log_probs, [logits_shape[0]*logits_shape[1], logits_shape[2]])
+
     label_ids = tf.reshape(label_ids, [-1])
 
-    # The `positions` tensor might be zero-padded (if the sequence is too
-    # short to have the maximum number of predictions). The `label_weights`
-    # tensor has a value of 1.0 for every real prediction and 0.0 for the
-    # padding predictions.
-    
-    # one_hot_labels = tf.one_hot(label_ids, depth=config.vocab_size, dtype=tf.float32)
-    # print(one_hot_labels, "==one_hot_labels==")
-    # per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
-    
-    per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                        labels=label_ids, 
-                        logits=logits)
+    one_hot_labels = tf.one_hot(
+        label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
+    one_hot_labels_smooth = smooth_labels(one_hot_labels)
+
+    # per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+    #                     labels=label_ids, 
+    #                     logits=logits)
 
     label_mask = tf.reshape(label_mask, [-1])
     loss_mask = tf.cast(label_mask, tf.float32)
+
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
 
     numerator = tf.reduce_sum(loss_mask * per_example_loss)
     denominator = tf.reduce_sum(loss_mask) + 1e-5

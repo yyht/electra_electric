@@ -453,7 +453,7 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 2
+data_config.min_tok = 3
 data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0
@@ -461,7 +461,7 @@ data_config.cls_id = 101
 data_config.mask_id = 103
 data_config.leak_ratio = 0.1
 data_config.rand_ratio = 0.1
-data_config.mask_prob = 0.15
+data_config.mask_prob = 0.2
 data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
 data_config.stride = 1
@@ -510,7 +510,7 @@ def pretrain_input_fn_builder(
     d = tf.data.TFRecordDataset(input_files)
     d = d.repeat()
 
-  d = d.map(lambda recode: mixture_dataset_sample._decode_pretrain_record(
+  d = d.map(lambda record: mixture_dataset_sample._decode_pretrain_record(
           data_config, record, name_to_features, 
           real_max_length),
           num_parallel_calls=num_cpu_threads)
@@ -549,7 +549,7 @@ def finetuning_input_fn_builder(
     d = tf.data.TFRecordDataset(input_files)
     d = d.repeat()
 
-  d = d.map(lambda recode: mixture_dataset_sample._decode_finetune_record(
+  d = d.map(lambda record: mixture_dataset_sample._decode_finetune_record(
           data_config, record, name_to_features, 
           real_max_length),
           num_parallel_calls=num_cpu_threads)

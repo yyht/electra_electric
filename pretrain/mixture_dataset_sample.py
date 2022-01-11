@@ -28,7 +28,7 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
     example[name] = tf.concat([example[name], pad_tensor], axis=0)
 
   mapping = {
-  	'ipnut_ids': 'ilm_input_ids',
+  	'input_ids': 'ilm_input_ids',
   	'segment_ids': 'ilm_segment_ids',
   	'input_mask': 'ilm_input_mask'
   }

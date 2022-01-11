@@ -430,12 +430,13 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
     one_hot_labels = tf.one_hot(
         label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
+    one_hot_labels_smooth = smooth_labels(one_hot_labels)
 
     # The `positions` tensor might be zero-padded (if the sequence is too
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
     # padding predictions.
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
     numerator = tf.reduce_sum(label_weights * per_example_loss)
     denominator = tf.reduce_sum(label_weights) + 1e-5
     loss = numerator / denominator
@@ -600,7 +601,7 @@ def input_fn_builder(pretrain_input_files,
                      is_training,
                      vocab_size,
                      num_cpu_threads=4))
-      data_prior.append(0.1)
+      data_prior.append(0.2)
     data_prior = np.array(data_prior)
     data_prior /= data_prior.sum()
 

@@ -374,9 +374,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_roformer_unilm.get_activation(config.hidden_act),
-          kernel_initializer=modeling_roformer_unilm.create_initializer(config.initializer_range))
-      input_tensor = modeling_roformer_unilm.layer_norm(input_tensor)
+          activation=modeling_bert_unilm.get_activation(config.hidden_act),
+          kernel_initializer=modeling_bert_unilm.create_initializer(config.initializer_range))
+      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -388,26 +388,24 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     logits = tf.nn.bias_add(logits, output_bias)
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
-    logits_shape = modeling_roformer_unilm.get_shape_list(logits, expected_rank=3)
+    logits_shape = modeling_bert_unilm.get_shape_list(logits, expected_rank=3)
     logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
-  
+    log_probs = tf.reshape(log_probs, [logits_shape[0]*logits_shape[1], logits_shape[2]])
+
     label_ids = tf.reshape(label_ids, [-1])
 
-    # The `positions` tensor might be zero-padded (if the sequence is too
-    # short to have the maximum number of predictions). The `label_weights`
-    # tensor has a value of 1.0 for every real prediction and 0.0 for the
-    # padding predictions.
-    
-    # one_hot_labels = tf.one_hot(label_ids, depth=config.vocab_size, dtype=tf.float32)
-    # print(one_hot_labels, "==one_hot_labels==")
-    # per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
-    
-    per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                        labels=label_ids, 
-                        logits=logits)
+    one_hot_labels = tf.one_hot(
+        label_ids, depth=config.vocab_size, dtype=tf.float32)
+    one_hot_labels_smooth = smooth_labels(one_hot_labels)
+
+    # per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+    #                     labels=label_ids, 
+    #                     logits=logits)
 
     label_mask = tf.reshape(label_mask, [-1])
     loss_mask = tf.cast(label_mask, tf.float32)
+
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
 
     numerator = tf.reduce_sum(loss_mask * per_example_loss)
     denominator = tf.reduce_sum(loss_mask) + 1e-5
@@ -455,11 +453,13 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     one_hot_labels = tf.one_hot(
         label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
 
+    one_hot_labels_smooth = smooth_labels(one_hot_labels)
+
     # The `positions` tensor might be zero-padded (if the sequence is too
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
     # padding predictions.
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
     numerator = tf.reduce_sum(label_weights * per_example_loss)
     denominator = tf.reduce_sum(label_weights) + 1e-5
     loss = numerator / denominator

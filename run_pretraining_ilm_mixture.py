@@ -178,6 +178,12 @@ def kld(x_logprobs, y_logprobs, mask_weights=None):
 
   return kl_per_example_div, kl_div
 
+def shape_list(x, out_type=tf.int32):
+  """Deal with dynamic shape in tensorflow cleanly."""
+  static = x.shape.as_list()
+  dynamic = tf.shape(x, out_type=out_type)
+  return [dynamic[i] if s is None else s for i, s in enumerate(static)]
+
 def smooth_labels(labels, factor=0.1):
   # smooth the labels
   labels *= (1 - factor)

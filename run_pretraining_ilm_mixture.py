@@ -367,7 +367,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     label_ids = tf.reshape(label_ids, [-1])
 
     one_hot_labels = tf.one_hot(
-        label_ids, depth=bert_config.vocab_size, dtype=tf.float32)
+        label_ids, depth=config.vocab_size, dtype=tf.float32)
     one_hot_labels_smooth = smooth_labels(one_hot_labels)
 
     # per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(

@@ -18,7 +18,7 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--tpu_name albert4 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
-	--max_predictions_per_seq 76 \
+	--max_predictions_per_seq 96 \
 	--monitoring False \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \

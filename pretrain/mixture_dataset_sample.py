@@ -24,13 +24,11 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
     if t.dtype == tf.int64:
       t = tf.to_int32(t)
     example[name] = t
-    pad_tensor = tf.zeros((real_max_length-actual_len), dtype=example[name].dtype)
-    example[name] = tf.concat([example[name], pad_tensor], axis=0)
 
   mapping = {
-  	'input_ids': 'ilm_input_ids',
-  	'segment_ids': 'ilm_segment_ids',
-  	'input_mask': 'ilm_input_mask'
+    'input_ids': 'ilm_input_ids',
+    'segment_ids': 'ilm_segment_ids',
+    'input_mask': 'ilm_input_mask'
   }
 
   output_example = {}
@@ -41,6 +39,8 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
 
   # output_example['fintune_loss_multipilier'] = tf.constant([1], dtype=tf.int32)
   # output_example['pretrain_loss_multipilier'] = tf.constant([0], dtype=tf.int32)
+  for k, v in output_example.items():
+    tf.logging.info("%s: %s", k, v)
   return output_example
 
 def _decode_pretrain_record(FLAGS, record, name_to_features, 
@@ -63,9 +63,9 @@ def _decode_pretrain_record(FLAGS, record, name_to_features,
   actual_len = tf.reduce_sum(example['ilm_input_mask'])
   
   mapping = {
-  	'ilm_input': 'ilm_input_ids',
-  	'ilm_segment_ids': 'ilm_segment_ids',
-  	'ilm_input_mask': 'ilm_input_mask'
+    'ilm_input': 'ilm_input_ids',
+    'ilm_segment_ids': 'ilm_segment_ids',
+    'ilm_input_mask': 'ilm_input_mask'
   }
 
   for name in mapping:
@@ -76,5 +76,7 @@ def _decode_pretrain_record(FLAGS, record, name_to_features,
   # output_example['fintune_loss_multipilier'] = tf.constant((0,), dtype=tf.int32)
   # output_example['pretrain_loss_multipilier'] = tf.constant((1, ), dtype=tf.int32)
 
+  for k, v in output_example.items():
+    tf.logging.info("%s: %s", k, v)
   return output_example
  

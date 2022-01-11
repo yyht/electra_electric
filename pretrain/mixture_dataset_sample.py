@@ -20,8 +20,7 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
 
   # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
   # So cast all int64 to int32.
-  
-  actual_len = tf.reduce_sum(example['input_mask'])
+  actual_len = example['input_mask'].shape.as_list()[0]
 
   for name in list(example.keys()):
     t = example[name]
@@ -69,7 +68,7 @@ def _decode_pretrain_record(FLAGS, record, name_to_features,
     example[name] = t
 
   output_example = {}
-  actual_len = tf.reduce_sum(example['ilm_input_mask'])
+  actual_len = example['ilm_input_mask'].shape.as_list()[0]
   
   mapping = {
     'ilm_input': 'ilm_input_ids',

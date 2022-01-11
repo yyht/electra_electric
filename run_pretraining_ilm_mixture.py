@@ -591,16 +591,16 @@ def input_fn_builder(pretrain_input_files,
                      vocab_size,
                      num_cpu_threads=4))
       data_prior.append(1.0)
-    # for input_file in finetune_input_files:
-    #   total_dataset.append(finetuning_input_fn_builder(
-    #                  [input_file],
-    #                  max_seq_length,
-    #                  max_predictions_per_seq,
-    #                  real_max_length,
-    #                  is_training,
-    #                  vocab_size,
-    #                  num_cpu_threads=4))
-    #   data_prior.append(0.1)
+    for input_file in finetune_input_files:
+      total_dataset.append(finetuning_input_fn_builder(
+                     [input_file],
+                     max_seq_length,
+                     max_predictions_per_seq,
+                     real_max_length,
+                     is_training,
+                     vocab_size,
+                     num_cpu_threads=4))
+      data_prior.append(0.1)
     data_prior = np.array(data_prior)
     data_prior /= data_prior.sum()
 

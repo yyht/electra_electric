@@ -1,7 +1,7 @@
 nohup python3 run_pretraining_ilm_mixture.py \
 	--bert_config_file ./config/bert_config_ilm.json \
 	--pretrain_input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-	--finetune_input_file ilm_chinese_multitask_tfrecord/ilm_multitask.txt \
+	--finetune_input_file ilm_chinese_multitask_tfrecord/ilm_chinese_multitask.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_final_mixture \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/bert_base_50g_mix_ilm_final_v1/model.ckpt-1000000 \

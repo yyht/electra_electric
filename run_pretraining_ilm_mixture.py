@@ -557,6 +557,47 @@ def finetuning_input_fn_builder(
   # d = d.apply(tf.data.experimental.ignore_errors())
   return d
 
+def input_fn_builder(pretrain_input_files,
+                    finetune_input_files,
+                    max_seq_length,
+                    max_predictions_per_seq,
+                    real_max_length,
+                    is_training,
+                    vocab_size,
+                    num_cpu_threads=4):
+  def input_fn(params):
+    batch_size = params["batch_size"]
+
+    total_dataset = []
+    data_prior = []
+    for input_file in pretrain_input_files:
+      total_dataset.append(pretrain_input_fn_builder(
+                     [input_file],
+                     max_seq_length,
+                     max_predictions_per_seq,
+                     real_max_length,
+                     is_training,
+                     vocab_size,
+                     num_cpu_threads=4))
+      data_prior.append(1.0)
+    for input_file in finetune_input_files:
+      total_dataset.append(finetuning_input_fn_builder(
+                     [input_file],
+                     max_seq_length,
+                     max_predictions_per_seq,
+                     real_max_length,
+                     is_training,
+                     vocab_size,
+                     num_cpu_threads=4))
+      data_prior.append(0.1)
+    data_prior = np.array(data_prior)
+    data_prior /= data_prior.sum()
+
+    dataset = tf.contrib.data.sample_from_datasets(total_dataset, data_prior)
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+    return dataset
+  return input_fn
+
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -606,38 +647,6 @@ def main(_):
   for input_file in finetune_input_files:
     tf.logging.info(" Finetuning  %s" % input_file)
 
-  total_dataset = []
-  data_prior = []
-  pretrain_dataset = pretrain_input_fn_builder(
-                       pretrain_input_files,
-                       FLAGS.max_seq_length,
-                       FLAGS.max_predictions_per_seq,
-                       FLAGS.real_max_length,
-                       True,
-                       bert_config.vocab_size,
-                       num_cpu_threads=4)
-  total_dataset.append(pretrain_dataset)
-  data_prior.append(1)
-  for finetune_file in finetune_input_files:
-    total_dataset.append(finetuning_input_fn_builder(
-                       [finetune_file],
-                       FLAGS.max_seq_length,
-                       FLAGS.max_predictions_per_seq,
-                       FLAGS.real_max_length,
-                       True,
-                       bert_config.vocab_size,
-                       num_cpu_threads=4))
-    data_prior.append(0.1)
-
-  data_prior = np.array(data_prior)
-  data_prior = data_prior / np.sum(data_prior)
-  tf.logging.info("** data prior **")
-  tf.logging.info(data_prior)
-
-  dataset = tf.contrib.data.sample_from_datasets(total_dataset, data_prior)
-  train_input_fn = lambda: dataset.batch(FLAGS.train_batch_size, 
-            drop_remainder=True)
-
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:
     tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
@@ -680,12 +689,14 @@ def main(_):
   if FLAGS.do_train:
     tf.logging.info("******* Running training *****")
     tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
-    # train_input_fn = input_fn_builder(
-    #     input_files=input_files,
-    #     max_seq_length=FLAGS.max_seq_length,
-    #     vocab_size=bert_config.vocab_size,
-    #     max_predictions_per_seq=FLAGS.max_predictions_per_seq,
-    #     is_training=True)
+    train_input_fn = input_fn_builder(
+        pretrain_input_files=pretrain_input_files,
+        finetune_input_files=finetune_input_files,
+        max_seq_length=FLAGS.max_seq_length,
+        vocab_size=bert_config.vocab_size,
+        real_max_length=FLAGS.real_max_length,
+        max_predictions_per_seq=FLAGS.max_predictions_per_seq,
+        is_training=True)
     estimator.train(input_fn=train_input_fn, max_steps=FLAGS.num_train_steps)
 
 if __name__ == "__main__":

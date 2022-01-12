@@ -401,7 +401,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     logits = tf.nn.bias_add(logits, output_bias)
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
-    logits_shape = modeling_bert_unilm.get_shape_list(logits, expected_rank=3)
+    logits_shape = modeling_roformer_unilm.get_shape_list(logits, expected_rank=3)
     logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
     log_probs = tf.reshape(log_probs, [logits_shape[0]*logits_shape[1], logits_shape[2]])
 

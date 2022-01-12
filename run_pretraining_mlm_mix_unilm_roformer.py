@@ -387,9 +387,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_bert_unilm.get_activation(config.hidden_act),
-          kernel_initializer=modeling_bert_unilm.create_initializer(config.initializer_range))
-      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
+          activation=modeling_roformer_unilm.get_activation(config.hidden_act),
+          kernel_initializer=modeling_roformer_unilm.create_initializer(config.initializer_range))
+      input_tensor = modeling_roformer_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.

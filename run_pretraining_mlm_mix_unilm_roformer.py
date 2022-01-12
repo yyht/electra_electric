@@ -162,7 +162,20 @@ def kld(x_logprobs, y_logprobs, mask_weights=None):
   tf.logging.info(kl_div)
 
   return kl_per_example_div, kl_div
-  
+
+def shape_list(x, out_type=tf.int32):
+  """Deal with dynamic shape in tensorflow cleanly."""
+  static = x.shape.as_list()
+  dynamic = tf.shape(x, out_type=out_type)
+  return [dynamic[i] if s is None else s for i, s in enumerate(static)]
+
+def smooth_labels(labels, factor=0.1):
+  # smooth the labels
+  labels *= (1 - factor)
+  label_shapes = shape_list(labels)
+  labels += (factor / label_shapes[-1])
+  # returned the smoothed labels
+  return labels
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,

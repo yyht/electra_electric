@@ -214,8 +214,15 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         use_one_hot_embeddings=use_one_hot_embeddings,
         if_use_unilm=False)
 
-    (masked_lm_loss,
-    masked_lm_example_loss, 
+    (loss_onehot, loss_labels_smooth, 
+        per_example_loss_onehot, 
+        per_example_loss_labels_smooth,
+        log_probs)
+
+    (masked_lm_loss_onehot,
+    masked_lm_loss_labels_smooth,
+    masked_lm_example_loss_onehot,
+    masked_lm_example_loss_labels_smooth,
     masked_lm_log_probs) = get_masked_lm_output(
          bert_config, mlm_model.get_sequence_output(), 
          mlm_model.get_embedding_table(),
@@ -234,8 +241,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         use_one_hot_embeddings=use_one_hot_embeddings,
         if_use_unilm=True)
 
-    (ilm_loss, 
-    ilm_per_example_loss, 
+    (ilm_loss_onehot, 
+    ilm_loss_labels_smooth,
+    ilm_per_example_loss_onehot, 
+    ilm_per_example_loss_labels_smooth,
     ilm_log_probs) = get_lm_output(bert_config, 
                   ilm_model.get_sequence_output()[:, :-1, :], 
                   ilm_model.get_embedding_table(), 
@@ -259,7 +268,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     tf.logging.info("** ilm_model ilm_preds **")
     tf.logging.info(ilm_preds)
 
-    total_loss = (masked_lm_loss + ilm_loss)
+    total_loss = (masked_lm_loss_labels_smooth + ilm_loss_labels_smooth)
+    monitor_total_loss = (masked_lm_loss_onehot + ilm_loss_onehot)
     monitor_dict = {}
 
     tvars = tf.trainable_variables()
@@ -268,13 +278,13 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     eval_fn_inputs = {
         "masked_lm_preds": masked_lm_preds,
-        "masked_lm_loss": masked_lm_example_loss,
+        "masked_lm_loss": masked_lm_example_loss_labels_smooth,
         "masked_lm_weights": masked_lm_weights,
         "masked_lm_ids": masked_lm_ids,
         "ilm_preds": ilm_preds,
         "ilm_ids": ilm_input_ids[:, 1:],
         "ilm_weights": ilm_segment_ids[:, 1:],
-        "ilm_loss": ilm_per_example_loss
+        "ilm_loss": ilm_per_example_loss_labels_smooth
     }
 
     eval_fn_keys = eval_fn_inputs.keys()
@@ -367,7 +377,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
-          loss=total_loss,
+          loss=monitor_total_loss,
           train_op=train_op,
           scaffold_fn=scaffold_fn,
           host_call=host_call)
@@ -416,20 +426,30 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     label_mask = tf.reshape(label_mask, [-1])
     loss_mask = tf.cast(label_mask, tf.float32)
 
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
+    per_example_loss_labels_smooth = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
 
-    numerator = tf.reduce_sum(loss_mask * per_example_loss)
-    denominator = tf.reduce_sum(loss_mask) + 1e-5
-    loss = numerator / (denominator)
+    numerator_labels_smooth = tf.reduce_sum(loss_mask * per_example_loss_labels_smooth)
+    denominator_labels_smooth = tf.reduce_sum(loss_mask) + 1e-5
+    loss_labels_smooth = numerator_labels_smooth / (denominator_labels_smooth)
+
+    per_example_loss_onehot = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    numerator_onehot = tf.reduce_sum(label_weights * per_example_loss_onehot)
+    denominator_onehot = tf.reduce_sum(label_weights) + 1e-5
+    loss_onehot = numerator_onehot / denominator_onehot
 
     print(log_probs, '==ilm log_probs==')
     print(label_ids, '==ilm label_ids==')
     print(loss_mask, '==ilm loss_mask==')
-    print(per_example_loss, '==ilm per_example_loss==')
-    print(loss, '==ilm loss==')
+    print(per_example_loss_labels_smooth, '==ilm per_example_loss_labels_smooth==')
+    print(loss_labels_smooth, '==ilm loss_labels_smooth==')
 
-  return (loss, per_example_loss, log_probs)
+    print(per_example_loss_onehot, '==ilm per_example_loss_onehot==')
+    print(loss_onehot, '==ilm loss_onehot==')
 
+  return (loss_onehot, loss_labels_smooth, 
+        per_example_loss_onehot, 
+        per_example_loss_labels_smooth,
+        log_probs)
 
 def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
                          label_ids, label_weights):
@@ -470,18 +490,29 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     # short to have the maximum number of predictions). The `label_weights`
     # tensor has a value of 1.0 for every real prediction and 0.0 for the
     # padding predictions.
-    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
-    numerator = tf.reduce_sum(label_weights * per_example_loss)
-    denominator = tf.reduce_sum(label_weights) + 1e-5
-    loss = numerator / denominator
+    per_example_loss_labels_smooth = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
+    numerator_labels_smooth = tf.reduce_sum(label_weights * per_example_loss_labels_smooth)
+    denominator_labels_smooth = tf.reduce_sum(label_weights) + 1e-5
+    loss_labels_smooth = numerator_labels_smooth / denominator_labels_smooth
+
+    per_example_loss_onehot = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    numerator_onehot = tf.reduce_sum(label_weights * per_example_loss_onehot)
+    denominator_onehot = tf.reduce_sum(label_weights) + 1e-5
+    loss_onehot = numerator_onehot / denominator_onehot
 
     print(log_probs, '==mlm log_probs==')
     print(label_ids, '==mlm label_ids==')
     print(label_weights, '==mlm label_weights==')
-    print(per_example_loss, '==mlm per_example_loss==')
-    print(loss, '==mlm loss==')
+    print(per_example_loss_labels_smooth, '==mlm per_example_loss_labels_smooth==')
+    print(loss_labels_smooth, '==mlm loss==')
 
-  return (loss, per_example_loss, log_probs)
+    print(per_example_loss_onehot, '==mlm per_example_loss_onehot==')
+    print(loss_onehot, '==mlm loss==')
+
+  return (loss_onehot, loss_labels_smooth, 
+        per_example_loss_onehot, 
+        per_example_loss_labels_smooth,
+        log_probs)
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""

@@ -214,11 +214,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         use_one_hot_embeddings=use_one_hot_embeddings,
         if_use_unilm=False)
 
-    (loss_onehot, loss_labels_smooth, 
-        per_example_loss_onehot, 
-        per_example_loss_labels_smooth,
-        log_probs)
-
     (masked_lm_loss_onehot,
     masked_lm_loss_labels_smooth,
     masked_lm_example_loss_onehot,

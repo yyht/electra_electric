@@ -428,8 +428,8 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     loss_labels_smooth = numerator_labels_smooth / (denominator_labels_smooth)
 
     per_example_loss_onehot = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
-    numerator_onehot = tf.reduce_sum(label_weights * per_example_loss_onehot)
-    denominator_onehot = tf.reduce_sum(label_weights) + 1e-5
+    numerator_onehot = tf.reduce_sum(loss_mask * per_example_loss_onehot)
+    denominator_onehot = tf.reduce_sum(loss_mask) + 1e-5
     loss_onehot = numerator_onehot / denominator_onehot
 
     print(log_probs, '==ilm log_probs==')

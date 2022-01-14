@@ -451,22 +451,29 @@ def prepare_ilm(masked_input, duplicate_ids, pad_mask):
 
 def _decode_record(FLAGS, record, num_predict,
                   seq_len, 
+                  record_spec,
+                  input_ids_name,
                   use_bfloat16=False, 
                   truncate_seq=False, 
                   stride=1):
   max_seq_length = seq_len
-  record_spec = {
-        "input_ori_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int64),
-        "segment_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int64)
-  }
+  if not record_spec:
+    record_spec = {
+          "input_ori_ids":
+              tf.FixedLenFeature([max_seq_length], tf.int64),
+          "segment_ids":
+              tf.FixedLenFeature([max_seq_length], tf.int64)
+    }
+    input_ids_name = 'input_ori_ids'
   if FLAGS.sample_strategy in ["whole_word", "word_span"]:
     tf.logging.info("Add `boundary` spec for %s", FLAGS.sample_strategy)
     record_spec["boundary"] = tf.VarLenFeature(tf.int64)
 
   example = tf.parse_single_example(record, record_spec)
-  inputs = example.pop("input_ori_ids")
+  if not input_ids_name:
+    inputs = example.pop("input_ori_ids")
+  else:
+    inputs = example.pop(input_ids_name)
   if FLAGS.sample_strategy in ["whole_word", "word_span"]:
     boundary = tf.sparse.to_dense(example.pop("boundary"))
   else:

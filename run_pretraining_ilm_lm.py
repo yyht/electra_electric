@@ -58,11 +58,11 @@ flags.DEFINE_string(
     "Input TF example files (can be a glob or comma separated).")
 
 flags.DEFINE_string(
-    "input_file", None,
+    "pretrain_input_file", None,
     "Input TF example files (can be a glob or comma separated).")
 
 flags.DEFINE_string(
-    "pretrain_input_file", None,
+    "finetune_input_file", None,
     "Input TF example files (can be a glob or comma separated).")
 
 flags.DEFINE_string(

@@ -36,6 +36,7 @@ def check_tf_version():
 #   tf.disable_v2_behavior()
 
 import os
+import numpy as np
 from model import modeling_ilm_gpt
 from model import optimization
 from util import utils, log_utils

@@ -553,6 +553,7 @@ data_config.ilm_v2 = True
 def pretrain_input_fn_builder(input_files,
                      max_seq_length,
                      max_predictions_per_seq,
+                     real_max_length,
                      is_training,
                      vocab_size,
                      num_cpu_threads=4):
@@ -607,6 +608,7 @@ def pretrain_input_fn_builder(input_files,
 def target_input_fn_builder(input_files,
                      max_seq_length,
                      max_predictions_per_seq,
+                     real_max_length,
                      is_training,
                      vocab_size,
                      num_cpu_threads=4):

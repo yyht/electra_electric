@@ -119,10 +119,7 @@ def _decode_pretrain_record_v1(FLAGS, record, name_to_features,
   mapping = {
     'ilm_input': 'ilm_input_ids',
     'ilm_segment_ids': 'ilm_segment_ids',
-    'ilm_input_mask': 'ilm_input_mask',
-    'origin_input': 'input_ids',
-    'segment_ids': 'segment_ids',
-    'pad_mask': 'input_mask'
+    'ilm_input_mask': 'ilm_input_mask'
   }
 
   for name in mapping:
@@ -134,7 +131,6 @@ def _decode_pretrain_record_v1(FLAGS, record, name_to_features,
     tgt_shape[0] = real_max_length
     output_example[mapping[name]].set_shape(tgt_shape)
     
-
   mappinp_1 = {
     'origin_input': 'input_ids',
     'segment_ids': 'segment_ids',

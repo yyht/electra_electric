@@ -208,7 +208,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     input_ids = features['input_ids']
     input_mask = tf.cast(features['input_mask'], dtype=tf.int32)
 
-    ilm_input_ids = features['ilm_input']
+    ilm_input_ids = features['ilm_input_ids']
     ilm_input_mask = features['ilm_input_mask']
     ilm_segment_ids = features['ilm_segment_ids']
 

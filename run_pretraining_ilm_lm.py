@@ -205,12 +205,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       tf.logging.info("  name = %s, with shape = %s" % (name, features[name].shape))
 
     segment_ids = features["segment_ids"]
-    input_ids = features['origin_input']
-    input_mask = tf.cast(features['pad_mask'], dtype=tf.int32)
-
-    masked_lm_positions = features["masked_lm_positions"]
-    masked_lm_ids = features["masked_lm_ids"]
-    masked_lm_weights = features["masked_lm_weights"]
+    input_ids = features['input_ids']
+    input_mask = tf.cast(features['input_mask'], dtype=tf.int32)
 
     ilm_input_ids = features['ilm_input']
     ilm_input_mask = features['ilm_input_mask']

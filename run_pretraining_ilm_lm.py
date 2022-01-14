@@ -228,8 +228,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     (lm_loss_onehot, 
     lm_loss_labels_smooth,
-    lm_per_example_loss_onehot, 
-    lm_per_example_loss_labels_smooth,
+    lm_example_loss_onehot, 
+    lm_example_loss_labels_smooth,
     lm_log_probs) = get_lm_output(bert_config, 
                   lm_model.get_sequence_output()[:, :-1, :], 
                   lm_model.get_embedding_table(), 
@@ -249,8 +249,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     (ilm_loss_onehot, 
     ilm_loss_labels_smooth,
-    ilm_per_example_loss_onehot, 
-    ilm_per_example_loss_labels_smooth,
+    ilm_example_loss_onehot, 
+    ilm_example_loss_labels_smooth,
     ilm_log_probs) = get_lm_output(bert_config, 
                   ilm_model.get_sequence_output()[:, :-1, :], 
                   ilm_model.get_embedding_table(), 
@@ -278,7 +278,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "ilm_preds": ilm_preds,
         "ilm_ids": ilm_input_ids[:, 1:],
         "ilm_weights": ilm_segment_ids[:, 1:],
-        "ilm_loss": ilm_per_example_loss_labels_smooth
+        "ilm_loss": ilm_example_loss_labels_smooth
     }
 
     eval_fn_keys = eval_fn_inputs.keys()

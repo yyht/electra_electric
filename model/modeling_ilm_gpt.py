@@ -630,6 +630,7 @@ def create_casual_attention_mask_from_input_mask(from_tensor, to_mask):
   i = tf.range(from_seq_length)[:,None]
   j = tf.range(from_seq_length)
   m = i >= j - from_seq_length + from_seq_length
+  m = tf.reshape(m, [1, 1, from_seq_length, from_seq_length])
   return tf.cast(m, dtype=tf.float32)
 
 def attention_layer(from_tensor,

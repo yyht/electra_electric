@@ -608,9 +608,8 @@ def target_input_fn_builder(input_files,
                      num_cpu_threads=4):
   data_config.vocab_size = vocab_size
   name_to_features = {
-    "input_ids": tf.io.FixedLenFeature([max_seq_length], tf.int64),
+    "input_ori_ids": tf.io.FixedLenFeature([max_seq_length], tf.int64),
     "segment_ids": tf.io.FixedLenFeature([max_seq_length], tf.int64),
-    "input_mask": tf.io.FixedLenFeature([max_seq_length], tf.int64)
   }
 
   if is_training:
@@ -634,7 +633,7 @@ def target_input_fn_builder(input_files,
           data_config, record, name_to_features, 
           real_max_length, 
           record_spec=name_to_features,
-          input_ids_name='input_ids'),
+          input_ids_name='input_ori_ids'),
           num_parallel_calls=num_cpu_threads)
   return d
 

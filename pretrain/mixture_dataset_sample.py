@@ -134,6 +134,14 @@ def _decode_pretrain_record_v1(FLAGS, record, name_to_features,
     tgt_shape[0] = real_max_length
     output_example[mapping[name]].set_shape(tgt_shape)
     
+
+  mappinp_1 = {
+    'origin_input': 'input_ids',
+    'segment_ids': 'segment_ids',
+    'pad_mask': 'input_mask'
+  }
+  for key in mappinp_1:
+    output_example[mappinp_1[key]] = example[key]
   # output_example['fintune_loss_multipilier'] = tf.constant((0,), dtype=tf.int32)
   # output_example['pretrain_loss_multipilier'] = tf.constant((1, ), dtype=tf.int32)
 

@@ -37,6 +37,7 @@ def check_tf_version():
 
 import os
 import numpy as np
+from pretrain import mixture_dataset_sample
 from model import modeling_ilm_gpt
 from model import optimization
 from util import utils, log_utils
@@ -594,16 +595,12 @@ def pretrain_input_fn_builder(input_files,
   # size dimensions. For eval, we assume we are evaluating on the CPU or GPU
   # and we *don't* want to drop the remainder, otherwise we wont cover
   # every sample.
-  d = d.map(
-          lambda record: span_decode_record(data_config, record, 
-              data_config.max_predictions_per_seq,
-              data_config.max_seq_length, 
-              record_spec=name_to_features,
-              input_ids_name='input_ori_ids',
-              use_bfloat16=data_config.use_bfloat16, 
-              truncate_seq=data_config.truncate_seq, 
-              stride=data_config.stride),
-              num_parallel_calls=num_cpu_threads)
+  d = d.map(lambda record: mixture_dataset_sample._decode_pretrain_record(
+          data_config, record, name_to_features, 
+          real_max_length, 
+          record_spec=name_to_features,
+          input_ids_name='input_ori_ids'),
+          num_parallel_calls=num_cpu_threads)
   return d
 
 def target_input_fn_builder(input_files,
@@ -637,16 +634,12 @@ def target_input_fn_builder(input_files,
     d = tf.data.TFRecordDataset(input_files)
     d = d.repeat()
 
-  d = d.map(
-          lambda record: span_decode_record(data_config, record, 
-              data_config.max_predictions_per_seq,
-              data_config.max_seq_length, 
-              record_spec=name_to_features,
-              input_ids_name='input_ids',
-              use_bfloat16=data_config.use_bfloat16, 
-              truncate_seq=data_config.truncate_seq, 
-              stride=data_config.stride),
-              num_parallel_calls=num_cpu_threads)
+  d = d.map(lambda record: mixture_dataset_sample._decode_pretrain_record(
+          data_config, record, name_to_features, 
+          real_max_length, 
+          record_spec=name_to_features,
+          input_ids_name='input_ids'),
+          num_parallel_calls=num_cpu_threads)
   return d
 
 def input_fn_builder(pretrain_input_files,

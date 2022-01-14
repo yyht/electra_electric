@@ -601,7 +601,7 @@ def pretrain_input_fn_builder(input_files,
               use_bfloat16=data_config.use_bfloat16, 
               truncate_seq=data_config.truncate_seq, 
               stride=data_config.stride),
-          num_parallel_calls=num_cpu_threads)
+              num_parallel_calls=num_cpu_threads)
   return d
 
 def target_input_fn_builder(input_files,
@@ -643,7 +643,7 @@ def target_input_fn_builder(input_files,
               use_bfloat16=data_config.use_bfloat16, 
               truncate_seq=data_config.truncate_seq, 
               stride=data_config.stride),
-          num_parallel_calls=num_cpu_threads)
+              num_parallel_calls=num_cpu_threads)
   return d
 
 def input_fn_builder(pretrain_input_files,

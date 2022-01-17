@@ -54,9 +54,16 @@ def _decode_finetune_record(FLAGS, record, name_to_features,
 def _decode_pretrain_record(FLAGS, record, name_to_features, 
           real_max_length):
   """Decodes a record to a TensorFlow example."""
+  name_to_features = {
+      "input_ori_ids": tf.io.FixedLenFeature([FLAGS.max_seq_length], tf.int64),
+      "segment_ids": tf.io.FixedLenFeature([FLAGS.max_seq_length], tf.int64),
+  }
+
   example = span_mask_utils_ilm._decode_record(FLAGS, record, 
                   FLAGS.max_predictions_per_seq,
                   FLAGS.max_seq_length, 
+                  record_spec=name_to_features,
+                  input_ids_name='input_ori_ids',
                   use_bfloat16=FLAGS.use_bfloat16, 
                   truncate_seq=FLAGS.truncate_seq, 
                   stride=FLAGS.stride)

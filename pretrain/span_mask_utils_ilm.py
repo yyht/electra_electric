@@ -451,8 +451,8 @@ def prepare_ilm(masked_input, duplicate_ids, pad_mask):
 
 def _decode_record(FLAGS, record, num_predict,
                   seq_len, 
-                  record_spec,
-                  input_ids_name,
+                  record_spec=None,
+                  input_ids_name=None,
                   use_bfloat16=False, 
                   truncate_seq=False, 
                   stride=1):

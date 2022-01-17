@@ -259,7 +259,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "ilm_preds": ilm_preds,
         "ilm_ids": ilm_input_ids[:, 1:],
         "ilm_weights": ilm_segment_ids[:, 1:],
-        "ilm_loss": ilm_per_example_loss
+        "ilm_loss": ilm_per_example_loss_onehot
     }
 
     eval_fn_keys = eval_fn_inputs.keys()

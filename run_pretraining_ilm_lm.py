@@ -262,7 +262,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     tf.logging.info("** ilm_model ilm_preds **")
     tf.logging.info(ilm_preds)
 
-    total_loss = (lm_loss_labels_smooth + ilm_loss_labels_smooth)
+    total_loss = (lm_loss_onehot + ilm_loss_onehot)
     monitor_total_loss = (lm_loss_onehot + ilm_loss_onehot)
     monitor_dict = {}
 

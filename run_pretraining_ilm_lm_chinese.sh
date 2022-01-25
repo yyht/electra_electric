@@ -1,7 +1,7 @@
 nohup python3 run_pretraining_ilm_lm.py \
     --bert_config_file ./config/bert_config_ilm.json \
     --pretrain_input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-    --output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_gpt_chinese \
+    --output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_gpt_chinese_final \
     --input_data_dir gs://yyht_source/pretrain \
     --init_checkpoint models/bert_base_50g_mix_ilm_final_label_smooth/model.ckpt-1000000 \
     --max_seq_length 512 \

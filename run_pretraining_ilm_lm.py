@@ -659,15 +659,16 @@ def input_fn_builder(pretrain_input_files,
                    vocab_size,
                    num_cpu_threads=4))
     data_prior.append(1.0)
-    total_dataset.append(target_input_fn_builder(
-                   finetune_input_files,
-                   max_seq_length,
-                   max_predictions_per_seq,
-                   real_max_length,
-                   is_training,
-                   vocab_size,
-                   num_cpu_threads=4))
-    data_prior.append(1.0)
+    if finetune_input_files:
+      total_dataset.append(target_input_fn_builder(
+                     finetune_input_files,
+                     max_seq_length,
+                     max_predictions_per_seq,
+                     real_max_length,
+                     is_training,
+                     vocab_size,
+                     num_cpu_threads=4))
+      data_prior.append(1.0)
     data_prior = np.array(data_prior)
     data_prior /= data_prior.sum()
 
@@ -715,18 +716,19 @@ def main(_):
   
   finetune_input_files = []
   import os
-  finetune_input_file = os.path.join(FLAGS.input_data_dir, FLAGS.finetune_input_file)
-  tf.logging.info("*** finetune_input_file **")
-  tf.logging.info(finetune_input_file)
-  with tf.gfile.GFile(finetune_input_file, "r") as reader:
-    for index, line in enumerate(reader):
-      content = line.strip()
-      print(content, '======content======')
-      if 'tfrecord' in content:
-        train_file_path = os.path.join(FLAGS.input_data_dir, content)
-        # print(train_file_path, "====train_file_path====")
-        finetune_input_files.append(train_file_path)
-  print("===total finetune_input_files files===", len(finetune_input_files))
+  if FLAGS.finetune_input_file:
+    finetune_input_file = os.path.join(FLAGS.input_data_dir, FLAGS.finetune_input_file)
+    tf.logging.info("*** finetune_input_file **")
+    tf.logging.info(finetune_input_file)
+    with tf.gfile.GFile(finetune_input_file, "r") as reader:
+      for index, line in enumerate(reader):
+        content = line.strip()
+        print(content, '======content======')
+        if 'tfrecord' in content:
+          train_file_path = os.path.join(FLAGS.input_data_dir, content)
+          # print(train_file_path, "====train_file_path====")
+          finetune_input_files.append(train_file_path)
+    print("===total finetune_input_files files===", len(finetune_input_files))
   
   import random
   random.shuffle(finetune_input_files)

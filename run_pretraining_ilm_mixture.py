@@ -247,7 +247,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     tf.logging.info("** ilm_model ilm_preds **")
     tf.logging.info(ilm_preds)
 
-    total_loss = ilm_loss_labels_smooth
+    total_loss = ilm_loss_onehot
     monitor_loss = ilm_loss_onehot
     monitor_dict = {}
 
@@ -489,7 +489,7 @@ def gather_indexes(sequence_tensor, positions):
   return output_tensor
 
 data_config = Bunch({})
-data_config.min_tok = 3
+data_config.min_tok = 2
 data_config.max_tok = 10
 data_config.sep_id = 102
 data_config.pad_id = 0

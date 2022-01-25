@@ -623,7 +623,7 @@ def input_fn_builder(pretrain_input_files,
                    is_training,
                    vocab_size,
                    num_cpu_threads=4))
-    data_prior.append(1.0)
+    data_prior.append(0.3)
     data_prior = np.array(data_prior)
     data_prior /= data_prior.sum()
 

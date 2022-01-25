@@ -28,7 +28,6 @@ import six
 # import tensorflow as tf
 
 import tensorflow as tf
-tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -37,9 +36,8 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  tf.disable_v2_behavior()
 
 from model.funnel_transformer_utils import tf_utils
 from model import dropout_utils
@@ -608,14 +606,21 @@ def _generate_sinusodial_position_embedding(
                             position_offset,
                             name,
                             initializer_range=0.02):
-
+  """
+  reference from: https://github.com/JunnYu/RoFormer_pytorch/blob/new/src/roformer/modeling_tf_roformer.py
+  """
   vocab_size = max_position_embeddings
   embeddings_table = np.zeros([vocab_size, depth]).astype(np.float32)
 
-  for pos in range(vocab_size):
-    for i in range(depth // 2):
-      embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-      embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
+  position_enc = np.array(
+            [
+                [pos / np.power(10000, 2 * (j // 2) / depth) for j in range(depth)]
+                for pos in range(vocab_size)
+            ]
+        )
+
+  embeddings_table[:, 0 : depth // 2] = np.sin(position_enc[:, 0::2])
+  embeddings_table[:, depth // 2 :] = np.cos(position_enc[:, 1::2])
 
   position_table = tf.get_variable(name="sinusodial_position_embeddings", 
                     shape=[vocab_size, depth], 
@@ -770,8 +775,10 @@ def attention_layer(from_tensor,
   # `attention_scores` = [B, N, F, T]
   if use_relative_position:
     # [1, T, depth]
-    cos_pos = tf_utils.repeat(position_embeddings[:, :, 1::2], repeats=2, axis=-1)
-    sin_pos = tf_utils.repeat(position_embeddings[:, :, ::2], repeats=2, axis=-1)
+    # reference from: https://github.com/JunnYu/RoFormer_pytorch/blob/new/src/roformer/modeling_tf_roformer.py
+    sin_pos, cos_pos = tf.split(position_embeddings, 2, axis=-1)
+    cos_pos = tf_utils.repeat(cos_pos, repeats=2, axis=-1)
+    sin_pos = tf_utils.repeat(sin_pos, repeats=2, axis=-1)
 
     # [1, 1, T, depth]
     cos_pos = tf.expand_dims(cos_pos,

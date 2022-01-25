@@ -3,7 +3,7 @@ nohup python3 run_pretraining_ilm_lm.py \
     --pretrain_input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
     --output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_gpt_chinese_final \
     --input_data_dir gs://yyht_source/pretrain \
-    --init_checkpoint models/bert_base_50g_mix_ilm_final_label_smooth/model.ckpt-1000000 \
+    --init_checkpoint models/chinese_L-12_H-768_A-12_ilm_v1/bert_model.ckpt \
     --max_seq_length 512 \
     --real_max_length 632 \
     --do_train True \

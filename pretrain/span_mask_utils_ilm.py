@@ -492,7 +492,7 @@ def _decode_record(FLAGS, record, num_predict,
   is_target, target_mask = _online_sample_masks(FLAGS,
         inputs, seq_len, num_predict, boundary=boundary, stride=stride)
 
-  [ilm_masked_input, masked_input] = discrepancy_correction(FLAGS, inputs, is_target, seq_len)
+  [_, masked_input] = discrepancy_correction(FLAGS, inputs, is_target, seq_len)
   masked_input = tf.reshape(masked_input, [max_seq_length])
   is_mask = tf.equal(masked_input, FLAGS.mask_id)
   is_pad = tf.equal(masked_input, FLAGS.pad_id)
@@ -521,6 +521,11 @@ def _decode_record(FLAGS, record, num_predict,
 
   if FLAGS.ilm_v1:
 
+    is_target, target_mask = _online_sample_masks(FLAGS,
+        inputs, seq_len, num_predict, boundary=boundary, stride=stride)
+
+    [ilm_masked_input, _] = discrepancy_correction(FLAGS, inputs, is_target, seq_len)
+
     tf.logging.info("** apply same placeholder [MASK] **")
 
     # ['[CLS]', [mask], 'a', 'b', '[SEP]']
@@ -547,6 +552,10 @@ def _decode_record(FLAGS, record, num_predict,
     ilm_relative_position = tf.cast(tf.cumsum(ilm_segment_ids), dtype=tf.int32) * ilm_input_mask
 
   elif FLAGS.ilm_v2:
+
+    is_target, target_mask = _online_sample_masks(FLAGS,
+        inputs, seq_len, num_predict, boundary=boundary, stride=stride)
+    [ilm_masked_input, _] = discrepancy_correction(FLAGS, inputs, is_target, seq_len)
 
     tf.logging.info("** apply different placeholder [unused] **")
 

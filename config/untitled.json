@@ -21,8 +21,6 @@
   "use_relative_position":true,
   "max_relative_position":64,
   "relative_position_type":"relative_t5",
-  "relative_position_embedding_type":"sinusoidal_trainable",
+  "relative_position_embedding_type":"trainable",
   "num_buckets":32
 }
-
-

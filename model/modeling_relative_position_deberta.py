@@ -833,7 +833,7 @@ def _generate_relative_positions_embeddings(length, depth,
   tf.logging.info("** relative_position_embeddings_uni **")
   tf.logging.info(relative_position_embeddings_uni)
 
-  relative_position_embeddings_bi = tf.expand_dims(relative_position_embeddings_bim, axis=0)
+  relative_position_embeddings_bi = tf.expand_dims(relative_position_embeddings_bi, axis=0)
   relative_position_embeddings_uni = tf.expand_dims(relative_position_embeddings_uni, axis=0)
 
   # [batch_size, seq_len, 1]
@@ -1008,8 +1008,9 @@ def attention_layer(from_tensor,
       relative_position_embeddings = tf.transpose(relative_position_embeddings, [2,0,1])
       # relative_position_embeddings: [N, F, T] ---> [1, N, F, T]
       tf.logging.info("**** apply t5-relative position bias on attention_scores ***")
-      attention_scores += tf.expand_dims(relative_position_embeddings, axis=0)
-    
+      # attention_scores += tf.expand_dims(relative_position_embeddings, axis=0)
+      attention_scores += relative_position_embeddings
+      
   attention_scores = tf.multiply(attention_scores,
                                  1.0 / math.sqrt(float(size_per_head)))
 

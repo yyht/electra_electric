@@ -122,12 +122,12 @@ tf.flags.DEFINE_string(
 
 tf.flags.DEFINE_string(
     "gcp_project", None,
-    "[Optional] Project name for the Cloud TPU-enabled project. If not "
+    "[Optional]  Project name for the Cloud TPU-enabled project. If not "
     "specified, we will attempt to automatically detect the GCE project from "
     "metadata.")
 
-tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
-tf.flags.DEFINE_string("mask_strategy", 'span_mask', "[Optional] TensorFlow master URL.")
+tf.flags.DEFINE_string("master", None, "[ Optional] TensorFlow master URL.")
+tf.flags.DEFINE_string("mask_strategy", ' span_mask', "[Optional] TensorFlow master URL.")
 
 flags.DEFINE_integer(
     "num_tpu_cores", 8,
@@ -229,7 +229,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling_relative_position.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling_relative_position_deberta.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -321,7 +321,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  input_shape = modeling_relative_position.get_shape_list(input_tensor, expected_rank=3)
+  input_shape = modeling_relative_position_deberta.get_shape_list(input_tensor, expected_rank=3)
   input_tensor = tf.reshape(input_tensor, [input_shape[0]*input_shape[1], input_shape[2]])
   
   with tf.variable_scope("cls/predictions"):
@@ -331,9 +331,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_relative_position.get_activation(config.hidden_act),
-          kernel_initializer=modeling_relative_position.create_initializer(config.initializer_range))
-      input_tensor = modeling_relative_position.layer_norm(input_tensor)
+          activation=modeling_relative_position_deberta.get_activation(config.hidden_act),
+          kernel_initializer=modeling_relative_position_deberta.create_initializer(config.initializer_range))
+      input_tensor = modeling_relative_position_deberta.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -391,10 +391,10 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
       input_tensor = tf.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
-          activation=modeling_relative_position.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_relative_position.create_initializer(
+          activation=modeling_relative_position_deberta.get_activation(bert_config.hidden_act),
+          kernel_initializer=modeling_relative_position_deberta.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling_relative_position.layer_norm(input_tensor)
+      input_tensor = modeling_relative_position_deberta.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -431,7 +431,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""
-  sequence_shape = modeling_relative_position.get_shape_list(sequence_tensor, expected_rank=3)
+  sequence_shape = modeling_relative_position_deberta.get_shape_list(sequence_tensor, expected_rank=3)
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
   width = sequence_shape[2]
@@ -555,7 +555,7 @@ def main(_):
   if not FLAGS.do_train and not FLAGS.do_eval:
     raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
-  bert_config = modeling_relative_position.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling_relative_position_deberta.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
 

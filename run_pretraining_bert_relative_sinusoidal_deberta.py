@@ -122,7 +122,7 @@ tf.flags.DEFINE_string(
 
 tf.flags.DEFINE_string(
     "gcp_project", None,
-    "[Optional] Project name for the Cloud TPU-enabled project. If not "
+    "[Optional]  Project name for the Cloud TPU-enabled project. If not "
     "specified, we will attempt to automatically detect the GCE project from "
     "metadata.")
 

@@ -824,8 +824,19 @@ def _generate_relative_positions_embeddings(length, depth,
 
   relative_position_embeddings_bi = tf.gather(relative_position_table, relative_positions_matrix_bi)
   relative_position_embeddings_uni = tf.gather(relative_position_table, relative_positions_matrix_uni)
+  
+  tf.logging.info("** relative_position_embeddings_bi **")
+  tf.logging.info(relative_position_embeddings_bi)
+
+  tf.logging.info("** relative_position_embeddings_uni **")
+  tf.logging.info(relative_position_embeddings_uni)
+
+  relative_position_embeddings_bi = tf.expand_dims(relative_position_embeddings_bim, axis=0)
+  relative_position_embeddings_uni = tf.expand_dims(relative_position_embeddings_uni, axis=0)
+
   # [batch_size, seq_len, 1]
   segment_mask = tf.expand_dims(segment_ids, axis=-1)
+  segment_mask = tf.expand_dims(segment_mask, axis=-1)
   segment_mask = tf.cast(segment_mask, dtype=tf.float32)
   relative_position_embeddings = (1.0-segment_mask) * relative_position_embeddings_bi
   relative_position_embeddings += segment_mask * relative_position_embeddings_uni

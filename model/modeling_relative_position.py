@@ -716,35 +716,56 @@ def _generate_relative_positions_embeddings(length, depth,
  # '''
   #with tf.variable_scope(name):
   if relative_position_type == 'relative_normal':
-    relative_positions_matrix = _generate_relative_positions_matrix(
+    relative_positions_matrix_bi = _generate_relative_positions_matrix(
         length, max_relative_position,
-        bidirectional=bidirectional)
+        bidirectional=True)
     vocab_size = max_relative_position * 2 + 1
+    relative_positions_matrix_uni = _generate_relative_positions_matrix(
+        length, max_relative_position,
+        bidirectional=False)
+
   elif relative_position_type == 'relative_t5':
-    relative_positions_matrix = _generate_relative_positions_matrix_t5(
+    relative_positions_matrix_bi = _generate_relative_positions_matrix_t5(
         length, max_relative_position, 
         num_buckets=num_buckets,
-        bidirectional=bidirectional)
+        bidirectional=True)
+    relative_positions_matrix_uni = _generate_relative_positions_matrix_t5(
+        length, max_relative_position, 
+        num_buckets=num_buckets,
+        bidirectional=False)
+
     vocab_size = num_buckets
     # Generates embedding for each relative position of dimension depth.
   embeddings_table = np.zeros([vocab_size, depth]).astype(np.float32)
 
   if relative_position_embedding_type == 'sinusoidal':
-    for pos in range(vocab_size):
-      for i in range(depth // 2):
-        embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-        embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
+    
+    position_enc = np.array(
+            [
+                [pos / np.power(10000, 2 * (j // 2) / depth) for j in range(depth)]
+                for pos in range(vocab_size)
+            ]
+        )
+
+    embeddings_table[:, 0 : depth // 2] = np.sin(position_enc[:, 0::2])
+    embeddings_table[:, depth // 2 :] = np.cos(position_enc[:, 1::2])
   
     relative_position_table = tf.get_variable(name="relative_position_bias", 
                       shape=[vocab_size, depth], 
                       initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
                       trainable=False)
   elif relative_position_embedding_type == 'sinusoidal_trainable':
-    for pos in range(vocab_size):
-      for i in range(depth // 2):
-        embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-        embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
-  
+    
+    position_enc = np.array(
+            [
+                [pos / np.power(10000, 2 * (j // 2) / depth) for j in range(depth)]
+                for pos in range(vocab_size)
+            ]
+        )
+
+    embeddings_table[:, 0 : depth // 2] = np.sin(position_enc[:, 0::2])
+    embeddings_table[:, depth // 2 :] = np.cos(position_enc[:, 1::2])
+
     relative_position_table = tf.get_variable(name="relative_position_bias", 
                       shape=[vocab_size, depth], 
                       initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
@@ -755,7 +776,13 @@ def _generate_relative_positions_embeddings(length, depth,
                       initializer=create_initializer(initializer_range),
                       trainable=True)
 
-  relative_position_embeddings = tf.gather(relative_position_table, relative_positions_matrix)
+  relative_position_embeddings_bi = tf.gather(relative_position_table, relative_positions_matrix_bi)
+  relative_position_embeddings_uni = tf.gather(relative_position_table, relative_positions_matrix_uni)
+  # [batch_size, seq_len, 1]
+  segment_mask = tf.expand_dims(segment_ids, axis=-1)
+  segment_mask = tf.cast(segment_mask, dtype=tf.float32)
+  relative_position_embeddings = (1.0-segment_mask) * relative_position_embeddings_bi
+  relative_position_embeddings += segment_mask * relative_position_embeddings_uni
   return relative_position_embeddings, relative_position_table
 
 def attention_layer(from_tensor,

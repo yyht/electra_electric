@@ -22,7 +22,7 @@ from __future__ import print_function
 # tf.disable_v2_behavior()
 
 import tensorflow as tf
-tf.disable_v2_behavior()
+# tf.disable_v2_behavior()
 
 def check_tf_version():
   version = tf.__version__
@@ -31,12 +31,12 @@ def check_tf_version():
     return True
   else:
     return False
-# if check_tf_version():
-#   import tensorflow.compat.v1 as tf
-#   tf.disable_v2_behavior()
+if check_tf_version():
+  # import tensorflow.compat.v1 as tf
+  tf.disable_v2_behavior()
 
 import os
-from model import modeling_relative_position
+from model import modeling_relative_position_deberta
 from model import optimization
 from util import utils, log_utils
 from pretrain.span_mask_utils import _decode_record as span_decode_record
@@ -156,7 +156,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-    model = modeling_relative_position.BertModel(
+    model = modeling_relative_position_deberta.BertModel(
         config=bert_config,
         is_training=is_training,
         input_ids=input_ids,
@@ -165,7 +165,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         scope='bert',
         use_one_hot_embeddings=use_one_hot_embeddings)
 
-    sequence_output = model.get_sequence_output() + model.get_position_embedding()
+    sequence_output = model.get_sequence_output_decoder() + model.get_position_embedding()
 
     (masked_lm_loss,
     masked_lm_example_loss, 

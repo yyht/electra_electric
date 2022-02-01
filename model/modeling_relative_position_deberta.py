@@ -292,6 +292,37 @@ class BertModel(object):
             activation=tf.tanh,
             kernel_initializer=create_initializer(config.initializer_range))
 
+      with tf.variable_scope("decoder"):
+        self.sequence_decoder_input = tf.cast(self.all_encoder_layers[-1], tf.float32)
+        self.sequence_decoder_input += self.position_embedding_output
+
+        with tf.variable_scope("embeddings"):
+          self.sequence_decoder_input = layer_norm_and_dropout(
+                                        self.sequence_decoder_input, 
+                                        dropout_prob=config.hidden_dropout_prob, 
+                                        dropout_name=tf.get_variable_scope().name+"/decoder" if if_reuse_dropout else None)
+
+        [self.all_layers_decoder, 
+        self.attn_maps_decoder] = transformer_decoder_model(
+            input_tensor=self.sequence_output,
+            from_tensor=self.sequence_decoder_input,
+            attention_mask=attention_mask,
+            hidden_size=config.hidden_size,
+            num_hidden_layers=2,
+            num_attention_heads=config.num_attention_heads,
+            intermediate_size=config.intermediate_size,
+            intermediate_act_fn=get_activation(config.hidden_act),
+            hidden_dropout_prob=config.hidden_dropout_prob,
+            attention_probs_dropout_prob=config.attention_probs_dropout_prob,
+            initializer_range=config.initializer_range,
+            do_return_all_layers=True,
+            use_relative_position=config.use_relative_position,
+            relative_position_embeddings=self.relative_position_embeddings,
+            relative_position_type=config.relative_position_type,
+            dropout_name=tf.get_variable_scope().name+"/decoder" if if_reuse_dropout else None)
+
+        self.sequence_output_decoder = tf.cast(self.all_layers_decoder[-1], dtype=tf.float32)
+
   def get_pooled_output(self):
     return self.pooled_output
 
@@ -324,6 +355,14 @@ class BertModel(object):
 
   def get_position_embedding(self):
     return self.position_embedding_output
+
+  def get_sequence_output_decoder(self):
+    """Gets final hidden layer of encoder.
+    Returns:
+      float Tensor of shape [batch_size, seq_length, hidden_size] corresponding
+      to the final hidden of the transformer encoder.
+    """
+    return self.sequence_output_decoder 
 
 def gelu(x):
   """Gaussian Error Linear Unit.
@@ -557,36 +596,37 @@ def embedding_postprocessor(input_tensor,
                                        [batch_size, seq_length, width])
     output += token_type_embeddings
 
-  if use_position_embeddings:
-    assert_op = tf.assert_less_equal(seq_length, max_position_embeddings)
-    with tf.control_dependencies([assert_op]):
-      full_position_embeddings = tf.get_variable(
-          name=position_embedding_name,
-          shape=[max_position_embeddings, width],
-          initializer=create_initializer(initializer_range))
-      # Since the position embedding table is a learned variable, we create it
-      # using a (long) sequence length `max_position_embeddings`. The actual
-      # sequence length might be shorter than this, for faster training of
-      # tasks that do not have long sequences.
-      #
-      # So `full_position_embeddings` is effectively an embedding table
-      # for position [0, 1, 2, ..., max_position_embeddings-1], and the current
-      # sequence has positions [0, 1, 2, ... seq_length-1], so we can just
-      # perform a slice.
-      position_embeddings = tf.slice(full_position_embeddings, [0, 0],
-                                     [seq_length, -1])
-      num_dims = len(output.shape.as_list())
+  assert_op = tf.assert_less_equal(seq_length, max_position_embeddings)
+  with tf.control_dependencies([assert_op]):
+    full_position_embeddings = tf.get_variable(
+        name=position_embedding_name,
+        shape=[max_position_embeddings, width],
+        initializer=create_initializer(initializer_range))
+    # Since the position embedding table is a learned variable, we create it
+    # using a (long) sequence length `max_position_embeddings`. The actual
+    # sequence length might be shorter than this, for faster training of
+    # tasks that do not have long sequences.
+    #
+    # So `full_position_embeddings` is effectively an embedding table
+    # for position [0, 1, 2, ..., max_position_embeddings-1], and the current
+    # sequence has positions [0, 1, 2, ... seq_length-1], so we can just
+    # perform a slice.
+    position_embeddings = tf.slice(full_position_embeddings, [0, 0],
+                                   [seq_length, -1])
+    num_dims = len(output.shape.as_list())
 
-      # Only the last two dimensions are relevant (`seq_length` and `width`), so
-      # we broadcast among the first dimensions, which is typically just
-      # the batch size.
-      position_broadcast_shape = []
-      for _ in range(num_dims - 2):
-        position_broadcast_shape.append(1)
-      position_broadcast_shape.extend([seq_length, width])
-      position_embeddings = tf.reshape(position_embeddings,
-                                       position_broadcast_shape)
-      # output += position_embeddings
+    # Only the last two dimensions are relevant (`seq_length` and `width`), so
+    # we broadcast among the first dimensions, which is typically just
+    # the batch size.
+    position_broadcast_shape = []
+    for _ in range(num_dims - 2):
+      position_broadcast_shape.append(1)
+    position_broadcast_shape.extend([seq_length, width])
+    position_embeddings = tf.reshape(position_embeddings,
+                                     position_broadcast_shape)
+    if use_position_embeddings:
+      tf.logging.info("** use_position_embeddings **")
+      output += position_embeddings
 
   output = layer_norm_and_dropout(output, dropout_prob, dropout_name)
   return output, position_embeddings
@@ -746,21 +786,33 @@ def _generate_relative_positions_embeddings(length, depth,
   embeddings_table = np.zeros([vocab_size, depth]).astype(np.float32)
 
   if relative_position_embedding_type == 'sinusoidal':
-    for pos in range(vocab_size):
-      for i in range(depth // 2):
-        embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-        embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
-  
+    
+    position_enc = np.array(
+            [
+                [pos / np.power(10000, 2 * (j // 2) / depth) for j in range(depth)]
+                for pos in range(vocab_size)
+            ]
+        )
+
+    embeddings_table[:, 0 : depth // 2] = np.sin(position_enc[:, 0::2])
+    embeddings_table[:, depth // 2 :] = np.cos(position_enc[:, 1::2])
+
     relative_position_table = tf.get_variable(name="relative_position_bias", 
                       shape=[vocab_size, depth], 
                       initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
                       trainable=False)
   elif relative_position_embedding_type == 'sinusoidal_trainable':
-    for pos in range(vocab_size):
-      for i in range(depth // 2):
-        embeddings_table[pos, 2 * i] = np.sin(pos / np.power(10000, 2 * i / depth))
-        embeddings_table[pos, 2 * i + 1] = np.cos(pos / np.power(10000, 2 * i / depth))
-  
+    
+    position_enc = np.array(
+            [
+                [pos / np.power(10000, 2 * (j // 2) / depth) for j in range(depth)]
+                for pos in range(vocab_size)
+            ]
+        )
+
+    embeddings_table[:, 0 : depth // 2] = np.sin(position_enc[:, 0::2])
+    embeddings_table[:, depth // 2 :] = np.cos(position_enc[:, 1::2])
+
     relative_position_table = tf.get_variable(name="relative_position_bias", 
                       shape=[vocab_size, depth], 
                       initializer=tf.constant_initializer(embeddings_table, dtype=tf.float32),
@@ -1104,6 +1156,173 @@ def transformer_model(input_tensor,
           attention_head, probs = attention_layer(
               from_tensor=layer_input,
               to_tensor=layer_input,
+              attention_mask=attention_mask,
+              num_attention_heads=num_attention_heads,
+              size_per_head=attention_head_size,
+              attention_probs_dropout_prob=attention_probs_dropout_prob,
+              initializer_range=initializer_range,
+              do_return_2d_tensor=True,
+              batch_size=batch_size,
+              from_seq_length=seq_length,
+              to_seq_length=seq_length,
+              use_relative_position=use_relative_position,
+              dropout_name=attention_dropout_name,
+              relative_position_embeddings=relative_position_embeddings,
+              relative_position_type=relative_position_type)
+
+          attention_heads.append(attention_head)
+          attn_maps.append(probs)
+
+        attention_output = None
+        if len(attention_heads) == 1:
+          attention_output = attention_heads[0]
+        else:
+          # In the case where we have other sequences, we just concatenate
+          # them to the self-attention head before the projection.
+          attention_output = tf.concat(attention_heads, axis=-1)
+
+        # Run a linear projection of `hidden_size` then add a residual
+        # with `layer_input`.
+        with tf.variable_scope("output"):
+          attention_output = tf.layers.dense(
+              attention_output,
+              hidden_size,
+              kernel_initializer=create_initializer(initializer_range))
+          
+          if dropout_name:
+            output_dropout_name = tf.get_variable_scope().name
+          else:
+            output_dropout_name = None
+
+          attention_output = dropout(attention_output, hidden_dropout_prob, dropout_name=output_dropout_name)
+          attention_output = layer_norm(attention_output + layer_input)
+
+      # The activation is only applied to the "intermediate" hidden layer.
+      with tf.variable_scope("intermediate"):
+        intermediate_output = tf.layers.dense(
+            attention_output,
+            intermediate_size,
+            activation=intermediate_act_fn,
+            kernel_initializer=create_initializer(initializer_range))
+
+      # Down-project back to `hidden_size` then add the residual.
+      with tf.variable_scope("output"):
+        layer_output = tf.layers.dense(
+            intermediate_output,
+            hidden_size,
+            kernel_initializer=create_initializer(initializer_range))
+
+        if dropout_name:
+          ffn_dropout_name = tf.get_variable_scope().name
+        else:
+          ffn_dropout_name = None
+
+        layer_output = dropout(layer_output, hidden_dropout_prob, dropout_name=ffn_dropout_name)
+        layer_output = layer_norm(layer_output + attention_output)
+        prev_output = layer_output
+        all_layer_outputs.append(layer_output)
+
+  attn_maps = tf.stack(attn_maps, 0)
+  if do_return_all_layers:
+    final_outputs = []
+    for layer_output in all_layer_outputs:
+      final_output = reshape_from_matrix(layer_output, input_shape)
+      final_outputs.append(final_output)
+    return final_outputs, attn_maps
+  else:
+    final_output = reshape_from_matrix(prev_output, input_shape)
+    return final_output, attn_maps
+
+def transformer_decoder_model(input_tensor,
+                      from_tensor,
+                      attention_mask=None,
+                      hidden_size=768,
+                      num_hidden_layers=12,
+                      num_attention_heads=12,
+                      intermediate_size=3072,
+                      intermediate_act_fn=gelu,
+                      hidden_dropout_prob=0.1,
+                      attention_probs_dropout_prob=0.1,
+                      initializer_range=0.02,
+                      do_return_all_layers=False,
+                      use_relative_position=False,
+                      dropout_name=None,
+                      relative_position_embeddings=None,
+                      relative_position_type='relative_normal'):
+  """Multi-headed, multi-layer Transformer from "Attention is All You Need".
+  This is almost an exact implementation of the original Transformer encoder.
+  See the original paper:
+  https://arxiv.org/abs/1706.03762
+  Also see:
+  https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py
+  Args:
+    input_tensor: float Tensor of shape [batch_size, seq_length, hidden_size].
+    attention_mask: (optional) int32 Tensor of shape [batch_size, seq_length,
+      seq_length], with 1 for positions that can be attended to and 0 in
+      positions that should not be.
+    hidden_size: int. Hidden size of the Transformer.
+    num_hidden_layers: int. Number of layers (blocks) in the Transformer.
+    num_attention_heads: int. Number of attention heads in the Transformer.
+    intermediate_size: int. The size of the "intermediate" (a.k.a., feed
+      forward) layer.
+    intermediate_act_fn: function. The non-linear activation function to apply
+      to the output of the intermediate/feed-forward layer.
+    hidden_dropout_prob: float. Dropout probability for the hidden layers.
+    attention_probs_dropout_prob: float. Dropout probability of the attention
+      probabilities.
+    initializer_range: float. Range of the initializer (stddev of truncated
+      normal).
+    do_return_all_layers: Whether to also return all layers or just the final
+      layer.
+  Returns:
+    float Tensor of shape [batch_size, seq_length, hidden_size], the final
+    hidden layer of the Transformer.
+  Raises:
+    ValueError: A Tensor shape or parameter is invalid.
+  """
+  if hidden_size % num_attention_heads != 0:
+    raise ValueError(
+        "The hidden size (%d) is not a multiple of the number of attention "
+        "heads (%d)" % (hidden_size, num_attention_heads))
+  tf.logging.info('use_relative_position: %s' % use_relative_position)
+
+  attention_head_size = int(hidden_size / num_attention_heads)
+  input_shape = get_shape_list(input_tensor, expected_rank=3)
+  batch_size = input_shape[0]
+  seq_length = input_shape[1]
+  input_width = input_shape[2]
+
+  # The Transformer performs sum residuals on all layers so the input needs
+  # to be the same as the hidden size.
+  if input_width != hidden_size:
+    raise ValueError("The width of the input tensor (%d) != hidden size (%d)" %
+                     (input_width, hidden_size))
+
+  # We keep the representation as a 2D tensor to avoid re-shaping it back and
+  # forth from a 3D tensor to a 2D tensor. Re-shapes are normally free on
+  # the GPU/CPU but may not be free on the TPU, so we want to minimize them to
+  # help the optimizer.
+  to_tensor = reshape_to_matrix(input_tensor)
+  prev_output = reshape_to_matrix(from_tensor)
+
+  all_layer_outputs = []
+  attn_maps = []
+  for layer_idx in range(num_hidden_layers):
+    with tf.variable_scope("layer_%d" % layer_idx):
+      layer_input = prev_output
+
+      with tf.variable_scope("attention"):
+        attention_heads = []
+        with tf.variable_scope("self"):
+
+          if dropout_name:
+            attention_dropout_name = tf.get_variable_scope().name
+          else:
+            attention_dropout_name = None
+
+          attention_head, probs = attention_layer(
+              from_tensor=layer_input,
+              to_tensor=to_tensor,
               attention_mask=attention_mask,
               num_attention_heads=num_attention_heads,
               size_per_head=attention_head_size,

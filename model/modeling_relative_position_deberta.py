@@ -759,6 +759,7 @@ def _generate_relative_positions_embeddings(length, depth,
     depth = size_per_head
     max_relative_position
     name = "relative_positions_keys"
+    
   """
  # '''
   #with tf.variable_scope(name):

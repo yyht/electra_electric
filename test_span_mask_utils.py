@@ -84,12 +84,11 @@ from tokenizers import (ByteLevelBPETokenizer,
       SentencePieceBPETokenizer,
       BertWordPieceTokenizer)
 
-vocab = './vocab/vocab_uncased_en.txt'
+vocab = '/Users/xuhaotian/Downloads/uncased_L-12_H-768_A-12_ilm_v1/vocab_uncased_en.txt'
 
 chinese_bpe_tokenizer = BertWordPieceTokenizer(
     vocab, 
     lowercase=True)
-
-print(chinese_bpe_tokenizer.decode(features['masked_input']))
-print(chinese_bpe_tokenizer.decode(features['origin_input']))
+print(chinese_bpe_tokenizer.decode(features['masked_input'][0], skip_special_tokens=False))
+print(chinese_bpe_tokenizer.decode(features['origin_input'][0], skip_special_tokens=False))
 

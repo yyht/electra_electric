@@ -4,7 +4,7 @@ nohup python3 run_pretraining_lm_energy.py \
     --finetune_input_file libri_asr/libri_asr_tfrecord \
     --output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_gpt_arebm_final \
     --input_data_dir gs://yyht_source/pretrain \
-    --init_checkpoint models/bert_base_50g_mix_ilm_gpt_final/model.ckpt-1000000 \
+    --init_checkpoint models/uncased_L-12_H-768_A-12_ilm_v1/bert_model.ckpt \
     --max_seq_length 512 \
     --real_max_length 632 \
     --do_train True \

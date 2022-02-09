@@ -20,17 +20,17 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     # [batch_size, seq_len, vocab_size]
     y_pred_pos = mask * logits
 
-    # [1, seq_len, vocab_size]
-    vocab_mask = tf.reduce_sum(onehot_labels, axis=0, keep_dims=True)
-    vocab_mask = tf.not_equal(tf.cast(vocab_mask, dtype=tf.int32), 0)
-    vocab_mask = tf.cast(vocab_mask, dtype=tf.float32)
+    # # [1, seq_len, vocab_size]
+    # vocab_mask = tf.reduce_sum(onehot_labels, axis=0, keep_dims=True)
+    # vocab_mask = tf.not_equal(tf.cast(vocab_mask, dtype=tf.int32), 0)
+    # vocab_mask = tf.cast(vocab_mask, dtype=tf.float32)
 
     # [batch_size, seq_len]
     seq_mask = tf.cast(input_mask, dtype=tf.float32)
     # [batch_size, seq_len, 1]
     seq_mask = tf.expand_dims(seq_mask, axis=-1)
 
-    total_mask = vocab_mask * seq_mask
+    total_mask = mask * seq_mask
 
     # [seq_len, vocab_size]
     Z = tf.reduce_logsumexp(logits, axis=0)
@@ -38,7 +38,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     Z = tf.expand_dims(Z, axis=0)
 
     # [batch_size, seq_len, vocab_size]
-    per_example_loss = -(y_pred_pos - Z) * total_mask
+    per_example_loss = -(logits - Z) * total_mask
 
     numerator = tf.reduce_sum(per_example_loss)
     denominator = tf.reduce_sum(total_mask) + 1e-10

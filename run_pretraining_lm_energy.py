@@ -254,7 +254,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     onehot_labels = tf.reshape(one_hot_labels, [input_shape[0], -1, bert_config.vocab_size])
     
     tf.logging.info("** after reshape one_hot_labels **")
-    tf.logging.info(one_hot_labels)
+    tf.logging.info(onehot_labels)
     
     # using rank-based NCE or contrastive learning for
     # estimating auto-regressive induced EBM

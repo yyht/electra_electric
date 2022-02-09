@@ -29,6 +29,8 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
 
     total_mask = mask * seq_mask
 
+    logits /= 0.1 # for contrastive-learning
+
     # [seq_len, vocab_size]
     # only get negative logits
     Z = tf.reduce_logsumexp(logits, axis=0)

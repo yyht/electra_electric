@@ -239,8 +239,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     # from [batch_size*seq_length, vocab_size] to 
     # [batch_size, seq_length, vocab_size]
-    logits = tf.reshape(logits, input_shape+[bert_config.vocab_size])
-    onehot_labels = tf.reshape(logits, input_shape+[bert_config.vocab_size])
+    logits = tf.reshape(logits, [input_shape[0], -1, bert_config.vocab_size])
+    onehot_labels = tf.reshape(logits, [input_shape[0], -1, bert_config.vocab_size])
     
     # using rank-based NCE or contrastive learning for
     # estimating auto-regressive induced EBM

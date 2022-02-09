@@ -16,9 +16,6 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     [batch_size, seq_len, vocab_size] = shape_list(logits)
 
     mask = tf.cast(onehot_labels, dtype=tf.float32)
-    
-    # [batch_size, seq_len, vocab_size]
-    y_pred_pos = mask * logits
 
     # # [1, seq_len, vocab_size]
     # vocab_mask = tf.reduce_sum(onehot_labels, axis=0, keep_dims=True)
@@ -33,6 +30,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     total_mask = mask * seq_mask
 
     # [seq_len, vocab_size]
+    # only get negative logits
     Z = tf.reduce_logsumexp(logits, axis=0)
     # [1, seq_len, vocab_size]
     Z = tf.expand_dims(Z, axis=0)

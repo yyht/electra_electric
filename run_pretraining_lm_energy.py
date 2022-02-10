@@ -224,9 +224,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
           use_one_hot_embeddings=use_one_hot_embeddings,
           if_use_unilm=False)
 
-    tf.logging.info("** lm_model.get_embedding_table() **")
-    tf.logging.info(lm_model.get_embedding_table())
-
     (lm_loss_onehot, 
     lm_loss_labels_smooth,
     lm_example_loss_onehot, 
@@ -389,8 +386,17 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
       logits = tf.nn.bias_add(logits, output_bias)
     
+      tf.logging.info("** before logits **")
+      tf.logging.info(logits)
+
   logits = tf.cast(logits, dtype=tf.float32)
   log_probs = tf.nn.log_softmax(logits, axis=-1)
+
+  tf.logging.info("** after logits **")
+  tf.logging.info(logits)
+
+  tf.logging.info("** log_probs **")
+  tf.logging.info(log_probs)
 
   logits_shape = modeling_ilm_gpt.get_shape_list(logits, expected_rank=3)
   logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])

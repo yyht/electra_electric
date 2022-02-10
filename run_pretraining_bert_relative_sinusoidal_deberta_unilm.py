@@ -36,7 +36,7 @@ if check_tf_version():
   tf.disable_v2_behavior()
 
 import os
-from model import modeling_relative_position_deberta
+from model import modeling_relative_position_deberta_unilm
 from model import optimization
 from util import utils, log_utils
 from pretrain.span_mask_utils import _decode_record as span_decode_record
@@ -153,17 +153,25 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     masked_lm_positions = features["masked_lm_positions"]
     masked_lm_ids = features["masked_lm_ids"]
     masked_lm_weights = features["masked_lm_weights"]
-      
+    
+    ilm_input_ids = features['ilm_input']
+    ilm_input_mask = features['ilm_input_mask']
+    ilm_segment_ids = features['ilm_segment_ids']
+
+    ilm_shape = modeling_bert_unilm.get_shape_list(ilm_input_ids)
+    input_shape = modeling_bert_unilm.get_shape_list(input_ids)
+
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-    model = modeling_relative_position_deberta.BertModel(
+    model = modeling_relative_position_deberta_unilm.BertModel(
         config=bert_config,
         is_training=is_training,
         input_ids=input_ids,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         scope='bert',
-        use_one_hot_embeddings=use_one_hot_embeddings)
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        if_use_unilm=False)
 
     (masked_lm_loss,
     masked_lm_example_loss, 
@@ -177,7 +185,25 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     masked_lm_preds = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
 
-    total_loss = masked_lm_loss
+    ilm_model = modeling_relative_position_deberta_unilm.BertModel(
+        config=bert_config,
+        is_training=is_training,
+        input_ids=ilm_input_ids,
+        input_mask=ilm_input_mask,
+        token_type_ids=ilm_segment_ids,
+        use_one_hot_embeddings=use_one_hot_embeddings,
+        if_use_unilm=True)
+
+    (ilm_loss, 
+    ilm_per_example_loss, 
+    ilm_log_probs) = get_lm_output(bert_config, 
+          ilm_model.get_sequence_output_decoder()[:, :-1, :], 
+          ilm_model.get_embedding_table(), 
+          label_ids=ilm_input_ids[:, 1:], 
+          label_mask=ilm_segment_ids[:, 1:])
+
+    total_loss = masked_lm_loss + ilm_loss
+    monitor_total_loss = tf.identity(total_loss)
     monitor_dict = {}
 
     tvars = tf.trainable_variables()
@@ -188,7 +214,11 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "masked_lm_preds": masked_lm_preds,
         "masked_lm_loss": masked_lm_example_loss,
         "masked_lm_weights": masked_lm_weights,
-        "masked_lm_ids": masked_lm_ids
+        "masked_lm_ids": masked_lm_ids,
+        "ilm_preds": ilm_preds,
+        "ilm_ids": ilm_input_ids[:, 1:],
+        "ilm_weights": ilm_segment_ids[:, 1:],
+        "ilm_loss": ilm_per_example_loss
     }
 
     eval_fn_keys = eval_fn_inputs.keys()
@@ -220,6 +250,21 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       monitor_dict['masked_lm_loss'] = masked_lm_loss
       monitor_dict['masked_lm_acc'] = masked_lm_acc
 
+      ilm_ids = tf.reshape(d["ilm_ids"], [-1])
+      ilm_preds = tf.reshape(d["ilm_preds"], [-1])
+      ilm_weights = tf.reshape(d["ilm_weights"], [-1])
+      ilm_acc = tf.cast(tf.equal(ilm_preds, ilm_ids), dtype=tf.float32)
+      ilm_acc = tf.reduce_sum(ilm_acc*tf.cast(ilm_weights, dtype=tf.float32))
+      ilm_acc /= (1e-10+tf.reduce_sum(tf.cast(ilm_weights, dtype=tf.float32)))
+
+      ilm_loss = tf.reshape(d["ilm_loss"], [-1])
+      ilm_loss = tf.reduce_sum(ilm_loss*tf.cast(ilm_weights, dtype=tf.float32))
+      ilm_loss /= (1e-10+tf.reduce_sum(tf.cast(ilm_weights, dtype=tf.float32)))
+
+      monitor_dict['ilm_loss'] = ilm_loss
+      monitor_dict['ilm_acc'] = ilm_acc
+      monitor_dict['ilm_weights'] = tf.reduce_mean(tf.reduce_sum(d["ilm_weights"], axis=-1))
+
       return monitor_dict
 
     monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -228,7 +273,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling_relative_position_deberta.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling_relative_position_deberta_unilm.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -320,7 +365,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  input_shape = modeling_relative_position_deberta.get_shape_list(input_tensor, expected_rank=3)
+  input_shape = modeling_relative_position_deberta_unilm.get_shape_list(input_tensor, expected_rank=3)
   input_tensor = tf.reshape(input_tensor, [input_shape[0]*input_shape[1], input_shape[2]])
   
   with tf.variable_scope("cls/predictions"):
@@ -330,9 +375,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_relative_position_deberta.get_activation(config.hidden_act),
-          kernel_initializer=modeling_relative_position_deberta.create_initializer(config.initializer_range))
-      input_tensor = modeling_relative_position_deberta.layer_norm(input_tensor)
+          activation=modeling_relative_position_deberta_unilm.get_activation(config.hidden_act),
+          kernel_initializer=modeling_relative_position_deberta_unilm.create_initializer(config.initializer_range))
+      input_tensor = modeling_relative_position_deberta_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -390,10 +435,10 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
       input_tensor = tf.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
-          activation=modeling_relative_position_deberta.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_relative_position_deberta.create_initializer(
+          activation=modeling_relative_position_deberta_unilm.get_activation(bert_config.hidden_act),
+          kernel_initializer=modeling_relative_position_deberta_unilm.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling_relative_position_deberta.layer_norm(input_tensor)
+      input_tensor = modeling_relative_position_deberta_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -430,7 +475,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""
-  sequence_shape = modeling_relative_position_deberta.get_shape_list(sequence_tensor, expected_rank=3)
+  sequence_shape = modeling_relative_position_deberta_unilm.get_shape_list(sequence_tensor, expected_rank=3)
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
   width = sequence_shape[2]
@@ -554,7 +599,7 @@ def main(_):
   if not FLAGS.do_train and not FLAGS.do_eval:
     raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
-  bert_config = modeling_relative_position_deberta.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling_relative_position_deberta_unilm.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
 

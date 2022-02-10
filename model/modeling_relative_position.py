@@ -237,6 +237,7 @@ class BertModel(object):
         self.relative_position_table] = _generate_relative_positions_embeddings(
                     input_shape[1], 
                     depth=depth,
+                    segment_ids=token_type_ids,
                     max_relative_position=config.max_relative_position, 
                     name="encoder_relative_positions_bias",
                     num_buckets=config.num_buckets,
@@ -689,6 +690,7 @@ def _generate_relative_positions_matrix_t5(length, max_relative_position,
 
 def _generate_relative_positions_embeddings(length, depth,
                             max_relative_position, name,
+                            segment_ids,
                             num_buckets=32,
                             initializer_range=0.02,
                             bidirectional=True,
@@ -776,24 +778,30 @@ def _generate_relative_positions_embeddings(length, depth,
                       initializer=create_initializer(initializer_range),
                       trainable=True)
 
-  relative_position_embeddings_bi = tf.gather(relative_position_table, relative_positions_matrix_bi)
-  relative_position_embeddings_uni = tf.gather(relative_position_table, relative_positions_matrix_uni)
+  segment_mask = tf.cast(segment_ids, dtype=tf.int32)
+  # handle mixture of bi and uni-direction relative position
+  # [1, seq_len, seq_len]
+  relative_positions_matrix_bi = tf.expand_dims(relative_positions_matrix_bi, axis=0)
+  relative_positions_matrix_uni = tf.expand_dims(relative_positions_matrix_uni, axis=0)
+
+  tf.logging.info("** relative_positions_matrix_bi **")
+  tf.logging.info(relative_positions_matrix_bi)
+
+  tf.logging.info("** relative_positions_matrix_uni **")
+  tf.logging.info(relative_positions_matrix_uni)
   
-  tf.logging.info("** relative_position_embeddings_bi **")
-  tf.logging.info(relative_position_embeddings_bi)
-
-  tf.logging.info("** relative_position_embeddings_uni **")
-  tf.logging.info(relative_position_embeddings_uni)
-
-  relative_position_embeddings_bi = tf.expand_dims(relative_position_embeddings_bim, axis=0)
-  relative_position_embeddings_uni = tf.expand_dims(relative_position_embeddings_uni, axis=0)
-
-  # [batch_size, seq_len, 1]
-  segment_mask = tf.expand_dims(segment_ids, axis=-1)
-  segment_mask = tf.expand_dims(segment_mask, axis=-1)
-  segment_mask = tf.cast(segment_mask, dtype=tf.float32)
-  relative_position_embeddings = (1.0-segment_mask) * relative_position_embeddings_bi
-  relative_position_embeddings += segment_mask * relative_position_embeddings_uni
+  # s1 * (1-segment_ids[None, :]) * (1-segment_ids[:, None]) + s3 * (segment_ids[:, None])
+  # [batch, seq_len, seq_len]
+  relative_positions_matrix = relative_positions_matrix_bi * (1-tf.expand_dims(segment_mask, axis=1)) * (1-tf.expand_dims(segment_mask, axis=-1)) + relative_positions_matrix_uni * (tf.expand_dims(segment_mask, axis=-1))
+  
+  tf.logging.info("** relative_positions_matrix **")
+  tf.logging.info(relative_positions_matrix)
+  # [batch, seq_len, seq_len, dims]
+  relative_position_embeddings = tf.gather(relative_position_table, relative_positions_matrix)
+  
+  tf.logging.info("** relative_position_embeddings **")
+  tf.logging.info(relative_position_embeddings)
+  
   return relative_position_embeddings, relative_position_table
 
 def attention_layer(from_tensor,

@@ -215,57 +215,53 @@ class BertModel(object):
             dropout_prob=config.hidden_dropout_prob,
             dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
 
-      # for fp16
-      self.embedding_output = tf.cast(self.embedding_output, dtype=tf.float16)
-      with tf.tpu.bfloat16_scope():
+      with tf.variable_scope("encoder"):
+        # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
+        # mask of shape [batch_size, seq_length, seq_length] which is used
+        # for the attention scores.
+        attention_mask = create_attention_mask_from_input_mask(
+            input_ids, input_mask)
 
-        with tf.variable_scope("encoder"):
-          # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
-          # mask of shape [batch_size, seq_length, seq_length] which is used
-          # for the attention scores.
-          attention_mask = create_attention_mask_from_input_mask(
-              input_ids, input_mask)
+        if if_use_unilm:
+          tf.logging.info("** apply unilm mask **")
+          attention_mask = create_attention_mask_from_input_segment_id(
+            input_ids, token_type_ids)
+        else:
+          tf.logging.info("** apply gpt mask **")
+          attention_mask = create_casual_attention_mask_from_input_mask(
+            input_ids, input_mask)
 
-          if if_use_unilm:
-            tf.logging.info("** apply unilm mask **")
-            attention_mask = create_attention_mask_from_input_segment_id(
-              input_ids, token_type_ids)
-          else:
-            tf.logging.info("** apply gpt mask **")
-            attention_mask = create_casual_attention_mask_from_input_mask(
-              input_ids, input_mask)
+        # Run the stacked transformer.
+        # `sequence_output` shape = [batch_size, seq_length, hidden_size].
+        self.all_encoder_layers = transformer_model(
+            input_tensor=self.embedding_output,
+            attention_mask=attention_mask,
+            hidden_size=config.hidden_size,
+            num_hidden_layers=config.num_hidden_layers,
+            num_attention_heads=config.num_attention_heads,
+            intermediate_size=config.intermediate_size,
+            intermediate_act_fn=get_activation(config.hidden_act),
+            hidden_dropout_prob=config.hidden_dropout_prob,
+            attention_probs_dropout_prob=config.attention_probs_dropout_prob,
+            initializer_range=config.initializer_range,
+            do_return_all_layers=True,
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
 
-          # Run the stacked transformer.
-          # `sequence_output` shape = [batch_size, seq_length, hidden_size].
-          self.all_encoder_layers = transformer_model(
-              input_tensor=self.embedding_output,
-              attention_mask=attention_mask,
-              hidden_size=config.hidden_size,
-              num_hidden_layers=config.num_hidden_layers,
-              num_attention_heads=config.num_attention_heads,
-              intermediate_size=config.intermediate_size,
-              intermediate_act_fn=get_activation(config.hidden_act),
-              hidden_dropout_prob=config.hidden_dropout_prob,
-              attention_probs_dropout_prob=config.attention_probs_dropout_prob,
-              initializer_range=config.initializer_range,
-              do_return_all_layers=True,
-              dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
-
-        self.sequence_output = self.all_encoder_layers[-1]
-        # The "pooler" converts the encoded sequence tensor of shape
-        # [batch_size, seq_length, hidden_size] to a tensor of shape
-        # [batch_size, hidden_size]. This is necessary for segment-level
-        # (or segment-pair-level) classification tasks where we need a fixed
-        # dimensional representation of the segment.
-        with tf.variable_scope("pooler"):
-          # We "pool" the model by simply taking the hidden state corresponding
-          # to the first token. We assume that this has been pre-trained
-          first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
-          self.pooled_output = tf.layers.dense(
-              first_token_tensor,
-              config.hidden_size,
-              activation=tf.tanh,
-              kernel_initializer=create_initializer(config.initializer_range))
+      self.sequence_output = self.all_encoder_layers[-1]
+      # The "pooler" converts the encoded sequence tensor of shape
+      # [batch_size, seq_length, hidden_size] to a tensor of shape
+      # [batch_size, hidden_size]. This is necessary for segment-level
+      # (or segment-pair-level) classification tasks where we need a fixed
+      # dimensional representation of the segment.
+      with tf.variable_scope("pooler"):
+        # We "pool" the model by simply taking the hidden state corresponding
+        # to the first token. We assume that this has been pre-trained
+        first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
+        self.pooled_output = tf.layers.dense(
+            first_token_tensor,
+            config.hidden_size,
+            activation=tf.tanh,
+            kernel_initializer=create_initializer(config.initializer_range))
 
   def get_pooled_output(self):
     return self.pooled_output
@@ -590,7 +586,7 @@ def create_attention_mask_from_input_segment_id(from_tensor, to_mask):
 
   idxs = tf.cumsum(to_mask, axis=1)
   mask = idxs[:, None, :] <= idxs[:, :, None]
-  mask = tf.cast(mask, dtype=tf.int32)
+  mask = tf.cast(mask, dtype=tf.float32)
   return mask
 
 def create_attention_mask_from_input_mask(from_tensor, to_mask):
@@ -611,7 +607,7 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
   to_seq_length = to_shape[1]
 
   to_mask = tf.cast(
-      tf.reshape(to_mask, [batch_size, 1, to_seq_length]), tf.int32)
+      tf.reshape(to_mask, [batch_size, 1, to_seq_length]), tf.float32)
 
   # We don't assume that `from_tensor` is a mask (although it could be). We
   # don't actually care if we attend *from* padding tokens (only *to* padding)
@@ -619,7 +615,7 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
   #
   # `broadcast_ones` = [batch_size, from_seq_length, 1]
   broadcast_ones = tf.ones(
-      shape=[batch_size, from_seq_length, 1], dtype=tf.int32)
+      shape=[batch_size, from_seq_length, 1], dtype=tf.float32)
 
   # Here we broadcast along two dimensions to create the mask.
   mask = broadcast_ones * to_mask
@@ -635,7 +631,7 @@ def create_casual_attention_mask_from_input_mask(from_tensor, to_mask):
   j = tf.range(from_seq_length)
   m = i >= j - from_seq_length + from_seq_length
   m = tf.reshape(m, [1, from_seq_length, from_seq_length])
-  return tf.cast(m, dtype=tf.int32)
+  return tf.cast(m, dtype=tf.float32)
 
 def attention_layer(from_tensor,
                     to_tensor,
@@ -791,8 +787,7 @@ def attention_layer(from_tensor,
     # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
     # masked positions, this operation will create a tensor which is 0.0 for
     # positions we want to attend and -10000.0 for masked positions.
-    # adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
-    adder = (1.0 - tf.cast(attention_mask, attention_scores.dtype)) * -10000.0
+    adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
 
     # Since we are adding it to the raw scores before the softmax, this is
     # effectively the same as removing these entirely.

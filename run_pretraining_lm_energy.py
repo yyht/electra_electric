@@ -224,6 +224,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
           use_one_hot_embeddings=use_one_hot_embeddings,
           if_use_unilm=False)
 
+      sequence_output = lm_model.get_sequence_output()
+      tf.logging.info("** sequence_output **")
+      tf.logging.info(sequence_output)
+
     (lm_loss_onehot, 
     lm_loss_labels_smooth,
     lm_example_loss_onehot, 
@@ -231,7 +235,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     lm_log_probs,
     logits,
     one_hot_labels) = get_lm_output(bert_config, 
-                  lm_model.get_sequence_output()[:, :-1, :], 
+                  sequence_output[:, :-1, :], 
                   lm_model.get_embedding_table(), 
                   label_ids=input_ids[:, 1:], 
                   label_mask=input_mask[:, 1:])

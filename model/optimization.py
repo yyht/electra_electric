@@ -71,6 +71,8 @@ def create_optimizer(
       exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
       include_in_weight_decay=["r_s_bias", "r_r_bias", "r_w_bias"])
   if use_tpu:
+    optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+    tf.logging.info("** add fp16 **")
     optimizer = tf.tpu.CrossShardOptimizer(optimizer)
 
   tvars = tf.trainable_variables()

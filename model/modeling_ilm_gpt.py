@@ -586,7 +586,7 @@ def create_attention_mask_from_input_segment_id(from_tensor, to_mask):
 
   idxs = tf.cumsum(to_mask, axis=1)
   mask = idxs[:, None, :] <= idxs[:, :, None]
-  mask = tf.cast(mask, dtype=tf.float32)
+  mask = tf.cast(mask, dtype=tf.int32)
   return mask
 
 def create_attention_mask_from_input_mask(from_tensor, to_mask):
@@ -607,7 +607,7 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
   to_seq_length = to_shape[1]
 
   to_mask = tf.cast(
-      tf.reshape(to_mask, [batch_size, 1, to_seq_length]), tf.float32)
+      tf.reshape(to_mask, [batch_size, 1, to_seq_length]), tf.int32)
 
   # We don't assume that `from_tensor` is a mask (although it could be). We
   # don't actually care if we attend *from* padding tokens (only *to* padding)
@@ -615,7 +615,7 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
   #
   # `broadcast_ones` = [batch_size, from_seq_length, 1]
   broadcast_ones = tf.ones(
-      shape=[batch_size, from_seq_length, 1], dtype=tf.float32)
+      shape=[batch_size, from_seq_length, 1], dtype=tf.int32)
 
   # Here we broadcast along two dimensions to create the mask.
   mask = broadcast_ones * to_mask
@@ -631,7 +631,7 @@ def create_casual_attention_mask_from_input_mask(from_tensor, to_mask):
   j = tf.range(from_seq_length)
   m = i >= j - from_seq_length + from_seq_length
   m = tf.reshape(m, [1, from_seq_length, from_seq_length])
-  return tf.cast(m, dtype=tf.float32)
+  return tf.cast(m, dtype=tf.int32)
 
 def attention_layer(from_tensor,
                     to_tensor,
@@ -787,7 +787,8 @@ def attention_layer(from_tensor,
     # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
     # masked positions, this operation will create a tensor which is 0.0 for
     # positions we want to attend and -10000.0 for masked positions.
-    adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
+    # adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
+    adder = (1.0 - tf.cast(attention_mask, attention_scores.dtype)) * -10000.0
 
     # Since we are adding it to the raw scores before the softmax, this is
     # effectively the same as removing these entirely.

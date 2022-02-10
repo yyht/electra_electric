@@ -157,7 +157,8 @@ class BertModel(object):
                token_type_ids=None,
                use_one_hot_embeddings=False,
                scope=None,
-               if_reuse_dropout=False):
+               if_reuse_dropout=False,
+               if_use_unilm=False):
     """Constructor for BertModel.
     Args:
       config: `BertConfig` instance.
@@ -220,6 +221,15 @@ class BertModel(object):
         # mask of shape [batch_size, seq_length, seq_length] which is used
         # for the attention scores.
         attention_mask = create_attention_mask_from_input_mask(
+            input_ids, input_mask)
+
+        if if_use_unilm:
+          tf.logging.info("** apply unilm mask **")
+          attention_mask = create_attention_mask_from_input_segment_id(
+            input_ids, token_type_ids)
+        else:
+          tf.logging.info("** apply mlm mask **")
+          attention_mask = create_attention_mask_from_input_mask(
             input_ids, input_mask)
 
         input_shape = get_shape_list(input_ids)
@@ -631,6 +641,15 @@ def embedding_postprocessor(input_tensor,
   output = layer_norm_and_dropout(output, dropout_prob, dropout_name)
   return output, position_embeddings
 
+def create_attention_mask_from_input_segment_id(from_tensor, to_mask):
+  from_shape = get_shape_list(from_tensor, expected_rank=[2, 3])
+  batch_size = from_shape[0]
+  from_seq_length = from_shape[1]
+
+  idxs = tf.cumsum(to_mask, axis=1)
+  mask = idxs[:, None, :] <= idxs[:, :, None]
+  mask = tf.cast(mask, dtype=tf.float32)
+  return mask
 
 def create_attention_mask_from_input_mask(from_tensor, to_mask):
   """Create 3D attention mask from a 2D tensor mask.
@@ -823,7 +842,7 @@ def _generate_relative_positions_embeddings(length, depth,
                       shape=[vocab_size, depth], 
                       initializer=create_initializer(initializer_range),
                       trainable=True)
-
+  
   segment_mask = tf.cast(segment_ids, dtype=tf.int32)
   # handle mixture of bi and uni-direction relative position
   # [1, seq_len, seq_len]

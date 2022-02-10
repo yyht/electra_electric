@@ -12,8 +12,8 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
   """
   Hybrid Discriminative-Generative Training via Contrastive Learning
   """
+  [batch_size, seq_len, vocab_size] = shape_list(logits)
   with tf.variable_scope("ar_energy"):
-    [batch_size, seq_len, vocab_size] = shape_list(logits)
 
     mask = tf.cast(onehot_labels, dtype=tf.float32)
 

@@ -46,7 +46,6 @@ from pretrain.span_mask_utils_ilm import _decode_record as span_decode_record
 from bunch import Bunch
 from model import circle_loss_utils
 from model import ar_energy
-from gpu_env import get_custom_getter
 
 flags = tf.flags
 

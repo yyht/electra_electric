@@ -18,7 +18,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     queue = tf.get_variable('queue', 
               [4, seq_len, vocab_size], 
               dtype=tf.float32,
-              initializer=tf.constant_initializer(0),
+              initializer=tf.constant_initializer(-1e10),
               trainable=False)
 
     mask = tf.cast(onehot_labels, dtype=tf.float32)
@@ -48,8 +48,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
 
     with tf.control_dependencies([queue_op]):
       
-      queue_mask = tf.cast(tf.not_equal(queue, 0), dtype=tf.float32)
-      Z_queue = tf.reduce_logsumexp(queue[1:, :, :]-(1-queue_mask[1:, :, :])*1e10, axis=0)
+      Z_queue = tf.reduce_logsumexp(queue[1:, :, :], axis=0)
       Z_queue = tf.expand_dims(Z_queue, axis=0)
 
       Z_all = tf.reduce_logsumexp(tf.concat([Z, tf.stop_gradient(Z_queue)], axis=0), axis=0)

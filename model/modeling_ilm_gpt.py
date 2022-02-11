@@ -41,7 +41,7 @@ def check_tf_version():
 #   tf.disable_v2_behavior()
 
 from model import dropout_utils
-from gpu_env import get_custom_getter
+from model.gpu_env import get_custom_getter
 
 stable_dropout = dropout_utils.ReuseDropout()
 

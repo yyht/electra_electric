@@ -338,7 +338,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
           weight_decay_rate=FLAGS.weight_decay_rate,
           use_tpu=use_tpu,
           warmup_steps=num_warmup_steps,
-          lr_decay_power=FLAGS.lr_decay_power)
+          lr_decay_power=FLAGS.lr_decay_power,
+          fp16=True)
 
       monitor_dict['learning_rate'] = output_learning_rate
       if FLAGS.monitoring and monitor_dict:

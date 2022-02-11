@@ -337,14 +337,13 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       tf.logging.info("** update_ops **")
       tf.logging.info(update_ops)
 
-      train_op, output_learning_rate = optimization.create_optimizer(
-          total_loss, learning_rate, num_train_steps, 
-          weight_decay_rate=FLAGS.weight_decay_rate,
-          use_tpu=use_tpu,
-          warmup_steps=num_warmup_steps,
-          lr_decay_power=FLAGS.lr_decay_power)
-
-      train_op = tf.group(train_op, update_ops)
+      with tf.control_dependencies(update_ops):
+        train_op, output_learning_rate = optimization.create_optimizer(
+            total_loss, learning_rate, num_train_steps, 
+            weight_decay_rate=FLAGS.weight_decay_rate,
+            use_tpu=use_tpu,
+            warmup_steps=num_warmup_steps,
+            lr_decay_power=FLAGS.lr_decay_power)
 
       monitor_dict['learning_rate'] = output_learning_rate
       if FLAGS.monitoring and monitor_dict:

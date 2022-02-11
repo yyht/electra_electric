@@ -34,10 +34,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     Z = tf.reduce_logsumexp(logits, axis=0)
     # [1, seq_len, vocab_size]
     Z = tf.expand_dims(Z, axis=0)
-
-    queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
-    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
-    
+ 
     Z_queue = tf.reduce_logsumexp(queue, axis=0)
     Z_queue = tf.expand_dims(Z_queue, axis=0)
 
@@ -51,5 +48,8 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     denominator = tf.reduce_sum(total_mask) + 1e-10
 
     loss = numerator / denominator
+
+    queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
+    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
 
     return per_example_loss, loss, Z_queue

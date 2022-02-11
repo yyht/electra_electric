@@ -221,8 +221,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_use_unilm=False,
-        compute_type=tf.float16)
+        if_use_unilm=False)
 
     (lm_loss_onehot, 
     lm_loss_labels_smooth,
@@ -256,7 +255,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     
     tf.logging.info("** after reshape one_hot_labels **")
     tf.logging.info(onehot_labels)
-
+    
     # using rank-based NCE or contrastive learning for
     # estimating auto-regressive induced EBM
     [ar_ebm_per_example_loss, 
@@ -265,12 +264,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     total_loss = (lm_loss_onehot + ar_ebm_loss)
     monitor_total_loss = (lm_loss_onehot)
     monitor_dict = {}
-
-    tf.logging.info("** lm_loss_onehot **")
-    tf.logging.info(lm_loss_onehot)
-
-    tf.logging.info("** ar_ebm_loss **")
-    tf.logging.info(ar_ebm_loss)
 
     tvars = tf.trainable_variables()
     for tvar in tvars:
@@ -345,8 +338,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
           weight_decay_rate=FLAGS.weight_decay_rate,
           use_tpu=use_tpu,
           warmup_steps=num_warmup_steps,
-          lr_decay_power=FLAGS.lr_decay_power,
-          fp16=True)
+          lr_decay_power=FLAGS.lr_decay_power)
 
       monitor_dict['learning_rate'] = output_learning_rate
       if FLAGS.monitoring and monitor_dict:
@@ -372,7 +364,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE, ):
+  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
     with tf.variable_scope("transform"):
@@ -389,55 +381,46 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
         "output_bias",
         shape=[config.vocab_size],
         initializer=tf.zeros_initializer())
+    logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
+    logits = tf.nn.bias_add(logits, output_bias)
+    log_probs = tf.nn.log_softmax(logits, axis=-1)
 
-    tf.logging.info("** before input_tensor **")
-    tf.logging.info(input_tensor)
+    logits_shape = modeling_ilm_gpt.get_shape_list(logits, expected_rank=3)
+    logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
+    log_probs = tf.reshape(log_probs, [logits_shape[0]*logits_shape[1], logits_shape[2]])
 
-  input_tensor = tf.cast(input_tensor, dtype=output_weights.dtype)
-  
-  tf.logging.info("** after input_tensor **")
-  tf.logging.info(input_tensor)
+    label_ids = tf.reshape(label_ids, [-1])
 
-  logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
-  logits = tf.nn.bias_add(logits, output_bias)
-  log_probs = tf.nn.log_softmax(logits, axis=-1)
+    one_hot_labels = tf.one_hot(
+        label_ids, depth=config.vocab_size, dtype=tf.float32)
+    one_hot_labels_smooth = smooth_labels(one_hot_labels)
 
-  logits_shape = modeling_ilm_gpt.get_shape_list(logits, expected_rank=3)
-  logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
-  log_probs = tf.reshape(log_probs, [logits_shape[0]*logits_shape[1], logits_shape[2]])
+    # per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+    #                     labels=label_ids, 
+    #                     logits=logits)
 
-  label_ids = tf.reshape(label_ids, [-1])
+    label_mask = tf.reshape(label_mask, [-1])
+    loss_mask = tf.cast(label_mask, tf.float32)
 
-  one_hot_labels = tf.one_hot(
-      label_ids, depth=config.vocab_size, dtype=tf.float32)
-  one_hot_labels_smooth = smooth_labels(one_hot_labels)
+    per_example_loss_labels_smooth = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
 
-  # per_example_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-  #                     labels=label_ids, 
-  #                     logits=logits)
+    numerator_labels_smooth = tf.reduce_sum(loss_mask * per_example_loss_labels_smooth)
+    denominator_labels_smooth = tf.reduce_sum(loss_mask) + 1e-5
+    loss_labels_smooth = numerator_labels_smooth / (denominator_labels_smooth)
 
-  label_mask = tf.reshape(label_mask, [-1])
-  loss_mask = tf.cast(label_mask, tf.float32)
+    per_example_loss_onehot = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+    numerator_onehot = tf.reduce_sum(loss_mask * per_example_loss_onehot)
+    denominator_onehot = tf.reduce_sum(loss_mask) + 1e-5
+    loss_onehot = numerator_onehot / denominator_onehot
 
-  per_example_loss_labels_smooth = -tf.reduce_sum(log_probs * one_hot_labels_smooth, axis=[-1])
+    print(log_probs, '==ilm log_probs==')
+    print(label_ids, '==ilm label_ids==')
+    print(loss_mask, '==ilm loss_mask==')
+    print(per_example_loss_labels_smooth, '==ilm per_example_loss_labels_smooth==')
+    print(loss_labels_smooth, '==ilm loss_labels_smooth==')
 
-  numerator_labels_smooth = tf.reduce_sum(loss_mask * per_example_loss_labels_smooth)
-  denominator_labels_smooth = tf.reduce_sum(loss_mask) + 1e-5
-  loss_labels_smooth = numerator_labels_smooth / (denominator_labels_smooth)
-
-  per_example_loss_onehot = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
-  numerator_onehot = tf.reduce_sum(loss_mask * per_example_loss_onehot)
-  denominator_onehot = tf.reduce_sum(loss_mask) + 1e-5
-  loss_onehot = numerator_onehot / denominator_onehot
-
-  print(log_probs, '==ilm log_probs==')
-  print(label_ids, '==ilm label_ids==')
-  print(loss_mask, '==ilm loss_mask==')
-  print(per_example_loss_labels_smooth, '==ilm per_example_loss_labels_smooth==')
-  print(loss_labels_smooth, '==ilm loss_labels_smooth==')
-
-  print(per_example_loss_onehot, '==ilm per_example_loss_onehot==')
-  print(loss_onehot, '==ilm loss_onehot==')
+    print(per_example_loss_onehot, '==ilm per_example_loss_onehot==')
+    print(loss_onehot, '==ilm loss_onehot==')
 
   return (loss_onehot, loss_labels_smooth, 
         per_example_loss_onehot, 
@@ -538,7 +521,7 @@ data_config.sample_strategy = 'token_span'
 data_config.truncate_seq = False
 data_config.stride = 1
 data_config.p = 0.1
-data_config.use_bfloat16 = True
+data_config.use_bfloat16 = False
 data_config.max_predictions_per_seq = int(data_config.mask_prob*(FLAGS.max_seq_length))
 data_config.max_seq_length = FLAGS.max_seq_length
 data_config.initial_ratio = 0.15

@@ -44,7 +44,8 @@ if check_tf_version():
 def create_optimizer(
     loss, learning_rate, num_train_steps, weight_decay_rate=0.0, use_tpu=False,
     warmup_steps=0, warmup_proportion=0, lr_decay_power=1.0,
-    layerwise_lr_decay_power=-1, n_transformer_layers=None):
+    layerwise_lr_decay_power=-1, n_transformer_layers=None,
+    fp16=False):
   """Creates an optimizer and training op."""
   global_step = tf.train.get_or_create_global_step()
   learning_rate = tf.train.polynomial_decay(
@@ -71,11 +72,15 @@ def create_optimizer(
       exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
       include_in_weight_decay=["r_s_bias", "r_r_bias", "r_w_bias"])
   if use_tpu:
-    optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+    if fp16:
+      init_loss_scale = 2**32
+      loss_scaler = tf.train.experimental.DynamicLossScale(initial_loss_scale=init_loss_scale, increment_period=1000, multiplier=2.0)
+      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer, loss_scaler)
+      tf.logging.info("** using fp 16 **")
     optimizer = tf.tpu.CrossShardOptimizer(optimizer)
 
   tvars = tf.trainable_variables()
-  grads = tf.gradients(loss, tvars)
+  grads = optimizer.compute_gradients(loss, tvars)
   (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
   train_op = optimizer.apply_gradients(
       zip(grads, tvars), global_step=global_step)

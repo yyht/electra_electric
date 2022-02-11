@@ -236,9 +236,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                   label_mask=input_mask[:, 1:])
 
     lm_preds = tf.argmax(lm_log_probs, axis=-1, output_type=tf.int32)
-
-    # from [batch_size*seq_length, vocab_size] to 
-    # [batch_size, seq_length, vocab_size]
     
     tf.logging.info("** before reshape logits **")
     tf.logging.info(logits)

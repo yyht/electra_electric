@@ -34,15 +34,15 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     Z = tf.reduce_logsumexp(logits, axis=0)
     # [1, seq_len, vocab_size]
     Z = tf.expand_dims(Z, axis=0)
-
-    queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
-    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
-    
-    Z_queue = tf.reduce_logsumexp(queue[1:, :, :], axis=0)
+ 
+    Z_queue = tf.reduce_logsumexp(queue, axis=0)
     Z_queue = tf.expand_dims(Z_queue, axis=0)
 
     Z_all = tf.reduce_logsumexp(tf.concat([Z, tf.stop_gradient(Z_queue)], axis=0), axis=0)
     Z_all = tf.expand_dims(Z_all, axis=0)
+
+    tf.logging.info("** Z_all **")
+    tf.logging.info(Z_all)
 
     # [batch_size, seq_len, vocab_size]
     per_example_loss = -(logits - Z_all) * total_mask
@@ -51,5 +51,10 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     denominator = tf.reduce_sum(total_mask) + 1e-10
 
     loss = numerator / denominator
+
+    # reference from https://github.com/EncodeTS/TensorFlow_Center_Loss/blob/master/mnist_sample_code/mnist_with_center_loss.ipynb
+    # get loss then update
+    queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
+    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
 
     return per_example_loss, loss, Z_queue

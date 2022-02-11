@@ -58,4 +58,4 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
 
     loss = numerator / denominator
 
-    return per_example_loss, loss
+    return per_example_loss, loss, queue

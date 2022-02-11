@@ -335,14 +335,14 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
-      # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-      # with tf.control_dependencies(update_ops):
-      train_op, output_learning_rate = optimization.create_optimizer(
-          total_loss, learning_rate, num_train_steps, 
-          weight_decay_rate=FLAGS.weight_decay_rate,
-          use_tpu=use_tpu,
-          warmup_steps=num_warmup_steps,
-          lr_decay_power=FLAGS.lr_decay_power)
+      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+      with tf.control_dependencies(update_ops):
+        train_op, output_learning_rate = optimization.create_optimizer(
+            total_loss, learning_rate, num_train_steps, 
+            weight_decay_rate=FLAGS.weight_decay_rate,
+            use_tpu=use_tpu,
+            warmup_steps=num_warmup_steps,
+            lr_decay_power=FLAGS.lr_decay_power)
 
       monitor_dict['learning_rate'] = output_learning_rate
       if FLAGS.monitoring and monitor_dict:

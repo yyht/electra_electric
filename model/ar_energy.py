@@ -15,6 +15,12 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
   [batch_size, seq_len, vocab_size] = shape_list(logits)
   with tf.variable_scope("ar_energy"):
 
+    queue = tf.get_variable('queue', 
+              [4, seq_len, vocab_size], 
+              dtype=tf.float32,
+              initializer=tf.tf.constant_initializer(0),
+              trainable=False)
+
     mask = tf.cast(onehot_labels, dtype=tf.float32)
 
     # # [1, seq_len, vocab_size]
@@ -37,6 +43,13 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     # [1, seq_len, vocab_size]
     Z = tf.expand_dims(Z, axis=0)
 
+    queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
+    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
+
+    with tf.control_dependencies(queue_op):
+      queue_mask = tf.cast(tf.not_equal(queue, 0), dtype=tf.float32)
+      Z = tf.reduce_logsumexp(queue-(1-queue_mask)*1e10, axis=0)
+
     # [batch_size, seq_len, vocab_size]
     per_example_loss = -(logits - Z) * total_mask
 
@@ -45,4 +58,4 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
 
     loss = numerator / denominator
 
-    return per_example_loss, loss
+    return per_example_loss, loss, queue

@@ -255,11 +255,12 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     
     tf.logging.info("** after reshape one_hot_labels **")
     tf.logging.info(onehot_labels)
-    
+
     # using rank-based NCE or contrastive learning for
     # estimating auto-regressive induced EBM
     [ar_ebm_per_example_loss, 
-    ar_ebm_loss] = ar_energy.autoregressive_energy(logits, onehot_labels, input_mask[:, 1:])
+    ar_ebm_loss,
+    ar_queue] = ar_energy.autoregressive_energy(logits, onehot_labels, input_mask[:, 1:])
 
     total_loss = (lm_loss_onehot + ar_ebm_loss)
     monitor_total_loss = (lm_loss_onehot)
@@ -274,7 +275,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         "lm_loss": lm_example_loss_labels_smooth,
         "lm_weights": input_mask[:, 1:],
         "lm_ids": input_ids[:, 1:],
-        "ar_ebm_loss": ar_ebm_loss
+        "ar_ebm_loss": ar_ebm_loss,
+        "ar_queue": ar_queue
     }
 
     eval_fn_keys = eval_fn_inputs.keys()
@@ -303,6 +305,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
       monitor_dict['lm_acc'] = lm_acc
       monitor_dict['lm_weights'] = tf.reduce_mean(tf.reduce_sum(d["lm_weights"], axis=-1))
       monitor_dict['ar_ebm_loss'] = d['ar_ebm_loss']
+      monitor_dict['ar_queue'] = tf.reduce_mean(d['ar_queue'])
       return monitor_dict
 
     monitor_dict = monitor_fn(eval_fn_inputs, eval_fn_keys)
@@ -332,7 +335,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
-
+      # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+      # with tf.control_dependencies(update_ops):
       train_op, output_learning_rate = optimization.create_optimizer(
           total_loss, learning_rate, num_train_steps, 
           weight_decay_rate=FLAGS.weight_decay_rate,

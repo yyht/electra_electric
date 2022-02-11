@@ -28,14 +28,14 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     # vocab_mask = tf.not_equal(tf.cast(vocab_mask, dtype=tf.int32), 0)
     # vocab_mask = tf.cast(vocab_mask, dtype=tf.float32)
 
-    # [batch_size, seq_len]
+    # [batch_size, seq_len]   abc
     seq_mask = tf.cast(input_mask, dtype=tf.float32)
     # [batch_size, seq_len, 1]
     seq_mask = tf.expand_dims(seq_mask, axis=-1)
 
     total_mask = mask * seq_mask
 
-    logits /= 0.1 # for contrastive-learning
+    # logits /= 0.1 # for contrastive-learning
 
     # [seq_len, vocab_size]
     # only get negative logits
@@ -44,7 +44,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     Z = tf.expand_dims(Z, axis=0)
 
     queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
-    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, [queue_op])
+    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
     
     Z_queue = tf.reduce_logsumexp(queue, axis=0)
     Z_queue = tf.expand_dims(Z_queue, axis=0)

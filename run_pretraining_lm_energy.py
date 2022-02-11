@@ -265,6 +265,12 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     monitor_total_loss = (lm_loss_onehot)
     monitor_dict = {}
 
+    tf.logging.info("** lm_loss_onehot **")
+    tf.logging.info(lm_loss_onehot)
+
+    tf.logging.info("** ar_ebm_loss **")
+    tf.logging.info(ar_ebm_loss)
+
     tvars = tf.trainable_variables()
     for tvar in tvars:
       print(tvar, "=====tvar=====")
@@ -388,6 +394,10 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       tf.logging.info(input_tensor)
 
   input_tensor = tf.cast(input_tensor, dtype=output_weights.dtype)
+  
+  tf.logging.info("** after input_tensor **")
+  tf.logging.info(input_tensor)
+
   logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
   logits = tf.nn.bias_add(logits, output_bias)
   log_probs = tf.nn.log_softmax(logits, axis=-1)

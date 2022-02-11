@@ -80,7 +80,10 @@ def create_optimizer(
     optimizer = tf.tpu.CrossShardOptimizer(optimizer)
 
   tvars = tf.trainable_variables()
-  grads = optimizer.compute_gradients(loss, tvars)
+  grads_and_vars = optimizer.compute_gradients(loss, tvars)
+  grads_and_vars = [(g, v) for g, v in grads_and_vars if g is not None]
+  grads, tvars = list(zip(*grads_and_vars))
+
   (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
   train_op = optimizer.apply_gradients(
       zip(grads, tvars), global_step=global_step)

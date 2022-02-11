@@ -28,7 +28,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     # vocab_mask = tf.not_equal(tf.cast(vocab_mask, dtype=tf.int32), 0)
     # vocab_mask = tf.cast(vocab_mask, dtype=tf.float32)
 
-    # [batch_size, seq_len]
+    # [batch_size, seq_len]   abc
     seq_mask = tf.cast(input_mask, dtype=tf.float32)
     # [batch_size, seq_len, 1]
     seq_mask = tf.expand_dims(seq_mask, axis=-1)

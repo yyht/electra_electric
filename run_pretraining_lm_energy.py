@@ -336,6 +336,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+      
+      tf.logging.info("** update_ops **")
+      tf.logging.info(update_ops)
+
       with tf.control_dependencies(update_ops):
         train_op, output_learning_rate = optimization.create_optimizer(
             total_loss, learning_rate, num_train_steps, 

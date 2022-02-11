@@ -44,6 +44,9 @@ from model import dropout_utils
 
 stable_dropout = dropout_utils.ReuseDropout()
 
+"""
+https://github.com/NVIDIA/DeepLearningExamples/blob/master/TensorFlow/LanguageModeling/BERT/gpu_environment.py
+"""
 
 class BertConfig(object):
   """Configuration for `BertModel`."""

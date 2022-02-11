@@ -269,7 +269,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
     eval_fn_inputs = {
         "lm_preds": lm_preds,
-        "lm_loss": lm_example_loss_labels_smooth,
+        "lm_loss": lm_example_loss_onehot,
         "lm_weights": input_mask[:, 1:],
         "lm_ids": input_ids[:, 1:],
         "ar_ebm_loss": ar_ebm_loss,

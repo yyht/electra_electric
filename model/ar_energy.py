@@ -52,7 +52,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
       Z_queue = tf.reduce_logsumexp(queue[1:, :, :]-(1-queue_mask[1:, :, :])*1e10, axis=0)
       Z_queue = tf.expand_dims(Z_queue, axis=0)
 
-      Z_all = tf.reduce_logsumexp(tf.concat([Z, Z_queue], axis=0), axis=0)
+      Z_all = tf.reduce_logsumexp(tf.concat([Z, tf.stop_gradient(Z_queue)], axis=0), axis=0)
       Z_all = tf.expand_dims(Z_all, axis=0)
 
       # [batch_size, seq_len, vocab_size]

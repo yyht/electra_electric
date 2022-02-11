@@ -382,17 +382,14 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
           "output_bias",
           shape=[config.vocab_size],
           initializer=tf.zeros_initializer())
-      logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
-      logits = tf.nn.bias_add(logits, output_bias)
-      
-      tf.logging.info("** before logits **")
-      tf.logging.info(logits)
+  
+      tf.logging.info("** before input_tensor **")
+      tf.logging.info(input_tensor)
 
-  logits = tf.cast(logits, dtype=tf.float32)
+  input_tensor = tf.cast(input_tensor, dtype=output_weights.dtype)
+  logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
+  logits = tf.nn.bias_add(logits, output_bias)
   log_probs = tf.nn.log_softmax(logits, axis=-1)
-
-  tf.logging.info("** after logits **")
-  tf.logging.info(logits)
 
   logits_shape = modeling_ilm_gpt.get_shape_list(logits, expected_rank=3)
   logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])

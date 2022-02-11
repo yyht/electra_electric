@@ -54,6 +54,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
 
     # reference from https://github.com/EncodeTS/TensorFlow_Center_Loss/blob/master/mnist_sample_code/mnist_with_center_loss.ipynb
     # get loss then update
+    
     queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
     tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
 

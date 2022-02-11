@@ -155,7 +155,7 @@ class XDropout(object):
       random_tensor = tf.random_uniform(
           noise_shape, seed=seed, 
           dtype=input_tensor.dtype)
-      mask = tf.cast(random_tensor > dropout, dtype=tf.float32)
+      mask = tf.cast(random_tensor > dropout, dtype=input_tensor.dtype)
       tf.logging.info("==generate new mask==")
 
     if isinstance(local_context, DropoutContext):

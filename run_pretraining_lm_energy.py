@@ -46,6 +46,7 @@ from pretrain.span_mask_utils_ilm import _decode_record as span_decode_record
 from bunch import Bunch
 from model import circle_loss_utils
 from model import ar_energy
+from gpu_env import get_custom_getter
 
 flags = tf.flags
 
@@ -221,7 +222,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         input_mask=input_mask,
         token_type_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings,
-        if_use_unilm=False)
+        if_use_unilm=False,
+        compute_type=tf.float16)
 
     (lm_loss_onehot, 
     lm_loss_labels_smooth,
@@ -371,27 +373,26 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
 def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
   """Get loss and log probs for the LM."""
-  with tf.tpu.bfloat16_scope():
-    with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE):
-      # We apply one more non-linear transformation before the output layer.
-      # This matrix is not used after pre-training.
-      with tf.variable_scope("transform"):
-        input_tensor = tf.layers.dense(
-            input_tensor,
-            units=config.hidden_size,
-            activation=modeling_ilm_gpt.get_activation(config.hidden_act),
-            kernel_initializer=modeling_ilm_gpt.create_initializer(config.initializer_range))
-        input_tensor = modeling_ilm_gpt.layer_norm(input_tensor)
+  with tf.variable_scope("cls/predictions", reuse=tf.AUTO_REUSE, ):
+    # We apply one more non-linear transformation before the output layer.
+    # This matrix is not used after pre-training.
+    with tf.variable_scope("transform"):
+      input_tensor = tf.layers.dense(
+          input_tensor,
+          units=config.hidden_size,
+          activation=modeling_ilm_gpt.get_activation(config.hidden_act),
+          kernel_initializer=modeling_ilm_gpt.create_initializer(config.initializer_range))
+      input_tensor = modeling_ilm_gpt.layer_norm(input_tensor)
 
-      # The output weights are the same as the input embeddings, but there is
-      # an output-only bias for each token.
-      output_bias = tf.get_variable(
-          "output_bias",
-          shape=[config.vocab_size],
-          initializer=tf.zeros_initializer())
-  
-      tf.logging.info("** before input_tensor **")
-      tf.logging.info(input_tensor)
+    # The output weights are the same as the input embeddings, but there is
+    # an output-only bias for each token.
+    output_bias = tf.get_variable(
+        "output_bias",
+        shape=[config.vocab_size],
+        initializer=tf.zeros_initializer())
+
+    tf.logging.info("** before input_tensor **")
+    tf.logging.info(input_tensor)
 
   input_tensor = tf.cast(input_tensor, dtype=output_weights.dtype)
   

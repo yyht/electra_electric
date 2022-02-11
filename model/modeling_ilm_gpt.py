@@ -41,9 +41,9 @@ def check_tf_version():
 #   tf.disable_v2_behavior()
 
 from model import dropout_utils
+from gpu_env import get_custom_getter
 
 stable_dropout = dropout_utils.ReuseDropout()
-
 
 class BertConfig(object):
   """Configuration for `BertModel`."""
@@ -154,7 +154,8 @@ class BertModel(object):
                use_one_hot_embeddings=True,
                scope=None,
                if_reuse_dropout=False,
-               if_use_unilm=False):
+               if_use_unilm=False,
+               compute_type=tf.float32):
     """Constructor for BertModel.
 
     Args:
@@ -189,7 +190,7 @@ class BertModel(object):
     if token_type_ids is None:
       token_type_ids = tf.zeros(shape=[batch_size, seq_length], dtype=tf.int32)
 
-    with tf.variable_scope("bert", scope, reuse=tf.AUTO_REUSE):
+    with tf.variable_scope("bert", scope, reuse=tf.AUTO_REUSE, custom_getter=get_custom_getter(compute_type)):
       with tf.variable_scope("embeddings"):
         # Perform embedding lookup on the word ids.
         (self.embedding_output, self.embedding_table) = embedding_lookup(
@@ -215,56 +216,55 @@ class BertModel(object):
             dropout_prob=config.hidden_dropout_prob,
             dropout_name=tf.get_variable_scope().name+"/embeddings" if if_reuse_dropout else None)
 
-      with tf.tpu.bfloat16_scope():
-        self.embedding_output = tf.cast(self.embedding_output, dtype=tf.float16)
+      with tf.variable_scope("encoder"):
+        # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
+        # mask of shape [batch_size, seq_length, seq_length] which is used
+        # for the attention scores.
+        attention_mask = create_attention_mask_from_input_mask(
+            input_ids, input_mask)
 
-        with tf.variable_scope("encoder"):
-          # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
-          # mask of shape [batch_size, seq_length, seq_length] which is used
-          # for the attention scores.
-          attention_mask = create_attention_mask_from_input_mask(
-              input_ids, input_mask)
+        if if_use_unilm:
+          tf.logging.info("** apply unilm mask **")
+          attention_mask = create_attention_mask_from_input_segment_id(
+            input_ids, token_type_ids)
+        else:
+          tf.logging.info("** apply gpt mask **")
+          attention_mask = create_casual_attention_mask_from_input_mask(
+            input_ids, input_mask)
 
-          if if_use_unilm:
-            tf.logging.info("** apply unilm mask **")
-            attention_mask = create_attention_mask_from_input_segment_id(
-              input_ids, token_type_ids)
-          else:
-            tf.logging.info("** apply gpt mask **")
-            attention_mask = create_casual_attention_mask_from_input_mask(
-              input_ids, input_mask)
+        # Run the stacked transformer.
+        # `sequence_output` shape = [batch_size, seq_length, hidden_size].
+        self.all_encoder_layers = transformer_model(
+            input_tensor=self.embedding_output,
+            attention_mask=attention_mask,
+            hidden_size=config.hidden_size,
+            num_hidden_layers=config.num_hidden_layers,
+            num_attention_heads=config.num_attention_heads,
+            intermediate_size=config.intermediate_size,
+            intermediate_act_fn=get_activation(config.hidden_act),
+            hidden_dropout_prob=config.hidden_dropout_prob,
+            attention_probs_dropout_prob=config.attention_probs_dropout_prob,
+            initializer_range=config.initializer_range,
+            do_return_all_layers=True,
+            dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
 
-          # Run the stacked transformer.
-          # `sequence_output` shape = [batch_size, seq_length, hidden_size].
-          self.all_encoder_layers = transformer_model(
-              input_tensor=self.embedding_output,
-              attention_mask=attention_mask,
-              hidden_size=config.hidden_size,
-              num_hidden_layers=config.num_hidden_layers,
-              num_attention_heads=config.num_attention_heads,
-              intermediate_size=config.intermediate_size,
-              intermediate_act_fn=get_activation(config.hidden_act),
-              hidden_dropout_prob=config.hidden_dropout_prob,
-              attention_probs_dropout_prob=config.attention_probs_dropout_prob,
-              initializer_range=config.initializer_range,
-              do_return_all_layers=True,
-              dropout_name=tf.get_variable_scope().name+"/encoder" if if_reuse_dropout else None)
+      self.sequence_output = self.all_encoder_layers[-1]
+      self.sequence_output = tf.cast(self.all_encoder_layers[-1], tf.float32)
 
-        self.sequence_output = self.all_encoder_layers[-1]
-        # The "pooler" converts the encoded sequence tensor of shape
-        # [batch_size, seq_length, hidden_size] to a tensor of shape
-        # [batch_size, hidden_size]. This is necessary for segment-level
-        # (or segment-pair-level) classification tasks where we need a fixed
-        # dimensional representation of the segment.
-        with tf.variable_scope("pooler"):
-          # We "pool" the model by simply taking the hidden state corresponding
-          # to the first token. We assume that this has been pre-trained
-          first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
-          self.pooled_output = tf.layers.dense(
-              first_token_tensor,
-              config.hidden_size,
-              activation=tf.tanh,
-              kernel_initializer=create_initializer(config.initializer_range))
+      # The "pooler" converts the encoded sequence tensor of shape
+      # [batch_size, seq_length, hidden_size] to a tensor of shape
+      # [batch_size, hidden_size]. This is necessary for segment-level
+      # (or segment-pair-level) classification tasks where we need a fixed
+      # dimensional representation of the segment.
+      with tf.variable_scope("pooler"):
+        # We "pool" the model by simply taking the hidden state corresponding
+        # to the first token. We assume that this has been pre-trained
+        first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
+        self.pooled_output = tf.layers.dense(
+            first_token_tensor,
+            config.hidden_size,
+            activation=tf.tanh,
+            kernel_initializer=create_initializer(config.initializer_range))
 
   def get_pooled_output(self):
     return self.pooled_output

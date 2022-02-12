@@ -55,7 +55,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
         logits=logits_norm-Z_all
     )
 
-    numerator = tf.reduce_sum(per_example_loss)
+    numerator = tf.reduce_sum(per_example_loss * total_mask)
     denominator = tf.reduce_sum(total_mask) + 1e-10
 
     loss = numerator / denominator

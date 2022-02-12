@@ -35,6 +35,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     # logits_norm = tf.nn.l2_normalize(logits, axis=-1)
     # logits_norm /= 0.1
 
+    # using raw logits
     logits_norm = logits
 
     # current negative logits

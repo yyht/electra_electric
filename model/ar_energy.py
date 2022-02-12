@@ -66,4 +66,4 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     queue_op = queue.assign(tf.concat([Z, queue[:-1, :, :]], axis=0))
     tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, queue_op)
 
-    return per_example_loss, loss, Z_queue
+    return per_example_loss, loss, queue_buffer

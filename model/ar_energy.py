@@ -39,6 +39,7 @@ def autoregressive_energy(logits, onehot_labels, input_mask, **kargs):
     # logits_norm = logits
 
     # current negative logits
+    #
     Z = tf.reduce_logsumexp(logits_norm * (1.0-mask) - mask * 1e10, axis=0)
     # [1, seq_len, vocab_size]
     Z = tf.expand_dims(Z, axis=0)

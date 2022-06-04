@@ -3,7 +3,7 @@ nohup python3 run_pretraining_mlm_mix_unilm.py \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_large_50g_mix_ilm_final_mayi \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint models/chinese_L-24_H-1024_A-16-mayi_v1_ilm/bert_model.ckpt \
+	--init_checkpoint models/chinese_L-24_H-1024_A-16-mayi_v1_ilm/bert_model.ckpt.ckpt \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 64 \

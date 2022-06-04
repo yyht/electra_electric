@@ -6,7 +6,7 @@ nohup python3 run_pretraining_ilm.py \
 	--init_checkpoint models/chinese_roberta_wwm_large_ext_L-24_H-1024_A-16_ilm/bert_model.ckpt.ckpt \
 	--max_seq_length 512 \
 	--do_train True \
-	--train_batch_size 64 \
+	--train_batch_size 128 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
@@ -16,7 +16,7 @@ nohup python3 run_pretraining_ilm.py \
 	--tpu_name albert0 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
-	--max_predictions_per_seq 72 \
+	--max_predictions_per_seq 128 \
 	--monitoring True \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \

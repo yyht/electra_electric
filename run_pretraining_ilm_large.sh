@@ -1,4 +1,4 @@
-nohup python3 run_pretraining_mlm_mix_unilm.py \
+nohup python3 run_pretraining_ilm.py \
 	--bert_config_file ./config/bert_config_ilm_large.json \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_large_50g_ilm_final \

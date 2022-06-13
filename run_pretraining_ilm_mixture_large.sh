@@ -6,7 +6,7 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/bert_large_50g_ilm_final/model.ckpt-1000000 \
 	--max_seq_length 512 \
-	--real_max_length 632 \
+	--real_max_length 664 \
 	--do_train True \
 	--train_batch_size 64 \
 	--learning_rate 2e-4 \

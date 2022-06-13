@@ -2,20 +2,20 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--bert_config_file ./config/bert_config_ilm.json \
 	--pretrain_input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--finetune_input_file ilm_chinese_multitask_tfrecord/ilm_chinese_multitask.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_mix_ilm_final_mixture_final \
+	--output_dir gs://yyht_source/pretrain/models/bert_base_50g_ilm_final_mixture \
 	--input_data_dir gs://yyht_source/pretrain \
-	--init_checkpoint models/bert_base_50g_mix_ilm_final/model.ckpt-1000000 \
+	--init_checkpoint models/bert_base_50g_ilm_final/model.ckpt-1000000 \
 	--max_seq_length 512 \
 	--real_max_length 632 \
 	--do_train True \
 	--train_batch_size 128 \
-	--learning_rate 1e-4 \
-	--num_train_steps 1000000 \
-	--num_warmup_steps 10000 \
+	--learning_rate 2e-4 \
+	--num_train_steps 250000 \
+	--num_warmup_steps 2500 \
 	--save_checkpoints_steps 10000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \
-	--tpu_name albert0 \
+	--tpu_name albert1 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
 	--max_predictions_per_seq 96 \

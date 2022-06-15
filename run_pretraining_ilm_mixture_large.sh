@@ -10,8 +10,8 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--do_train True \
 	--train_batch_size 64 \
 	--learning_rate 2e-4 \
-	--num_train_steps 250000 \
-	--num_warmup_steps 2500 \
+	--num_train_steps 1000000 \
+	--num_warmup_steps 10000 \
 	--save_checkpoints_steps 10000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \

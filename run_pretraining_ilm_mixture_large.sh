@@ -1,5 +1,5 @@
 nohup python3 run_pretraining_ilm_mixture.py \
-	--bert_config_file ./config/bert_config_ilm.json \
+	--bert_config_file ./config/bert_config_ilm_large.json \
 	--pretrain_input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--finetune_input_file ilm_chinese_multitask_tfrecord/ilm_chinese_multitask.txt \
 	--output_dir gs://yyht_source/pretrain/models/bert_large_50g_ilm_final_mixture \

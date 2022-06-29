@@ -2,7 +2,7 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--bert_config_file ./config/bert_config_ilm_large.json \
 	--pretrain_input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
 	--finetune_input_file ilm_chinese_multitask_tfrecord/ilm_chinese_multitask.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_large_50g_ilm_final_mixture \
+	--output_dir gs://yyht_source/pretrain/models/bert_large_50g_ilm_final_mixture_final \
 	--input_data_dir gs://yyht_source/pretrain \
 	--init_checkpoint models/bert_large_50g_ilm_final/model.ckpt-1000000 \
 	--max_seq_length 512 \
@@ -10,8 +10,8 @@ nohup python3 run_pretraining_ilm_mixture.py \
 	--do_train True \
 	--train_batch_size 64 \
 	--learning_rate 2e-4 \
-	--num_train_steps 250000 \
-	--num_warmup_steps 2500 \
+	--num_train_steps 1000000 \
+	--num_warmup_steps 10000 \
 	--save_checkpoints_steps 10000 \
 	--iterations_per_loop 1000 \
 	--use_tpu True \

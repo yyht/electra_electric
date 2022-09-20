@@ -1,11 +1,12 @@
-nohup python3 run_pretraining_bert_roformer.py \
-	--bert_config_file ./config/bert_config_base_roformer.json \
+nohup python3 run_pretraining_ilm.py \
+	--bert_config_file ./config/bert_config_ilm_roformer.json \
 	--input_file chinese_simplified_whole_sentence_v3_32/chinese_simplified_whole_sentence_file.txt \
-	--output_dir gs://yyht_source/pretrain/models/bert_base_roformer_50g_latest \
+	--output_dir gs://yyht_source/pretrain/models/roformer_base_50g_ilm_final \
 	--input_data_dir gs://yyht_source/pretrain \
+	--init_checkpoint models/chinese_L-12_H-768_A-12_ilm_v1/bert_model.ckpt \
 	--max_seq_length 512 \
 	--do_train True \
-	--train_batch_size 256 \
+	--train_batch_size 128 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
@@ -15,7 +16,7 @@ nohup python3 run_pretraining_bert_roformer.py \
 	--tpu_name albert0 \
 	--num_tpu_cores 8 \
 	--eval_batch_size 256 \
-	--max_predictions_per_seq 78 \
+	--max_predictions_per_seq 128 \
 	--monitoring True \
 	--lr_decay_power 1.0 \
 	--weight_decay_rate 0.01 \

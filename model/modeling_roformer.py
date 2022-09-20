@@ -602,13 +602,13 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
 def _generate_sinusodial_position_embedding( 
                             max_position_embeddings,
                             depth,
-                            seq_length,
+                            seq_length, 
                             position_offset,
                             name,
                             initializer_range=0.02):
-  """
-  reference from: https://github.com/JunnYu/RoFormer_pytorch/blob/new/src/roformer/modeling_tf_roformer.py
-  """
+
+  # reference from: https://github.com/JunnYu/RoFormer_pytorch/blob/new/src/roformer/modeling_tf_roformer.py
+
   vocab_size = max_position_embeddings
   embeddings_table = np.zeros([vocab_size, depth]).astype(np.float32)
 

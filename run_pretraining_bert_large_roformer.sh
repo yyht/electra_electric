@@ -5,7 +5,7 @@ nohup python3 run_pretraining_bert_roformer.py \
 	--input_data_dir gs://yyht_source/pretrain \
 	--max_seq_length 512 \
 	--do_train True \
-	--train_batch_size 120 \
+	--train_batch_size 112 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \

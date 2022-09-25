@@ -669,7 +669,8 @@ def attention_layer(from_tensor,
                     to_seq_length=None,
                     position_embeddings=None,
                     use_relative_position=False,
-                    dropout_name=None):
+                    dropout_name=None,
+                    sin_pos=None, cos_pos=None):
   """Performs multi-headed attention from `from_tensor` to `to_tensor`.
   This is an implementation of multi-headed attention based on "Attention
   is all you Need". If `from_tensor` and `to_tensor` are the same, then
@@ -796,23 +797,25 @@ def attention_layer(from_tensor,
     # [1, T, depth]
 
     # reference from: https://github.com/JunnYu/RoFormer_pytorch/blob/new/src/roformer/modeling_tf_roformer.py
-    
-    sin_pos, cos_pos = tf.split(position_embeddings, 2, axis=-1)
-    cos_pos = tf_utils.repeat(cos_pos, repeats=2, axis=-1)
-    sin_pos = tf_utils.repeat(sin_pos, repeats=2, axis=-1)
+    if sin_pos is not None:
+      tf.logging.info("*** sin_pos is valid ***")
+    else:
+      sin_pos, cos_pos = tf.split(position_embeddings, 2, axis=-1)
+      cos_pos = tf_utils.repeat(cos_pos, repeats=2, axis=-1)
+      sin_pos = tf_utils.repeat(sin_pos, repeats=2, axis=-1)
 
-    # [1, 1, T, depth]
-    cos_pos = tf.expand_dims(cos_pos,
-                            axis=1)
-    sin_pos = tf.expand_dims(sin_pos,
-                            axis=1)
+      # [1, 1, T, depth]
+      cos_pos = tf.expand_dims(cos_pos,
+                              axis=1)
+      sin_pos = tf.expand_dims(sin_pos,
+                              axis=1)
 
-    # [1, F, 1, depth//2 * 2]
-    tf.logging.info(cos_pos)
-    tf.logging.info("*** cos_pos ***")
+      # [1, F, 1, depth//2 * 2]
+      tf.logging.info(cos_pos)
+      tf.logging.info("*** cos_pos ***")
 
-    tf.logging.info(sin_pos)
-    tf.logging.info("*** sin_pos ***")
+      tf.logging.info(sin_pos)
+      tf.logging.info("*** sin_pos ***")
 
     tf.logging.info(query_layer[:, :, :, 1::2])
     tf.logging.info(query_layer[:, :, :, ::2])
@@ -953,6 +956,23 @@ def transformer_model(input_tensor,
   # help the optimizer.
   prev_output = reshape_to_matrix(input_tensor)
 
+  sin_pos, cos_pos = tf.split(position_embeddings, 2, axis=-1)
+  cos_pos = tf_utils.repeat(cos_pos, repeats=2, axis=-1)
+  sin_pos = tf_utils.repeat(sin_pos, repeats=2, axis=-1)
+
+  # [1, 1, T, depth]
+  cos_pos = tf.expand_dims(cos_pos,
+                          axis=1)
+  sin_pos = tf.expand_dims(sin_pos,
+                          axis=1)
+
+  # [1, F, 1, depth//2 * 2]
+  tf.logging.info(cos_pos)
+  tf.logging.info("*** cos_pos ***")
+
+  tf.logging.info(sin_pos)
+  tf.logging.info("*** sin_pos ***")
+
   all_layer_outputs = []
   attn_maps = []
   for layer_idx in range(num_hidden_layers):
@@ -982,7 +1002,9 @@ def transformer_model(input_tensor,
               to_seq_length=seq_length,
               dropout_name=attention_dropout_name,
               position_embeddings=position_embeddings,
-              use_relative_position=use_relative_position)
+              use_relative_position=use_relative_position,
+              sin_pos=sin_pos,
+              cos_pos=cos_pos)
 
           attention_heads.append(attention_head)
           attn_maps.append(probs)

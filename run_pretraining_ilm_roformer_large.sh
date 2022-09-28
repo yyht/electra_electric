@@ -6,7 +6,7 @@ nohup python3 run_pretraining_ilm_roformer.py \
 	--init_checkpoint models/bert_large_roformer_50g_latest/model.ckpt-1000000 \
 	--max_seq_length 512 \
 	--do_train True \
-	--train_batch_size 96 \
+	--train_batch_size 64 \
 	--learning_rate 1e-4 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \

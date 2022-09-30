@@ -196,8 +196,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     ilm_input_mask = features['ilm_input_mask']
     ilm_segment_ids = features['ilm_segment_ids']
 
-    ilm_shape = modeling_bert_unilm.get_shape_list(ilm_input_ids)
-    input_shape = modeling_bert_unilm.get_shape_list(input_ids)
+    ilm_shape = modeling_roformer_unilm.get_shape_list(ilm_input_ids)
+    input_shape = modeling_roformer_unilm.get_shape_list(input_ids)
     
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -285,7 +285,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling_bert_unilm.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling_roformer_unilm.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -345,9 +345,9 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
       input_tensor = tf.layers.dense(
           input_tensor,
           units=config.hidden_size,
-          activation=modeling_bert_unilm.get_activation(config.hidden_act),
-          kernel_initializer=modeling_bert_unilm.create_initializer(config.initializer_range))
-      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
+          activation=modeling_roformer_unilm.get_activation(config.hidden_act),
+          kernel_initializer=modeling_roformer_unilm.create_initializer(config.initializer_range))
+      input_tensor = modeling_roformer_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -359,7 +359,7 @@ def get_lm_output(config, input_tensor, output_weights, label_ids, label_mask):
     logits = tf.nn.bias_add(logits, output_bias)
     log_probs = tf.nn.log_softmax(logits, axis=-1)
 
-    logits_shape = modeling_bert_unilm.get_shape_list(logits, expected_rank=3)
+    logits_shape = modeling_roformer_unilm.get_shape_list(logits, expected_rank=3)
     logits = tf.reshape(logits, [logits_shape[0]*logits_shape[1], logits_shape[2]])
     log_probs = tf.reshape(log_probs, [logits_shape[0]*logits_shape[1], logits_shape[2]])
 
@@ -413,10 +413,10 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
       input_tensor = tf.layers.dense(
           input_tensor,
           units=bert_config.hidden_size,
-          activation=modeling_bert_unilm.get_activation(bert_config.hidden_act),
-          kernel_initializer=modeling_bert_unilm.create_initializer(
+          activation=modeling_roformer_unilm.get_activation(bert_config.hidden_act),
+          kernel_initializer=modeling_roformer_unilm.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling_bert_unilm.layer_norm(input_tensor)
+      input_tensor = modeling_roformer_unilm.layer_norm(input_tensor)
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -466,7 +466,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def gather_indexes(sequence_tensor, positions):
   """Gathers the vectors at the specific positions over a minibatch."""
-  sequence_shape = modeling_bert_unilm.get_shape_list(sequence_tensor, expected_rank=3)
+  sequence_shape = modeling_roformer_unilm.get_shape_list(sequence_tensor, expected_rank=3)
   batch_size = sequence_shape[0]
   seq_length = sequence_shape[1]
   width = sequence_shape[2]

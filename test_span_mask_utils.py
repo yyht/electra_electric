@@ -1,4 +1,4 @@
-from pretrain import span_mask_utils
+from pretrain import span_mask_utils_ilm
 from pretrain import pretrain_helpers
 
 from bunch import Bunch
@@ -16,7 +16,7 @@ FLAGS.mask_id = 103
 FLAGS.batch_size = 2
 FLAGS.leak_ratio = 0.1
 FLAGS.rand_ratio = 0.1
-FLAGS.vocab_size = 30522
+FLAGS.vocab_size = 21128
 FLAGS.mask_prob = 0.15
 FLAGS.sample_strategy = 'token_span'
 FLAGS.confusion_matrix = None
@@ -25,6 +25,9 @@ FLAGS.prepare_text_infilling = False
 FLAGS.initial_ratio = 0.1
 FLAGS.final_ratio = 0.3
 FLAGS.num_train_steps = 1000
+FLAGS.seg_id = 105 # <S>
+FLAGS.ilm_v1 = False
+FLAGS.ilm_v2 = True
 
 name_to_features = {
       "input_ori_ids":
@@ -54,7 +57,7 @@ def train_input_fn(input_file, _parse_fn, name_to_features,
   dataset = tf.data.TFRecordDataset(input_file, buffer_size=params.get("buffer_size", 100))
 #     dataset = dataset.shuffle(1024)
 #     dataset = dataset.map(lambda x:_parse_fn(x, record_spec))
-  dataset = dataset.map(lambda x:span_mask_utils._decode_record(FLAGS, x, num_predict,
+  dataset = dataset.map(lambda x:span_mask_utils_ilm._decode_record(FLAGS, x, num_predict,
                   seq_len, 
                   use_bfloat16=use_bfloat16, 
                   truncate_seq=truncate_seq, 
@@ -65,7 +68,7 @@ def train_input_fn(input_file, _parse_fn, name_to_features,
   features = iterator.get_next()
   return features
 
-output = ['/Users/xuhaotian/Downloads/uncased_english_whole_sentence_v3_32_uncased_english_sub_task_0.tfrecord']
+output = ['/Users/xuhaotian/Downloads/chinese_sub_task_45.tfrecord']
 input_fn = train_input_fn(output[0], _decode_record, name_to_features, params=FLAGS)
 
 sess = tf.Session()
@@ -84,11 +87,12 @@ from tokenizers import (ByteLevelBPETokenizer,
       SentencePieceBPETokenizer,
       BertWordPieceTokenizer)
 
-vocab = '/Users/xuhaotian/Downloads/uncased_L-12_H-768_A-12_ilm_v1/vocab_uncased_en.txt'
+vocab = './vocab/vocab_ch.txt'
 
 chinese_bpe_tokenizer = BertWordPieceTokenizer(
     vocab, 
     lowercase=True)
-print(chinese_bpe_tokenizer.decode(features['masked_input'][0], skip_special_tokens=False))
+
+print(chinese_bpe_tokenizer.decode(features['ilm_input'][0], skip_special_tokens=False))
 print(chinese_bpe_tokenizer.decode(features['origin_input'][0], skip_special_tokens=False))
 

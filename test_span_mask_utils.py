@@ -96,3 +96,4 @@ chinese_bpe_tokenizer = BertWordPieceTokenizer(
 print(chinese_bpe_tokenizer.decode(features['ilm_input'][0], skip_special_tokens=False))
 print(chinese_bpe_tokenizer.decode(features['origin_input'][0], skip_special_tokens=False))
 
+print(features['ilm_segment_ids'][0])

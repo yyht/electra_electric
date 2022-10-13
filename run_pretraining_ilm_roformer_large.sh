@@ -7,7 +7,7 @@ nohup python3 run_pretraining_ilm_roformer.py \
 	--max_seq_length 512 \
 	--do_train True \
 	--train_batch_size 64 \
-	--learning_rate 1e-4 \
+	--learning_rate 3e-5 \
 	--num_train_steps 1000000 \
 	--num_warmup_steps 10000 \
 	--save_checkpoints_steps 10000 \

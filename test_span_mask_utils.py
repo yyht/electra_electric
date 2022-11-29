@@ -8,7 +8,7 @@ import tensorflow as tf
 
 FLAGS = Bunch({})
 FLAGS.min_tok = 3
-FLAGS.max_tok = 5
+FLAGS.max_tok = 10
 FLAGS.sep_id = 102
 FLAGS.pad_id = 0
 FLAGS.cls_id = 101
@@ -17,13 +17,13 @@ FLAGS.batch_size = 2
 FLAGS.leak_ratio = 0.1
 FLAGS.rand_ratio = 0.1
 FLAGS.vocab_size = 21128
-FLAGS.mask_prob = 0.01
+FLAGS.mask_prob = 0.15
 FLAGS.sample_strategy = 'token_span'
 FLAGS.confusion_matrix = None
 FLAGS.confusion_mask_matrix = None
 FLAGS.prepare_text_infilling = False
-FLAGS.initial_ratio = 0.1
-FLAGS.final_ratio = 0.1
+FLAGS.initial_ratio = 0.8
+FLAGS.final_ratio = 0.8
 FLAGS.num_train_steps = 1000
 FLAGS.seg_id = 105 # <S>
 FLAGS.ilm_v1 = False
@@ -48,7 +48,7 @@ def _decode_record(record, name_to_features, **kargs):
 
 def train_input_fn(input_file, _parse_fn, name_to_features,
            params,
-           num_predict=78, seq_len=512,
+           num_predict=8, seq_len=512,
            use_bfloat16=False,
            truncate_seq=False,
            stride=1,
@@ -94,6 +94,5 @@ chinese_bpe_tokenizer = BertWordPieceTokenizer(
     lowercase=True)
 
 print(chinese_bpe_tokenizer.decode(features['ilm_input'][0], skip_special_tokens=False))
-print(chinese_bpe_tokenizer.decode(features['origin_input'][0], skip_special_tokens=False))
+print(chinese_bpe_tokenizer.decode(features['origin_input'][0]))
 
-print(features['ilm_segment_ids'][0])

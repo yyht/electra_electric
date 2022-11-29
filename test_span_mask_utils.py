@@ -8,7 +8,7 @@ import tensorflow as tf
 
 FLAGS = Bunch({})
 FLAGS.min_tok = 3
-FLAGS.max_tok = 10
+FLAGS.max_tok = 5
 FLAGS.sep_id = 102
 FLAGS.pad_id = 0
 FLAGS.cls_id = 101
@@ -17,13 +17,13 @@ FLAGS.batch_size = 2
 FLAGS.leak_ratio = 0.1
 FLAGS.rand_ratio = 0.1
 FLAGS.vocab_size = 21128
-FLAGS.mask_prob = 0.15
+FLAGS.mask_prob = 0.01
 FLAGS.sample_strategy = 'token_span'
 FLAGS.confusion_matrix = None
 FLAGS.confusion_mask_matrix = None
 FLAGS.prepare_text_infilling = False
 FLAGS.initial_ratio = 0.1
-FLAGS.final_ratio = 0.3
+FLAGS.final_ratio = 0.1
 FLAGS.num_train_steps = 1000
 FLAGS.seg_id = 105 # <S>
 FLAGS.ilm_v1 = False

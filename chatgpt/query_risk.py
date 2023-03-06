@@ -19,7 +19,7 @@ with open('/home/htxu91/source/rlhf/black_final.json.detail', 'w') as fwobj:
 			sent = content['text']
 
 			response = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
-									messages=[{"role": "user", "content": template.format(sent)}]
+									messages=[{"role": "user", "content": template.format(sent)}],
 									temperature=0, 
 									max_tokens=512)
 			message = response['choices'][0]['message']['content']

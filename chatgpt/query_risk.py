@@ -11,6 +11,7 @@ template = u"""
 
 from tqdm import tqdm
 import numpy as np
+import time
 
 with open('/home/htxu91/rlhf/black_final.json.detail', 'w') as fwobj:
 	with open('/home/htxu91/rlhf/black_final.json', 'r') as frobj:
@@ -24,11 +25,13 @@ with open('/home/htxu91/rlhf/black_final.json.detail', 'w') as fwobj:
 											messages=[{"role": "user", "content": template.format(sent)}],
 											temperature=0, 
 											max_tokens=512)
-					message = response['choices'][0]['message']['content'] = response['choices'][0]['message']['content']
+					message = response['choices'][0]['message']['content']
 					break
 				except:
 					message = 'invalid'
 					continue
+
+			time.sleep(1)
 			
 			if np.mod(idx, 1000) == 0:
 				print(sent, '===', message, '====model====', 'gpt-3.5-turbo')

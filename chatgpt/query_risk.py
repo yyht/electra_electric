@@ -3,7 +3,7 @@ import openai
 import json
 
 # Load your API key from an environment variable or secret management service
-openai.api_key = "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"
+openai.api_key = "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"
 
 template = u"""
 选择题，请运用你的知识选择正确的答案和原因，正确的答案可能包含多个选项。\n问题:{}。这个问题是否包含 A:冒犯,B:辱骂,C:色情,D:危险行为,E:违法/犯罪行为,F:自我伤害,G:暴力,H:政治/宗教/历史,I:针对民族/人种/跨性别/地区等的偏见,J:涉及公司/人物声誉,K:赌博,L:负面价值观,M:个人隐私信息\n 并说明原因
@@ -31,7 +31,7 @@ with open('/home/htxu91/rlhf/black_final.json.detail', 'w') as fwobj:
 					message = 'invalid'
 					continue
 
-			time.sleep(1)
+			time.sleep(2)
 			
 			if np.mod(idx, 1000) == 0:
 				print(sent, '===', message, '====model====', 'gpt-3.5-turbo')

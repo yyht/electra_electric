@@ -14,29 +14,29 @@ import numpy as np
 import time
 
 with open('/home/htxu91/rlhf/black_final.json.detail', 'w') as fwobj:
-	with open('/home/htxu91/rlhf/black_final.json', 'r') as frobj:
-		for idx, line in tqdm(enumerate(frobj)):
-			content = json.loads(line.strip())
-			sent = content['text']
+    with open('/home/htxu91/rlhf/black_final.json', 'r') as frobj:
+        for idx, line in tqdm(enumerate(frobj)):
+            content = json.loads(line.strip())
+            sent = content['text']
 
-                        if idx <= 844:
-                            continue
+            if idx <= 844:
+                continue
 
-			for _ in range(10):
-				#try:
-					response = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
-											messages=[{"role": "user", "content": template.format(sent)}],
-											temperature=0, 
-											max_tokens=512)
-					message = response['choices'][0]['message']['content']
-					break
-				#except:
-			    	#	message = 'invalid'
-				#	continue
+            for _ in range(10):
+                #try:
+                    response = openai.ChatCompletion.create(model="gpt-3.5-turbo", 
+                                            messages=[{"role": "user", "content": template.format(sent)}],
+                                            temperature=0, 
+                                            max_tokens=512)
+                    message = response['choices'][0]['message']['content']
+                    break
+                #except:
+                    #   message = 'invalid'
+                #   continue
 
-			time.sleep(10)
-			
-			if np.mod(idx, 1000) == 0:
-				print(sent, '===', message, '====model====', 'gpt-3.5-turbo')
-			content['chatgpt_predict'] = message
-			fwobj.write(json.dumps(content, ensure_ascii=False)+'\n')
+            time.sleep(10)
+            
+            if np.mod(idx, 1000) == 0:
+                print(sent, '===', message, '====model====', 'gpt-3.5-turbo')
+            content['chatgpt_predict'] = message
+            fwobj.write(json.dumps(content, ensure_ascii=False)+'\n')

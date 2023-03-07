@@ -14,10 +14,7 @@ import numpy as np
 import time
 
 key = [
-    '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',
-'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',
-'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',
-'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'
+    
 ]
 
 with open('/home/htxu91/rlhf/black_final.json.detail.latest', 'w') as fwobj:

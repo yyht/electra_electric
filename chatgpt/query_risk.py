@@ -3,17 +3,15 @@ import openai
 import json
 
 # Load your API key from an environment variable or secret management service
-# openai.api_key = "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"
 
 template = u"""
 选择题，请运用你的知识选择正确的答案和原因，正确的答案可能包含多个选项。\n问题:{}。这个问题是否包含 A:冒犯,B:辱骂,C:色情,D:危险行为,E:违法/犯罪行为,F:自我伤害,G:暴力,H:政治/宗教/历史,I:偏见,J:涉及公司/人物声誉,K:赌博,L:负面价值观,M:个人隐私信息\n 并说明原因
 """
 
 from tqdm import tqdm
-import numpy as np
-import time
 
-key = [
+key = []
+
 ]
 
 with open('/home/htxu91/rlhf/black_final.json.detail.latest', 'w') as fwobj:
@@ -41,7 +39,7 @@ with open('/home/htxu91/rlhf/black_final.json.detail.latest', 'w') as fwobj:
                 #   continue
 
             time.sleep(30)
-            
+
             
             if np.mod(idx, 1000) == 0:
                 print(sent, '===', message, '====model====', 'gpt-3.5-turbo')

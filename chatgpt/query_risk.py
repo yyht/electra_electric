@@ -14,10 +14,10 @@ import numpy as np
 import time
 
 key = [
-    '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',
-    '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',
-    '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',
-    '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'
+    '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',
+'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',
+'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',
+'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'
 ]
 
 with open('/home/htxu91/rlhf/black_final.json.detail.latest', 'w') as fwobj:
@@ -45,7 +45,7 @@ with open('/home/htxu91/rlhf/black_final.json.detail.latest', 'w') as fwobj:
                 #   continue
 
             time.sleep(30)
-            
+
             
             if np.mod(idx, 1000) == 0:
                 print(sent, '===', message, '====model====', 'gpt-3.5-turbo')
